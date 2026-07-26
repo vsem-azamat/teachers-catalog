@@ -58,6 +58,26 @@ async def healthz(request: Request, session: SessionDep) -> dict[str, str | int]
     }
 
 
+def name_webhook_state(
+    observed: str, *, expected: str, registration_error: str | None
+) -> str:
+    """The one place a webhook URL becomes an answer somebody reads.
+
+    Named here rather than wherever the observation was made: the endpoint and
+    the watch in `main.py` both make it, and two copies of this vocabulary
+    drift — one of them quietly losing the registration error, which is the
+    only thing that says *why* the bot is deaf.
+    """
+    if observed == expected:
+        return "ok"
+    if observed:
+        return f"elsewhere: {observed}"
+    # "Missing" says the bot is deaf; the registration attempt's own error, if
+    # there was one, says why.
+    why = f" (registration failed: {registration_error})" if registration_error else ""
+    return f"missing: Telegram has no webhook for this bot{why}"
+
+
 async def webhook_state(app: FastAPI) -> str:
     """Where Telegram says it is sending updates, not where we asked it to.
 
@@ -125,6 +145,11 @@ def _cached(app: FastAPI) -> str | None:
 async def _ask_telegram(app: FastAPI, bot) -> str:
     expected = get_settings().webhook_url
     failed = False
+    # Noted before the call, not after: the watch in `main.py` may heal the
+    # webhook while this one is still waiting on Telegram, and an older answer
+    # must not overwrite a newer one — least of all by replacing "ok" with the
+    # "missing" it was sent to check.
+    started = clock.monotonic()
     try:
         info = await asyncio.wait_for(
             bot.get_webhook_info(), timeout=WEBHOOK_CHECK_TIMEOUT
@@ -140,20 +165,18 @@ async def _ask_telegram(app: FastAPI, bot) -> str:
         failed = True
     else:
         observed = str(getattr(info, "url", "") or "")
-        if observed == expected:
-            state = "ok"
-        elif observed:
-            state = f"elsewhere: {observed}"
+        state = name_webhook_state(
+            observed,
+            expected=expected,
+            registration_error=getattr(app.state, "webhook_error", None),
+        )
+        if observed and observed != expected:
             log.error("Telegram points at %s, expected %s", observed, expected)
-        else:
-            # Carry the reason registration gave, if it gave one: "missing"
-            # says the bot is deaf, and the attempt's own error says why.
-            attempted = getattr(app.state, "webhook_error", None)
-            why = f" (registration failed: {attempted})" if attempted else ""
-            state = f"missing: Telegram has no webhook for this bot{why}"
-            log.error("Telegram has no webhook; expected %s%s", expected, why)
+        elif not observed:
+            log.error("Telegram has no webhook; expected %s", expected)
 
-    app.state.webhook_observed = state
-    app.state.webhook_observed_failed = failed
-    app.state.webhook_checked_at = clock.monotonic()
+    if getattr(app.state, "webhook_checked_at", 0.0) <= started:
+        app.state.webhook_observed = state
+        app.state.webhook_observed_failed = failed
+        app.state.webhook_checked_at = clock.monotonic()
     return state
