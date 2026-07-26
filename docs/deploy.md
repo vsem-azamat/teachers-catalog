@@ -196,7 +196,22 @@ Cloudflare or the edge, not this project.
 
 ### If the webhook goes missing
 
-`docker compose restart api` re-registers it: the application sets the webhook
-on startup and retries until Telegram agrees. Confirm from Telegram's side
-afterwards, not from `/healthz` alone, and give it a minute — the answer there
-is cached.
+The application re-registers it by itself. A webhook is state held by Telegram,
+not by us, and anything holding the same bot token can clear it — `deleteWebhook`
+from a stray process, or a `polling` bot, which deletes it on every start. So
+registration is not a thing that happens once at boot: the application checks
+once a minute that Telegram still points here, and sets it again when it does
+not, logging `webhook was cleared by someone else` each time it has to.
+
+Restoring it keeps whatever Telegram queued while the bot was deaf — those
+are the messages the outage cost. Only the first registration at boot drops
+the queue, because that queue predates the process.
+
+Those log lines are the evidence trail. Repeated entries mean the token is
+live somewhere else, and the fix is to find that process — not to restart this
+one. `docker compose logs api | grep webhook` reads them. A line saying the
+webhook *points somewhere else* rather than that it was cleared means the
+other holder is setting its own, and the two are taking turns.
+
+If it cannot be found, rotate the token in @BotFather: the other holder stops
+working immediately, and the new value reaches the server on the next deploy.

@@ -282,3 +282,35 @@ async def test_a_registration_failure_is_carried_into_the_missing_message(
     )
     assert body["webhook"].startswith("missing:")
     assert "Bad Request: bad webhook" in body["webhook"]
+
+
+async def test_a_slow_probe_does_not_overwrite_a_newer_answer(app_with) -> None:
+    """The watch can heal the webhook while a probe is still asking about it.
+
+    The probe then answers with what was true when it started. Writing that
+    into the cache would replace a fresh "ok" with a stale "missing" and hold
+    it for a full cache window — undoing the heal as far as anyone reading
+    /healthz is concerned.
+    """
+    import time as clock
+
+    from konnekt.api.v1.health import webhook_state
+
+    class Slow:
+        async def get_webhook_info(self):
+            await asyncio.sleep(0.05)
+            return SimpleNamespace(url="")
+
+    app = app_with(Slow())
+    app.state.webhook_checked_at = 0.0
+
+    async def heal_midway() -> None:
+        await asyncio.sleep(0.02)
+        app.state.webhook_observed = "ok"
+        app.state.webhook_observed_failed = False
+        app.state.webhook_checked_at = clock.monotonic()
+
+    answered, _ = await asyncio.gather(webhook_state(app), heal_midway())
+
+    assert answered.startswith("missing:"), "the probe should say what it saw"
+    assert app.state.webhook_observed == "ok", "but it must not cache it over the heal"

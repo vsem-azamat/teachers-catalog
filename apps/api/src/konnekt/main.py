@@ -8,6 +8,7 @@ origin, so the page and the API it talks to have to be the same host anyway.
 import asyncio
 import logging
 import secrets
+import time as clock
 from contextlib import asynccontextmanager, suppress
 
 from aiogram.types import Update
@@ -16,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from konnekt.api.v1 import router as api_router
-from konnekt.api.v1.health import health_router
+from konnekt.api.v1.health import health_router, name_webhook_state
 from konnekt.bot import build_bot, build_dispatcher, configure
 from konnekt.core.config import get_settings
 from konnekt.db.session import dispose_engine
@@ -53,8 +54,103 @@ def configure_logging(level: str) -> None:
 WEBHOOK_RETRY_DELAYS = (5, 15, 60, 180, 300)
 
 
-async def _register_webhook(app: FastAPI, bot, dispatcher, settings) -> None:
-    """Point Telegram at us, and keep trying until it agrees."""
+# How often Telegram is asked whether it still points here. A webhook that has
+# been cleared costs at most this much silence.
+WEBHOOK_RECHECK_SECONDS = 60.0
+
+# The recheck must not outlive its interval, or a hanging call would stop the
+# watch for as long as aiogram's default session is willing to wait.
+WEBHOOK_RECHECK_TIMEOUT = 10.0
+
+
+async def keep_webhook_registered(
+    app: FastAPI,
+    bot,
+    dispatcher,
+    settings,
+    recheck_seconds: float = WEBHOOK_RECHECK_SECONDS,
+    recheck_timeout: float = WEBHOOK_RECHECK_TIMEOUT,
+) -> None:
+    """Point Telegram at us, and keep it pointed.
+
+    Registration is not a thing that happens once. The webhook is state held
+    by Telegram, and anything holding the same bot token can take it away —
+    `deleteWebhook` from a stray process, or a `polling` bot, which deletes it
+    on every start. Without this the bot goes deaf until somebody restarts the
+    process, and nothing says why.
+
+    Re-registering is deliberately conditional: `set_webhook` on a timer would
+    be a call to Telegram every minute for nothing. When it does have to
+    happen, it keeps whatever queued while the bot was deaf — those are the
+    messages the outage was about.
+    """
+    # Dropping what queued before the process existed is right at boot, and
+    # wrong on a heal — see below.
+    await _set_webhook(app, bot, dispatcher, settings, drop_pending=True)
+
+    while True:
+        await asyncio.sleep(recheck_seconds)
+        try:
+            info = await asyncio.wait_for(bot.get_webhook_info(), timeout=recheck_timeout)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            # A check we could not make says nothing about the webhook, and is
+            # not a reason to stop making them.
+            log.warning("could not check the webhook: %s", str(exc) or type(exc).__name__)
+            continue
+
+        observed = str(getattr(info, "url", "") or "")
+        _publish(app, observed, expected=settings.webhook_url)
+        if observed == settings.webhook_url:
+            continue
+
+        if observed:
+            log.error(
+                "the webhook points at %s, not at %s — something else is holding "
+                "this bot token and setting its own. Setting ours again; if this "
+                "repeats, the two are taking turns and one of them has to stop",
+                observed,
+                settings.webhook_url,
+            )
+        else:
+            log.error(
+                "webhook was cleared by someone else — setting it again. Something "
+                "else is holding this bot token; a polling bot deletes the webhook "
+                "on every start"
+            )
+
+        # drop_pending=False: whatever queued while the bot was deaf is exactly
+        # what this watch exists to save. Dropping it here would throw away the
+        # messages the outage was about.
+        await _set_webhook(app, bot, dispatcher, settings, drop_pending=False)
+        # Say so immediately. Otherwise /healthz serves the pre-heal reading
+        # from its cache and reports a deaf bot for up to a minute after it
+        # can hear again.
+        _publish(app, settings.webhook_url, expected=settings.webhook_url)
+
+
+def _publish(app: FastAPI, observed: str, *, expected: str) -> None:
+    """Hand the observation to /healthz, so Telegram is asked once, not twice.
+
+    The endpoint keeps its own ability to ask — it has to answer when no watch
+    is running — but while one is, this is the fresher answer and the endpoint
+    reuses it rather than repeating the call seconds later. The wording is the
+    endpoint's, not a second copy of it.
+    """
+    app.state.webhook_observed = name_webhook_state(
+        observed,
+        expected=expected,
+        registration_error=getattr(app.state, "webhook_error", None),
+    )
+    app.state.webhook_observed_failed = False
+    app.state.webhook_checked_at = clock.monotonic()
+
+
+async def _set_webhook(
+    app: FastAPI, bot, dispatcher, settings, *, drop_pending: bool
+) -> None:
+    """Ask Telegram to send updates here, retrying until it agrees."""
     url = settings.webhook_url
     attempt = 0
     while True:
@@ -65,7 +161,7 @@ async def _register_webhook(app: FastAPI, bot, dispatcher, settings) -> None:
                 # Only the update types something actually handles, so Telegram
                 # stops sending the rest.
                 allowed_updates=dispatcher.resolve_used_update_types(),
-                drop_pending_updates=True,
+                drop_pending_updates=drop_pending,
             )
             await configure(bot, settings)
         except asyncio.CancelledError:
@@ -114,7 +210,7 @@ async def lifespan(app: FastAPI):
             # down. The state is reported by /healthz so a webhook that never
             # registers is visible rather than merely quiet.
             app.state.webhook_task = asyncio.create_task(
-                _register_webhook(app, bot, dispatcher, settings)
+                keep_webhook_registered(app, bot, dispatcher, settings)
             )
         else:
             log.warning("PUBLIC_BASE_URL is unset — bot is loaded but not reachable")
