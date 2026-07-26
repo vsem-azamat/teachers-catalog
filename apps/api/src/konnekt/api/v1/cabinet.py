@@ -4,10 +4,8 @@ The counterpart to `browse`: the same offers, seen from the side of the person
 who owns them.
 """
 
-from datetime import UTC, datetime
-
-from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import delete, select
+from fastapi import APIRouter
+from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from konnekt.api.deps import LangDep, SessionDep, UserDep
@@ -21,7 +19,6 @@ from konnekt.api.schemas import (
     MyOfferOut,
     Price,
 )
-from konnekt.api.v1._shared import require_row
 from konnekt.api.v1.me import read_me
 from konnekt.db.models import (
     HelperProfile,
@@ -31,15 +28,11 @@ from konnekt.db.models import (
     Subject,
 )
 from konnekt.db.models.enums import (
-    ContentLang,
     PriceUnit,
-    PublishStatus,
-    UserEventKind,
     WorkFormat,
 )
-from konnekt.services import parser
+from konnekt.services import helpers, parser
 from konnekt.services.catalog import _localised
-from konnekt.services.people import log_event
 
 router = APIRouter()
 
@@ -188,107 +181,6 @@ async def _names_by_id(session, model, ids, lang) -> dict[int, str]:
 async def upsert_helper(
     payload: HelperUpsert, session: SessionDep, lang: LangDep, user: UserDep
 ) -> MeOut:
-    """Create or replace the caller's helper profile and its offers.
-
-    The set of offers is authoritative — whatever the client did not send is
-    deleted, because a partial update would leave rows behind that the person
-    believes they removed. The *rows*, though, are matched on their axes and
-    updated in place. Deleting and reinserting was simpler and cost every past
-    `contacts` row its `offer_id`, which is `ON DELETE SET NULL`: harmless when
-    publishing happened once in a lifetime, and not harmless now that the
-    cabinet invites someone to fix a price in ten seconds.
-
-    Fields the payload does not carry are left alone. A profile is edited by
-    more than one screen, and each of them sends what it knows about.
-    """
-    helper = await session.get(HelperProfile, user.id)
-    if helper is None:
-        helper = HelperProfile(user_id=user.id)
-        session.add(helper)
-
-    # A ban is not something the banned person can lift by pressing publish.
-    if helper.status == PublishStatus.BANNED:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "this profile is blocked")
-
-    # `model_fields_set` distinguishes "omitted" from "explicitly null", which
-    # a plain assignment cannot: the cabinet sends no headline, and an
-    # unconditional write there wiped the line under the person's name on
-    # every card in the catalog the first time they changed a price.
-    given = payload.model_fields_set
-    if "headline" in given:
-        helper.headline = payload.headline
-    if "about" in given:
-        helper.about = payload.about
-    if "city" in given:
-        helper.city = payload.city
-    if "place_note" in given:
-        helper.place_note = payload.place_note
-    helper.raw_intro = payload.raw_intro or helper.raw_intro
-    helper.about_lang = ContentLang(lang.value)
-    helper.work_format = payload.work_format
-
-    if payload.publish:
-        was_published = helper.status == PublishStatus.PUBLISHED
-        helper.status = PublishStatus.PUBLISHED
-        helper.published_at = helper.published_at or datetime.now(UTC)
-        if not was_published:
-            await log_event(session, user.id, UserEventKind.PROFILE_PUBLISHED)
-    else:
-        # HIDDEN, not DRAFT, once it has been out: "hide me" has to actually
-        # take the profile out of the catalog, and the distinction preserves
-        # whether anyone has ever seen it.
-        helper.status = (
-            PublishStatus.HIDDEN if helper.published_at else PublishStatus.DRAFT
-        )
-    await session.flush()
-
-    valid_service_ids = set(
-        (await session.scalars(select(ServiceType.id).where(ServiceType.is_active))).all()
-    )
-    existing = {
-        (row.service_type_id, row.subject_id, row.institution_id): row
-        for row in (
-            await session.scalars(select(Offer).where(Offer.helper_id == user.id))
-        ).all()
-    }
-
-    seen_axes: set[tuple[int, int | None, int | None]] = set()
-    for spec in payload.offers:
-        if spec.service_type_id not in valid_service_ids:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                f"unknown service type {spec.service_type_id}",
-            )
-        await require_row(session, Subject, spec.subject_id, "subject_id")
-        await require_row(session, Institution, spec.institution_id, "institution_id")
-
-        axes = (spec.service_type_id, spec.subject_id, spec.institution_id)
-        if axes in seen_axes:
-            # The same three axes twice violates uq_offers_axes. Saying which
-            # entry is duplicated beats a unique-violation traceback.
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                f"duplicate offer for service {axes[0]}, subject {axes[1]}, "
-                f"institution {axes[2]}",
-            )
-        seen_axes.add(axes)
-
-        offer = existing.get(axes)
-        if offer is None:
-            offer = Offer(
-                helper_id=user.id,
-                service_type_id=spec.service_type_id,
-                subject_id=spec.subject_id,
-                institution_id=spec.institution_id,
-            )
-            session.add(offer)
-        offer.price_amount = spec.price_amount
-        offer.price_unit = spec.price_unit
-        offer.langs = spec.langs or list(user.spoken_langs)
-        offer.work_format = payload.work_format
-        offer.is_active = True
-
-    dropped = [row.id for axes, row in existing.items() if axes not in seen_axes]
-    if dropped:
-        await session.execute(delete(Offer).where(Offer.id.in_(dropped)))
+    """Create or replace the caller's helper profile and its offers."""
+    await helpers.save_profile(session, user=user, spec=payload, lang=lang)
     return await read_me(user, session, lang)

@@ -21,7 +21,6 @@ from konnekt.api.schemas import (
     ResponseCreate,
     ResponseOut,
 )
-from konnekt.api.v1._shared import require_row
 from konnekt.bot.texts import (
     FOR_PRICE,
     NEW_RESPONSE,
@@ -53,6 +52,7 @@ from konnekt.services import notify, parser
 from konnekt.services.catalog import _localised, avatar_for
 from konnekt.services.notify import quote
 from konnekt.services.people import log_event
+from konnekt.services.refs import require_row
 
 router = APIRouter()
 

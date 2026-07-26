@@ -13,12 +13,14 @@ from contextlib import asynccontextmanager, suppress
 from aiogram.types import Update
 from fastapi import FastAPI, Header, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from konnekt.api.v1 import router as api_router
 from konnekt.api.v1.health import health_router
 from konnekt.bot import build_bot, build_dispatcher, configure
 from konnekt.core.config import get_settings
 from konnekt.db.session import dispose_engine
+from konnekt.services import errors
 
 log = logging.getLogger("konnekt")
 
@@ -111,6 +113,31 @@ async def lifespan(app: FastAPI):
     await dispose_engine()
 
 
+SERVICE_ERROR_STATUS: dict[type[errors.ServiceError], int] = {
+    errors.NotFound: status.HTTP_404_NOT_FOUND,
+    errors.Forbidden: status.HTTP_403_FORBIDDEN,
+    errors.Conflict: status.HTTP_409_CONFLICT,
+    errors.Invalid: status.HTTP_422_UNPROCESSABLE_CONTENT,
+}
+
+
+def status_for(exc: BaseException) -> int:
+    """The status a service error answers with, following the class hierarchy.
+
+    Walked rather than looked up: an exact-type lookup turns a subclass of
+    `Invalid` — or the base class raised by mistake — into a KeyError inside
+    the error handler, which is a 500 with no body at all. An unmapped one is
+    still a programming error, so it is logged rather than quietly given a
+    plausible status.
+    """
+    for klass in type(exc).__mro__:
+        mapped = SERVICE_ERROR_STATUS.get(klass)
+        if mapped is not None:
+            return mapped
+    log.error("no status mapped for %s", type(exc).__name__)
+    return status.HTTP_500_INTERNAL_SERVER_ERROR
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
@@ -127,6 +154,13 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # The one place a service's vocabulary becomes a status code. Services
+    # raise rules, not protocols, so that the bot can call the same code and
+    # answer in words instead of in numbers.
+    @app.exception_handler(errors.ServiceError)
+    async def _service_error(_: Request, exc: Exception) -> JSONResponse:
+        return JSONResponse(status_code=status_for(exc), content={"detail": str(exc)})
 
     app.include_router(api_router)
     app.include_router(health_router)
