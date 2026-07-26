@@ -36,15 +36,14 @@ neighbours about where it lives.
 | `requests.py` | the catalog in reverse — post, answer, accept, close |
 | `placements.py` | partner placements |
 | `health.py` | `/healthz`, on its own router with no prefix |
-| `_shared.py` | what a second domain module already needs |
 
 `health.py` is deliberately outside the versioned router: `/healthz` is what
 the deploy and the shared edge Caddy watch, and it must not move when the API
 version does.
 
-`_shared.py` stays small on purpose. A module that collects everything shared
-becomes the god module this package was split out of, so the bar for adding to
-it is that a second domain already needs the thing — not that it might.
+There is no shared-helpers module here. What two domains both need is a rule,
+and a rule belongs in `services/` — that is what stops this package growing a
+second god module to replace the one it was split out of.
 
 ## What belongs where
 
@@ -57,6 +56,10 @@ database.
 **A service** takes a session and plain values, and returns DTOs. It does not
 raise `HTTPException`: an HTTP status is a fact about a protocol, and a
 service that knows about protocols cannot be called by the bot.
+
+What it raises instead lives in `services/errors.py` — `NotFound`,
+`Forbidden`, `Conflict`, `Invalid` — and one handler in `main.py` turns each
+into its status code. The bot can catch the same four and answer in words.
 
 **A schema** is a leaf. `api/schemas.py` describes what goes over the wire.
 Screens are assembled server-side — the client renders what it is given rather
@@ -113,10 +116,9 @@ hides the bugs this rule exists to prevent.
 Written down because an agent greps this tree and builds against what it
 finds, and a rule with silent exceptions is worse than no rule.
 
-- **Eleven endpoints write to the database directly**, without a service. The
-  largest are `cabinet.upsert_helper` — the publish state machine and the
-  offer diff — and `requests.request_feed`, which holds the matching and
-  ranking algorithm.
+- **Ten endpoints write to the database directly**, without a service. The
+  largest is `requests.request_feed`, which holds the matching and ranking
+  algorithm.
 - **`services/` imports `api/schemas`,** which points the domain layer at the
   HTTP layer. Moving `schemas.py` to the package root fixes it.
 - **`services/catalog._localised` is imported across the package boundary** by

@@ -9,13 +9,13 @@ from konnekt.api.schemas import (
     MeOut,
     MeUpdate,
 )
-from konnekt.api.v1._shared import require_row
 from konnekt.api.v1.taxonomy import institution_out
 from konnekt.db.models import (
     HelperProfile,
     Institution,
 )
 from konnekt.services.catalog import avatar_for
+from konnekt.services.refs import require_row
 
 router = APIRouter()
 
