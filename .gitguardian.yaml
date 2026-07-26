@@ -1,0 +1,35 @@
+# Paths whose "credentials" are not credentials.
+#
+# Declared here rather than silenced, so the reason for each one is in the
+# repository and can be argued with. Nothing outside these paths is exempt, and
+# a real secret in any of them would still be a mistake — these files simply
+# have no reason to ever hold one.
+
+version: 2
+
+secret:
+  ignored-paths:
+    # Bot tokens minted for the HMAC tests. They have to look like Telegram
+    # tokens for the signature check to be a fair test, and they are worth
+    # nothing: `123456:TEST-TOKEN-not-a-real-one` and a deliberately wrong
+    # `999:SOMEONE-ELSES-BOT` used to prove a foreign signature is rejected.
+    - apps/api/tests/test_security.py
+
+    # Templates. Every value is empty or a placeholder, and the whole point of
+    # the file is to name the variables without carrying them.
+    - .env.example
+    - deploy/konnekt/.env.example
+
+    # The database password for a container CI throws away minutes later, and
+    # which never listens outside the runner.
+    - .github/workflows/ci.yml
+
+    # Local development defaults, matching docker-compose.yml so that
+    # `make setup` works with nothing configured. The database binds to
+    # 127.0.0.1 and the README says as much.
+    - apps/api/src/konnekt/core/config.py
+    - docker-compose.yml
+
+    # Documentation for the retired bot, kept for the data migration. Its
+    # placeholders are of the form <password>.
+    - docs/legacy-bot.md
