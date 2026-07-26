@@ -142,9 +142,10 @@ jobs:
 
       - name: Check every message is translated
         # An untranslated string falls back to the Russian source *and* to
-        # Russian plural rules, which is how "38 занятия" reaches a Czech
-        # reader. Better to fail here than to ship it.
-        run: pnpm i18n:extract --fail-on-missing
+        # whatever plural rules are active, which is how "38 занятия" reaches a
+        # Czech reader. `compile --strict` is the check: extract has no such
+        # flag, and compiling is what would silently substitute the default.
+        run: pnpm exec lingui compile --strict
 
       - name: Build
         # mkcert wants a system trust store that CI does not have; the build
