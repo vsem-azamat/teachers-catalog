@@ -1,0 +1,31 @@
+{
+	"generatedBy": "stdd",
+	"version": "0.7.0",
+	"files": {
+		".stdd/method.md": "sha256:b037242d6421961c7e330fd99009d36140d9b1f75367127968100c6eb226dde8",
+		".stdd/playbooks/brainstorming.md": "sha256:084b6449355415ecdeb141e3f0d648dc87cda0c619afa4f7257eba06e8f5bebb",
+		".stdd/playbooks/debugging.md": "sha256:ebe8443ffac2e592cb735288e734684c255635f7cc994a57c4dc17502db5c288",
+		".stdd/playbooks/delegate-slice.md": "sha256:58ac67c9353968249281297df8f342a5c757787285405045868f8f48933589dd",
+		".stdd/playbooks/investigation.md": "sha256:d537ab7a9b02eac4d1bcda068e3860cec3655b266a58cf8b65a812bba5d1fa43",
+		".stdd/playbooks/planning.md": "sha256:71932b8478df10bd4a9d556bfd41ab1af5e96a761531706c57f1e0bc5ad490a5",
+		".stdd/playbooks/pr-green.md": "sha256:d66bf88b95eda0cbff55b873931c4a3571e712292cda63cf814c92d3e1d28a61",
+		".claude/skills/stdd-brainstorming/SKILL.md": "sha256:9f07b08f52381ba0e13c168f7c92f70a45cb30e00516644bc5cb8725db643017",
+		".claude/skills/stdd-debugging/SKILL.md": "sha256:133e8515179c5bfd24689699abea5062791909456d0d5611cf53499e171abff6",
+		".claude/skills/stdd-delegate-slice/SKILL.md": "sha256:8ab168a679f51e6bc0f10cd62fbe586a9754e9de77610574da05314d37f08540",
+		".claude/skills/stdd-investigation/SKILL.md": "sha256:e6eb1bc0c2e25accc145fcf264fea4f57366f42abee35e1ef3a7349cfe52e848",
+		".claude/skills/stdd-planning/SKILL.md": "sha256:fb00275fcfefc5096cbb4803e45d4dce6e03317131d669b8d7da0db9f2af10c3",
+		".claude/skills/stdd-pr-green/SKILL.md": "sha256:fd9b9d4b29b7a9cf79c2dca03a068c7457b31b48a91bc93d11041a072093f33f",
+		".github/workflows/stdd.yml": "sha256:591ee6b3be2129e95d1d0c0724c0daa63d06e0bcc30d2c17268eb8fc9b918166"
+	},
+	"targets": {
+		"tools": [
+			"claude"
+		],
+		"ci": [
+			"github"
+		],
+		"hooks": false,
+		"sessionHook": false,
+		"stopHook": false
+	}
+}

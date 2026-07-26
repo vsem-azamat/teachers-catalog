@@ -114,6 +114,28 @@ was typed as `object`, which meant every read of `.lower` and `.upper` was
 unverifiable, and once it was a real `Range[datetime]` the bounds turned out to
 be optional in the type and non-optional only by a database constraint.
 
+### The docs contract
+
+A separate CI job runs [stdd](https://github.com/vsem-azamat/stdd), which
+guards two things this repository cares about because most of the code in it
+is written with an agent.
+
+The first is that `docs/` and this file describe the present. An agent greps
+the tree, finds text that reads authoritative, and builds against it — so a
+paragraph narrating an earlier state of the code is not history in there, it
+is a trap. `stdd check` flags that phrasing and refuses committed plan and
+spec artifacts anywhere. Rationale belongs in the commit message and the pull
+request, where it is dated by construction.
+
+The second is that a pull request says which docs it updated. `stdd check-pr`
+reads the live body — not the webhook payload, which freezes at trigger time —
+and verifies the paths it claims against the actual diff. Draft the line with
+`npx @stdd/cli evidence --base origin/main`.
+
+Only that contract is adopted. stdd also offers a recorded loop and an
+orchestration layer with plans, slices and delegated review; this is one
+person and one agent, and neither has a problem those solve yet.
+
 ## The four languages
 
 `ru`, `cs`, `en`, `uk` — and they are two separate problems.
@@ -129,10 +151,10 @@ written in Russian stays Russian, and a Ukrainian first-year cannot work with a
 Czech-only tutor. `users.spoken_langs` and `offers.langs` are indexed arrays, so
 that filter is one query.
 
-The list people pick from is those four and no more. It used to be nine, and
-the tail of it — Slovak, German, Kazakh, Uzbek, Vietnamese — never matched a
-pair while making the question long enough to skip. Retired codes are
-deactivated rather than deleted, because profiles already hold them.
+The list people pick from is those four and no more: a question with four
+answers gets answered and one with nine gets skipped, and every code beyond
+these four is one nobody here has ever been matched on. Codes taken off the
+list are deactivated rather than deleted, because profiles already hold them.
 
 ## What is not here yet
 

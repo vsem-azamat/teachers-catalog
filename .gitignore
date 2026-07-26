@@ -195,3 +195,5 @@ apps/web/src/locales/**/messages.ts
 
 # Generated on the runner and installed on the server; never in the repository.
 deploy/**/.env
+.stdd/ledger.jsonl
+.stdd/plan.md

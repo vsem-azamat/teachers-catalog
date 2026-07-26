@@ -65,8 +65,8 @@ should know that before showing the card.
 
 The `languages` table offers the same four and no more. Codes taken off the
 list are marked `is_active = false` rather than deleted: the arrays above hold
-plain text and reference nothing, so a deleted row would leave a profile
-claiming a language that no longer resolves to a name.
+plain text and reference nothing, so a deleted row leaves a profile claiming a
+language with no name to show for it.
 
 > The legacy bot used non-standard codes `cz` and `ua`. The import maps them to
 > `cs` and `uk`.
