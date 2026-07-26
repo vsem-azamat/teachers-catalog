@@ -66,6 +66,12 @@ make tunnel               # prints an https://….trycloudflare.com URL
 Put that URL in `PUBLIC_BASE_URL`, restart the API so it re-registers the
 webhook, and set the same URL as the mini app in @BotFather.
 
+## Deploying
+
+CI builds images, pushes them to GHCR and deploys over SSH to a shared VPS,
+behind Cloudflare and a shared Caddy. The runbook, the one-time setup and the
+two ways to break production are in [docs/deploy.md](docs/deploy.md).
+
 ## Testing
 
 ```sh

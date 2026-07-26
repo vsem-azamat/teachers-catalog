@@ -189,3 +189,6 @@ apps/web/src/locales/**/messages.ts
 
 # Downloaded dev tooling (cloudflared); not part of the project
 .tools/
+
+# Generated on the runner and installed on the server; never in the repository.
+deploy/**/.env

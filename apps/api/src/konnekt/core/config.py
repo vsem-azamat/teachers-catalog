@@ -4,16 +4,32 @@ from pathlib import Path
 from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# apps/api/src/konnekt/core/config.py -> repo root
-REPO_ROOT = Path(__file__).resolve().parents[5]
+
+def _find_env_file() -> Path | None:
+    """Walk up from this file looking for a .env.
+
+    Not a fixed number of parents: the repository layout puts this five levels
+    below the root, but the container image puts it three, and hard-coding the
+    depth made the module raise IndexError on import inside Docker. Searching
+    upward works in both and simply finds nothing when there is nothing.
+    """
+    for directory in Path(__file__).resolve().parents:
+        candidate = directory / ".env"
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+ENV_FILE = _find_env_file()
 
 
 class Settings(BaseSettings):
     # One .env at the repo root, shared with docker compose, so the database
     # credentials cannot drift between the container and the application.
-    # Found regardless of whether the process starts from the root or apps/api.
+    # Found regardless of where the process was started from — and in
+    # production there is no file at all, only the environment.
     model_config = SettingsConfigDict(
-        env_file=(REPO_ROOT / ".env", ".env"),
+        env_file=(ENV_FILE, ".env") if ENV_FILE else (".env",),
         env_file_encoding="utf-8",
         extra="ignore",
     )
