@@ -275,7 +275,12 @@ jobs:
           # Migrations run to completion before anything serves traffic. As a
           # separate step rather than a compose dependency, so a failure stops
           # the deployment with a readable error instead of crash-looping.
-          docker compose run --rm migrate
+          #
+          # -T and </dev/null both matter: this whole script arrives on stdin
+          # via `bash -s`, and `compose run` attaches stdin by default. Without
+          # them it swallows the rest of the script, and the deployment ends
+          # silently after the migration with nothing else started.
+          docker compose run --rm -T migrate < /dev/null
 
           docker compose up -d --remove-orphans --wait --wait-timeout 180
 
