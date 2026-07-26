@@ -6,7 +6,7 @@ explains the decisions behind it, not the columns.
 
 ## The shape of the problem
 
-Konnekt connects students in the Czech Republic — mostly foreigners — with
+Students CZ connects students in the Czech Republic — mostly foreigners — with
 people who help them: tutors, exam help, written work, nostrification. It also
 lists physical things (gear to rent, textbooks to buy), digital materials, and
 partner services that have nothing to do with studying but everything to do with

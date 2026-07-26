@@ -2,9 +2,9 @@ import { Trans } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
 import { openLink } from '@tma.js/sdk-react';
 
+import { AppHeader } from '@/components/AppHeader';
 import {
   Empty,
-  Head,
   Hint,
   Label,
   Screen,
@@ -33,7 +33,7 @@ export default function LifePage() {
 
   return (
     <Screen>
-      <Head />
+      <AppHeader />
       <Title>
         <Trans>Не про учёбу</Trans>
       </Title>

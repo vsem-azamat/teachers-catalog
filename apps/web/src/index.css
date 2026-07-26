@@ -35,13 +35,6 @@ html {
 }
 
 body {
-  /* stable-height, not height: the plain one follows the drag gesture and
-     makes anything pinned to the bottom jitter. Falls back to 100dvh until the
-     SDK has mounted the viewport — dvh and not vh, because in a plain mobile
-     browser vh counts the space behind the toolbar, and a page built to fill
-     one screen would then be exactly one toolbar too tall to fit. */
-  min-height: var(--tg-viewport-stable-height, 100dvh);
-
   /* System font only. A webfont means a network round trip before first paint,
      and inside Telegram this should look like part of the app. */
   font-family:
@@ -60,13 +53,34 @@ body {
   overscroll-behavior-y: none;
 }
 
-/* The device notch and home indicator. Telegram's own chrome is reported
-   separately as --tg-viewport-content-safe-area-inset-*; add it where a screen
-   actually needs to clear the header. */
+/*
+ * One screenful, and the device notch — but not the home indicator.
+ *
+ * stable-height, not height: the plain one follows the drag gesture and makes
+ * anything pinned to the bottom jitter. Falls back to 100dvh until the SDK has
+ * mounted the viewport — dvh and not vh, because in a plain mobile browser vh
+ * counts the space behind the toolbar, and a page built to fill one screen
+ * would then be exactly one toolbar too tall to fit.
+ *
+ * The height lives here rather than on `body` because `box-sizing: border-box`
+ * then counts the insets *inside* the screenful instead of adding them to it.
+ * With it on `body`, a page whose content came within a notch of a full screen
+ * scrolled by exactly the height of the notch, with nothing down there to see.
+ *
+ * The bottom inset is deliberately absent: whatever sits at the bottom of a
+ * screen owns it. For a screen with tabs that is the fixed tab bar, which has
+ * to pad itself anyway because it is outside this box; for a screen without
+ * them it is `.screen`. Setting it here as well is what counted it twice.
+ *
+ * A flex column, because `min-height: 100%` on a child of an auto-height parent
+ * resolves to `auto` and does nothing — which is why screens used to sit in the
+ * top half of the viewport no matter what they declared.
+ */
 #root {
-  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: var(--tg-viewport-stable-height, 100dvh);
   padding-top: var(--tg-viewport-safe-area-inset-top, 0px);
-  padding-bottom: var(--tg-viewport-safe-area-inset-bottom, 0px);
   padding-left: var(--tg-viewport-safe-area-inset-left, 0px);
   padding-right: var(--tg-viewport-safe-area-inset-right, 0px);
 }

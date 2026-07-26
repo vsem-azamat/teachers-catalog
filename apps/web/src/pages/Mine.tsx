@@ -1,6 +1,7 @@
 import { Plural, Trans, useLingui } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router';
+import { AppHeader } from '@/components/AppHeader';
 import { Incoming } from '@/components/Incoming';
 import { DocumentIcon, iconForService } from '@/components/icons';
 import { formatDay } from '@/components/Phrase';
@@ -10,7 +11,6 @@ import {
   Card,
   Cards,
   Empty,
-  Head,
   Label,
   Reason,
   Screen,
@@ -28,8 +28,11 @@ type Tab = 'mine' | 'incoming';
  * Both directions of the same relationship.
  *
  * What you asked for, and — if you are also a helper — what other people are
- * asking for. One screen rather than a fifth tab: the two are the same person's
+ * asking for. One screen rather than two tabs: the two are the same person's
  * business, and most people will only ever see the first.
+ *
+ * The title names what is on the screen. "Мои" answers neither "whose" nor
+ * "what", and a tab label is the one place there is no room to explain.
  */
 export default function MinePage() {
   const navigate = useNavigate();
@@ -63,9 +66,9 @@ export default function MinePage() {
   return (
     <>
       <Screen withTabs>
-        <Head />
+        <AppHeader />
         <Title>
-          <Trans>Мои</Trans>
+          <Trans>Заявки</Trans>
         </Title>
 
         {isHelper ? (

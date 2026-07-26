@@ -2,6 +2,7 @@ import { Trans, useLingui } from '@lingui/react/macro';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { openTelegramLink } from '@tma.js/sdk-react';
 import { useParams } from 'react-router';
+import { AppHeader } from '@/components/AppHeader';
 
 import { PriceUnitLabel, StatLabel } from '@/components/Phrase';
 import {
@@ -72,6 +73,7 @@ export default function HelperPage() {
   if (isPending) {
     return (
       <Screen>
+        <AppHeader />
         <div style={{ height: 16 }} />
         <SkeletonRows count={5} />
       </Screen>
@@ -81,6 +83,7 @@ export default function HelperPage() {
   if (isError || !data) {
     return (
       <Screen>
+        <AppHeader />
         <Empty
           title={<Trans>Профиль недоступен</Trans>}
           body={<Trans>Возможно, человек скрыл его.</Trans>}
@@ -91,6 +94,7 @@ export default function HelperPage() {
 
   return (
     <Screen>
+      <AppHeader />
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', paddingTop: 8 }}>
         <AvatarView avatar={data.avatar} size={58} square />
         <div style={{ minWidth: 0 }}>

@@ -51,7 +51,7 @@ async def on_start(message: Message, settings: Settings) -> None:
     app_url = settings.public_base_url or ""
     if not app_url:
         await message.answer(
-            "Konnekt is still being set up — the mini app has no public address yet."
+            "Students CZ is still being set up — the mini app has no public address yet."
         )
         return
 
@@ -59,7 +59,7 @@ async def on_start(message: Message, settings: Settings) -> None:
     # a new person reads, and every sentence in it that is not about what the
     # catalog does is a sentence spent talking about ourselves.
     await message.answer(
-        "<b>Konnekt</b> — кто поможет с учёбой в Чехии.\n\n"
+        "<b>Students CZ</b> — кто поможет с учёбой в Чехии.\n\n"
         "Репетиторы, подготовка к přijímačky, помощь на экзамене, "
         "нострификация, работы и материалы.",
         reply_markup=InlineKeyboardMarkup(

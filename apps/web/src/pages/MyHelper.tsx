@@ -2,10 +2,10 @@ import { Trans, useLingui } from '@lingui/react/macro';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 
+import { AppHeader } from '@/components/AppHeader';
 import { CloseIcon } from '@/components/icons';
 import {
   Empty,
-  Head,
   Hint,
   Label,
   Row,
@@ -130,7 +130,7 @@ export default function MyHelperPage() {
   if (isError) {
     return (
       <Screen>
-        <Head />
+        <AppHeader />
         <Empty title={<Trans>Не получилось загрузить анкету</Trans>} />
       </Screen>
     );
@@ -138,7 +138,7 @@ export default function MyHelperPage() {
 
   return (
     <Screen>
-      <Head />
+      <AppHeader />
       <Title>
         <Trans>Моя анкета</Trans>
       </Title>
