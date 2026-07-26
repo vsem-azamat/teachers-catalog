@@ -1,97 +1,108 @@
-# Teachers-catalog
-**Project has been created for the development of my skills in Python and DataBases.**
+# Konnekt
 
-This bot for searching teachers and tutors in the Czech Republic. Also, if you are a teacher, you can add yourself to the database and edit your data. The bot is multilingual and supports Russian, English, Czech, Ukrainian languages. 
+A Telegram Mini App for students in the Czech Republic — mostly foreigners —
+looking for people who can help: tutors, entrance-exam preparation, help during
+an exam, nostrification, written work, gear to rent, textbooks, notes.
 
+Alongside that sits a second line of things a foreign student here has to buy
+anyway: insurance, a language course that carries a visa, a bank statement, a
+sworn translation. Those are partner placements — always labelled, and shown on
+the screen for the task the person is already doing rather than as a banner.
 
-## Preview:
-### Catalog of teachers
-| Start menu | Search teachers | Teacher profile |
-|:---:|:---:|:---:|
-| <img src="images/teacher_start.jpg" alt="Start menu" width="200"> | <img src="images/teacher_search.jpg" alt="Search teachers" width="200"> | <img src="images/teacher_settings.jpg" alt="Teacher profile" width="200"> |
+## How it is put together
 
-For clarity, you can watch the video:
+```
+apps/api     FastAPI + aiogram in one process, Postgres 18
+apps/web     React 19 + Vite, the mini app itself
+docs         data-model.md — the schema and the reasoning behind it
+infra        database bootstrap
+```
 
-[![Watch the video](https://img.youtube.com/vi/jar4bUx6dJs/maxresdefault.jpg)](https://youtu.be/jar4bUx6dJs)
+The bot and the API share a process on purpose. Since 20 July 2026 Telegram
+only allows Mini App API calls from the app's own origin, so the page and the
+API it talks to have to be the same host regardless.
 
+Three ideas run through the whole thing.
 
-### Database structure
-<img src="images/database.png" alt="Database structure" width="700">
+**One input field, not a category tree.** A student types "нужен матан на ČVUT,
+экзамен 14 февраля" and gets back three editable chips and at most one
+clarifying question. The taxonomy did not go away — it moved into the database,
+out of the interface.
 
+**The catalog is three axes crossing.** Subject × institution × kind of help,
+meeting in `offers`. A new kind of help is a row, not a schema change.
 
+**Say why.** Every result carries the reason it is in the list, including when
+the honest reason is "cheaper than the rest, but has never seen your exam".
+That is what makes the other rows believable.
 
-## Contents:
-- [Teachers-catalog](#teachers-catalog)
-- [Preview:](#preview)
-- [Contents:](#contents)
-- [What is used:](#what-is-used)
-- [Current and planned features:](#current-and-planned-features)
-- [Installation and start](#installation-and-start)
-- [Commands:](#commands)
+## Running it
 
+Needs Docker, [uv](https://docs.astral.sh/uv/) and [pnpm](https://pnpm.io/).
 
-## What is used:
-- [Python3](https://www.python.org/)
-- [Aiogram3](https://docs.aiogram.dev/en/latest/)
-- SQL:
-    - [PostgreSQL](https://www.postgresql.org/)
-    - [SQLAlchemy](https://www.sqlalchemy.org/)
-
-
-
-## Current and planned features:
-### Current
-- [x] Multilingualism (Russian, English, Czech, Ukrainian)
-- [x] Dynamic catalog of teachers from the database
-- [x] Automatic registration of teachers in the database
-- [x] Teachers can independently edit their data
-- [x] Search for teachers by subject name via inline mode in any chat (for example: `@teachers_catalog_bot math`)
-- [x] Catalog of teachers grouping by subject, university, type of lessons
-
-### Planned
-- [ ] Dockerize the bot
-- [ ] Integrate web telegram web app interface for easier bot management and user support
-- [ ] Move text assets to yaml files, which will be easier to edit and automatically update the bot
-- [ ] Automatic translation of teacher descriptions into user language
-- [ ] Add a system of reviews and ratings for teachers
-- [ ] Collect statistics on the use of the bot (clicks on buttons, commands, etc.)
-
-## Installation and start
-### Necessary:
-Install requirements packages
 ```sh
-> python3 -m venv venv
-> pip install -r requirements.txt
-```
-Create `.env` in the `project/bot/` directory and write variables
-```.env  
-# Bot
-BOT_TOKEN=<TOKEN>
-ADMINS=<id_tg, id_tg, id_tg, ...>
-
-# Database
-DB_USERNAME=<username>
-DB_PASSWORD=<password>
-DB_HOST=<host>
-DB_DATABASE=<database>
+cp .env.example .env      # fill in BOT_TOKEN if you have one
+make setup                # database, dependencies, migrations, seed, demo data
+make api                  # http://127.0.0.1:8010
+make web                  # https://localhost:5173
 ```
 
-### Start:
-From the root directory of the project
+`make help` lists the rest.
+
+The API runs without a bot token — it logs a warning and skips the webhook. To
+exercise it from a browser instead of from Telegram, set
+`ALLOW_UNSIGNED_INIT_DATA=true`, which turns off signature checking. Local
+development only: it lets anyone claim to be anyone.
+
+### Reaching it from Telegram
+
+Telegram will not open a mini app over plain HTTP, and will not accept an
+origin other than the registered one. A quick tunnel:
+
 ```sh
-> python3 -m bot
+make tunnel               # prints an https://….trycloudflare.com URL
 ```
 
-Also, for debugging, you can use `watch.py` to automatically restart the bot when the code changes
+Put that URL in `PUBLIC_BASE_URL`, restart the API so it re-registers the
+webhook, and set the same URL as the mini app in @BotFather.
+
+## Deploying
+
+CI builds images, pushes them to GHCR and deploys over SSH to a shared VPS,
+behind Cloudflare and a shared Caddy. The runbook, the one-time setup and the
+two ways to break production are in [docs/deploy.md](docs/deploy.md).
+
+## Testing
+
 ```sh
-> python3 watch.py
+make test
 ```
 
-## Commands:
-Prefixes: `!/`
+Tests run against a real Postgres, each inside a transaction that is rolled
+back. The interesting logic here is SQL — trigram matching, word-boundary
+synonym matching, exclusion constraints — and none of it survives being mocked.
 
-- `/start` - Start the bot
-- `/help` - Show help
-- `/language` - Change language
-- `/cancel` - Cancel current action
+## The four languages
 
+`ru`, `cs`, `en`, `uk` — and they are two separate problems.
+
+Reference data is translated in the database, so subject and faculty names
+arrive already in the caller's language. Sentences the interface composes do
+not: the API returns a code and parameters, and the client renders them. Czech
+has four plural forms and Russian's are shaped differently; that belongs where
+the plural rules live.
+
+Language is also a *matching* attribute, not only a display setting. A profile
+written in Russian stays Russian, and a Ukrainian first-year cannot work with a
+Czech-only tutor. `users.spoken_langs` and `offers.langs` are indexed arrays, so
+that filter is one query.
+
+## What is not here yet
+
+Payments, reviews, moderation, and half the catalog — things to rent, books,
+materials. `materials.price_stars` exists and nothing writes to it;
+`MaterialAccess.PAID` is unreachable. The schema says so rather than pretending.
+
+The original command-driven bot still sits in `bot/` and is documented in
+[docs/legacy-bot.md](docs/legacy-bot.md). Nothing new depends on it — it is kept
+only as the source for a one-off data import, and goes once that has run.

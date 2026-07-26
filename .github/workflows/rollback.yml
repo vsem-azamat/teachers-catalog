@@ -1,0 +1,95 @@
+name: Rollback production
+
+# Point production at an image tag that already exists. Nothing is built and
+# nothing is migrated: rolling the schema back is a different, riskier
+# operation and has to be a deliberate one.
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Tag to roll back to, e.g. prod-1a2b3c4'
+        required: true
+        type: string
+
+concurrency:
+  group: konnekt-production
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Check the tag looks like one of ours
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          set -euo pipefail
+          # Only an immutable per-commit tag. `prod-latest` would roll forward
+          # to whatever was deployed last, which is the opposite of a rollback.
+          [[ "$IMAGE_TAG" =~ ^prod-[0-9a-f]{7}$ ]] \
+            || { echo "expected prod-<7 hex>, got '$IMAGE_TAG'" >&2; exit 1; }
+
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Switch the running tag
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          GHCR_ACTOR: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" \
+            DEPLOY_DIR="$DEPLOY_DIR" IMAGE_TAG="$IMAGE_TAG" \
+            GHCR_ACTOR="$GHCR_ACTOR" GHCR_TOKEN="$GHCR_TOKEN" \
+            'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd "$DEPLOY_DIR"
+          [ -f .env ] || { echo "no .env on the server; nothing has been deployed yet" >&2; exit 1; }
+
+          export DOCKER_CONFIG="$(mktemp -d)"
+          trap 'rm -rf "$DOCKER_CONFIG"' EXIT
+
+          updated="$(mktemp)"
+          # Replace the tag if present, append it if not, and leave every other
+          # line exactly as it was.
+          awk -v tag="$IMAGE_TAG" '
+            /^IMAGE_TAG=/ { print "IMAGE_TAG=" tag; found = 1; next }
+            { print }
+            END { if (!found) print "IMAGE_TAG=" tag }
+          ' .env > "$updated"
+          install -m 600 "$updated" .env
+          rm -f "$updated"
+
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_ACTOR" --password-stdin
+          docker compose pull --quiet
+          docker compose up -d --remove-orphans --wait --wait-timeout 180
+          REMOTE
+
+      - name: Smoke test from outside
+        env:
+          PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 8 --retry-delay 3 \
+               --retry-all-errors --max-time 20 "$PUBLIC_HOST/healthz" | tee /dev/stderr
+
+      - name: Remove the key
+        if: always()
+        run: rm -f ~/.ssh/id_ed25519 || true

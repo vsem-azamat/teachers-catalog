@@ -1,0 +1,344 @@
+name: Deploy production
+
+# Only ever deploys a commit that CI already passed on main. workflow_dispatch
+# is for redeploying that same commit, not for shipping something untested.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  # Not cancel-in-progress: interrupting a deployment halfway leaves the server
+  # in a state nobody chose.
+  group: konnekt-production
+  cancel-in-progress: false
+
+env:
+  API_IMAGE: konnekt-api
+  WEB_IMAGE: konnekt-web
+
+jobs:
+  build:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+      owner: ${{ steps.meta.outputs.owner }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The commit CI tested, not whatever main points at now.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - id: meta
+        run: |
+          set -euo pipefail
+          sha="${{ github.event.workflow_run.head_sha || github.sha }}"
+          echo "image_tag=prod-${sha:0:7}" >> "$GITHUB_OUTPUT"
+          echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push the API
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/api
+          push: true
+          tags: |
+            ghcr.io/${{ steps.meta.outputs.owner }}/${{ env.API_IMAGE }}:${{ steps.meta.outputs.image_tag }}
+            ghcr.io/${{ steps.meta.outputs.owner }}/${{ env.API_IMAGE }}:prod-latest
+          cache-from: type=gha,scope=konnekt-api
+          cache-to: type=gha,scope=konnekt-api,mode=max
+
+      - name: Build and push the mini app
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/web
+          push: true
+          tags: |
+            ghcr.io/${{ steps.meta.outputs.owner }}/${{ env.WEB_IMAGE }}:${{ steps.meta.outputs.image_tag }}
+            ghcr.io/${{ steps.meta.outputs.owner }}/${{ env.WEB_IMAGE }}:prod-latest
+          cache-from: type=gha,scope=konnekt-web
+          cache-to: type=gha,scope=konnekt-web,mode=max
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Check the configuration is complete
+        # Every one of these is required. Failing here costs a minute; failing
+        # halfway through a remote script costs a broken deployment.
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          EDGE_CADDY_DIR: ${{ secrets.EDGE_CADDY_DIR }}
+          EDGE_CADDY_COMPOSE_FILE: ${{ secrets.EDGE_CADDY_COMPOSE_FILE }}
+          EDGE_CADDYFILE: ${{ secrets.EDGE_CADDYFILE }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
+          PUBLIC_PORT: ${{ vars.PUBLIC_PORT }}
+          EDGE_CADDY_SERVICE: ${{ vars.EDGE_CADDY_SERVICE }}
+          EDGE_CADDY_CONFIG_PATH: ${{ vars.EDGE_CADDY_CONFIG_PATH }}
+        run: |
+          set -euo pipefail
+          missing=()
+          for v in DEPLOY_HOST DEPLOY_USER DEPLOY_DIR DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS \
+                   EDGE_CADDY_DIR EDGE_CADDY_COMPOSE_FILE EDGE_CADDYFILE \
+                   BOT_TOKEN WEBHOOK_SECRET POSTGRES_PASSWORD \
+                   PUBLIC_HOST PUBLIC_PORT EDGE_CADDY_SERVICE EDGE_CADDY_CONFIG_PATH; do
+            [ -n "${!v:-}" ] || missing+=("$v")
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            printf 'missing configuration: %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
+
+          # https, one host, no path and no trailing slash: the value is used as
+          # the webhook base, the CORS origin and the Caddy site address, and a
+          # stray slash breaks at least one of them.
+          [[ "$PUBLIC_HOST" =~ ^https://[a-z0-9.-]+$ ]] \
+            || { echo "PUBLIC_HOST must look like https://host" >&2; exit 1; }
+          # Above the privileged range and below the ephemeral one.
+          [[ "$PUBLIC_PORT" =~ ^[0-9]{4,5}$ ]] && [ "$PUBLIC_PORT" -ge 1024 ] && [ "$PUBLIC_PORT" -le 32767 ] \
+            || { echo "PUBLIC_PORT must be a port between 1024 and 32767" >&2; exit 1; }
+          # A weak webhook secret is the difference between "only Telegram can
+          # post updates" and "anyone can".
+          [ "${#WEBHOOK_SECRET}" -ge 32 ] \
+            || { echo "WEBHOOK_SECRET must be at least 32 characters" >&2; exit 1; }
+
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # No ssh-keyscan: accepting whatever key answers would defeat the
+          # point of having a known host at all.
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Prepare the files to ship
+        id: prep
+        env:
+          GHCR_OWNER: ${{ needs.build.outputs.owner }}
+          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+          POSTGRES_DB: ${{ vars.POSTGRES_DB || 'konnekt' }}
+          POSTGRES_USER: ${{ vars.POSTGRES_USER || 'konnekt' }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+          PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
+          PUBLIC_PORT: ${{ vars.PUBLIC_PORT }}
+          INIT_DATA_MAX_AGE_SECONDS: ${{ vars.INIT_DATA_MAX_AGE_SECONDS || '86400' }}
+          BACKUP_HOUR_UTC: ${{ vars.BACKUP_HOUR_UTC || '3' }}
+          BACKUP_RETENTION_DAYS: ${{ vars.BACKUP_RETENTION_DAYS || '14' }}
+        run: |
+          set -euo pipefail
+          umask 077
+          env_file="$(mktemp)"
+          {
+            echo "GHCR_OWNER=$GHCR_OWNER"
+            echo "IMAGE_TAG=$IMAGE_TAG"
+            echo "POSTGRES_DB=$POSTGRES_DB"
+            echo "POSTGRES_USER=$POSTGRES_USER"
+            echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD"
+            echo "BOT_TOKEN=$BOT_TOKEN"
+            echo "WEBHOOK_SECRET=$WEBHOOK_SECRET"
+            echo "PUBLIC_HOST=$PUBLIC_HOST"
+            echo "PUBLIC_PORT=$PUBLIC_PORT"
+            echo "INIT_DATA_MAX_AGE_SECONDS=$INIT_DATA_MAX_AGE_SECONDS"
+            echo "BACKUP_HOUR_UTC=$BACKUP_HOUR_UTC"
+            echo "BACKUP_RETENTION_DAYS=$BACKUP_RETENTION_DAYS"
+          } > "$env_file"
+          echo "env_file=$env_file" >> "$GITHUB_OUTPUT"
+
+          token_file="$(mktemp)"
+          printf '%s' "${{ secrets.GITHUB_TOKEN }}" > "$token_file"
+          echo "token_file=$token_file" >> "$GITHUB_OUTPUT"
+
+          route_file="$(mktemp)"
+          host="${PUBLIC_HOST#https://}"
+          {
+            echo "$host {"
+            printf '\treverse_proxy 127.0.0.1:%s\n' "$PUBLIC_PORT"
+            echo "}"
+          } > "$route_file"
+          echo "route_file=$route_file" >> "$GITHUB_OUTPUT"
+
+      - name: Copy configuration to the server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
+          RUN_ID: ${{ github.run_id }}.${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" \
+            "install -d -m 700 '$DEPLOY_DIR' '$DEPLOY_DIR/data' '$DEPLOY_DIR/data/backups'"
+          scp deploy/konnekt/docker-compose.yml \
+              deploy/konnekt/Caddyfile \
+              deploy/konnekt/apply-edge-route.sh \
+              "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/"
+          scp "${{ steps.prep.outputs.env_file }}" \
+              "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/.env.$RUN_ID.tmp"
+          scp "${{ steps.prep.outputs.token_file }}" \
+              "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/.ghcr.$RUN_ID.tmp"
+          scp "${{ steps.prep.outputs.route_file }}" \
+              "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/edge-route.caddy"
+
+      - name: Migrate, start, and publish the route
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
+          RUN_ID: ${{ github.run_id }}.${{ github.run_attempt }}
+          PUBLIC_PORT: ${{ vars.PUBLIC_PORT }}
+          GHCR_ACTOR: ${{ github.actor }}
+          EDGE_CADDY_DIR: ${{ secrets.EDGE_CADDY_DIR }}
+          EDGE_CADDY_COMPOSE_FILE: ${{ secrets.EDGE_CADDY_COMPOSE_FILE }}
+          EDGE_CADDYFILE: ${{ secrets.EDGE_CADDYFILE }}
+          EDGE_CADDY_SERVICE: ${{ vars.EDGE_CADDY_SERVICE }}
+          EDGE_CADDY_CONFIG_PATH: ${{ vars.EDGE_CADDY_CONFIG_PATH }}
+        run: |
+          set -euo pipefail
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" \
+            DEPLOY_DIR="$DEPLOY_DIR" RUN_ID="$RUN_ID" PUBLIC_PORT="$PUBLIC_PORT" \
+            GHCR_ACTOR="$GHCR_ACTOR" \
+            EDGE_CADDY_DIR="$EDGE_CADDY_DIR" \
+            EDGE_CADDY_COMPOSE_FILE="$EDGE_CADDY_COMPOSE_FILE" \
+            EDGE_CADDYFILE="$EDGE_CADDYFILE" \
+            EDGE_CADDY_SERVICE="$EDGE_CADDY_SERVICE" \
+            EDGE_CADDY_CONFIG_PATH="$EDGE_CADDY_CONFIG_PATH" \
+            'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd "$DEPLOY_DIR"
+
+          committed=0
+          previous_env=""
+          [ -f .env ] && previous_env="$(mktemp)" && cp .env "$previous_env"
+
+          # A GHCR login written into ~/.docker/config.json would outlive the
+          # deployment. This one lives in a directory that goes away with it.
+          export DOCKER_CONFIG="$(mktemp -d)"
+
+          cleanup() {
+            local code=$?
+            if [ "$code" -ne 0 ] && [ "$committed" -eq 0 ] && [ -n "$previous_env" ]; then
+              echo "deployment failed before commit; restoring the previous release" >&2
+              cp "$previous_env" .env
+              docker compose up -d --remove-orphans >/dev/null 2>&1 || true
+            fi
+            rm -rf "$DOCKER_CONFIG"
+            rm -f "$previous_env" ".env.$RUN_ID.tmp" ".ghcr.$RUN_ID.tmp"
+            exit "$code"
+          }
+          trap cleanup EXIT
+
+          install -m 600 ".env.$RUN_ID.tmp" .env
+          chmod +x apply-edge-route.sh
+
+          docker login ghcr.io -u "$GHCR_ACTOR" --password-stdin < ".ghcr.$RUN_ID.tmp"
+
+          docker compose config --quiet
+          docker compose pull --quiet
+
+          # Migrations run to completion before anything serves traffic. As a
+          # separate step rather than a compose dependency, so a failure stops
+          # the deployment with a readable error instead of crash-looping.
+          docker compose run --rm migrate
+
+          docker compose up -d --remove-orphans --wait --wait-timeout 180
+
+          # The application must not be reachable except through the edge.
+          published="$(docker compose port caddy 80 || true)"
+          if [ "$published" != "127.0.0.1:$PUBLIC_PORT" ]; then
+            echo "FATAL: caddy published on '$published', expected 127.0.0.1:$PUBLIC_PORT" >&2
+            exit 1
+          fi
+
+          committed=1
+
+          ROUTE_FILE="$DEPLOY_DIR/edge-route.caddy" \
+          EDGE_CADDY_DIR="$EDGE_CADDY_DIR" \
+          EDGE_CADDY_COMPOSE_FILE="$EDGE_CADDY_COMPOSE_FILE" \
+          EDGE_CADDY_SERVICE="$EDGE_CADDY_SERVICE" \
+          EDGE_CADDYFILE="$EDGE_CADDYFILE" \
+          EDGE_CADDY_CONFIG_PATH="$EDGE_CADDY_CONFIG_PATH" \
+            ./apply-edge-route.sh
+
+          # Only this project's dangling images. `prune -a` would reach across
+          # every other stack on the host.
+          docker image prune -f >/dev/null
+          REMOTE
+
+      - name: Smoke test from outside
+        env:
+          PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 8 --retry-delay 3 \
+               --retry-all-errors --max-time 20 "$PUBLIC_HOST/healthz" | tee /dev/stderr
+          curl --fail --silent --show-error --retry 4 --retry-delay 3 \
+               --retry-all-errors --max-time 20 -o /dev/null "$PUBLIC_HOST/"
+
+      - name: Confirm Telegram accepted the webhook
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
+        run: |
+          set -euo pipefail
+          info="$(curl --fail --silent --max-time 20 \
+            "https://api.telegram.org/bot$BOT_TOKEN/getWebhookInfo")"
+          url="$(echo "$info" | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"].get("url",""))')"
+          err="$(echo "$info" | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"].get("last_error_message",""))')"
+          echo "webhook: ${url:-<none>}"
+          [ "$url" = "$PUBLIC_HOST/tg/webhook" ] \
+            || { echo "FATAL: Telegram points at '${url:-<none>}'" >&2; exit 1; }
+          # A stale error from before this deployment is not a failure, but an
+          # empty webhook with a fresh error certainly is.
+          [ -z "$err" ] || echo "note: Telegram last reported '$err'"
+
+      - name: Remove transient files
+        if: always()
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
+          RUN_ID: ${{ github.run_id }}.${{ github.run_attempt }}
+        run: |
+          rm -f "${{ steps.prep.outputs.env_file }}" \
+                "${{ steps.prep.outputs.token_file }}" \
+                "${{ steps.prep.outputs.route_file }}" || true
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" \
+            "rm -f '$DEPLOY_DIR/.env.$RUN_ID.tmp' '$DEPLOY_DIR/.ghcr.$RUN_ID.tmp'" || true
+          rm -f ~/.ssh/id_ed25519 || true

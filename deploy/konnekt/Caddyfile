@@ -1,0 +1,26 @@
+# The project's internal router. It never terminates TLS and never talks to the
+# internet: the shared Edge Caddy on the host owns 80/443 and proxies this
+# project's hostname to the loopback port this listens on.
+
+{
+	# The edge already has the certificate. Asking for another one here would
+	# fail, because nothing outside can reach this container.
+	auto_https off
+	admin off
+}
+
+:80 {
+	encode zstd gzip
+
+	# The bot webhook and the API are the same origin as the app, which is not
+	# a convenience: since 20 July 2026 Telegram only allows Mini App API calls
+	# from the app's own origin.
+	@backend path /api/* /healthz /tg/*
+	handle @backend {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		reverse_proxy frontend:8080
+	}
+}
