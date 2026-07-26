@@ -113,7 +113,16 @@ other one: `help_requests` lets a student post "calculus, ČVUT, exam on
 repeat pitching is spam, and the unique constraint says so.
 
 Requests carry `expires_at` because they rot: an exam on 14 February is
-worthless on the 15th.
+worthless on the 15th. A request past it is filtered out of the helper feed and
+refuses new answers even while its `status` still reads `open` — expiry is a
+deadline, not a job that has to have run.
+
+An answer carries `price_amount` **and** `price_unit`: "500" alone is ambiguous
+between an hour and the whole job, and the two readings are different offers.
+Accepting one writes a `contacts` row — the same row the catalog writes when
+someone taps "write" on a profile — so response times and deal counts count
+both routes to a conversation, and accepting deliberately does not close the
+request: needing two people for two subjects is ordinary.
 
 ## Availability
 

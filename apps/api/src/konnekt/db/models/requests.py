@@ -119,6 +119,10 @@ class RequestResponse(IdMixin, TimestampMixin, Base):
     price_currency: Mapped[str] = mapped_column(
         String(3), nullable=False, server_default="CZK"
     )
+    # Nullable, and separately from the amount: "500" alone is ambiguous
+    # between an hour and the whole job, and an offer to do a semester's
+    # worth of work for 500 per hour is a different offer entirely.
+    price_unit: Mapped[PriceUnit | None] = mapped_column(pg_enum(PriceUnit, "price_unit"))
     status: Mapped[ResponseStatus] = mapped_column(
         pg_enum(ResponseStatus, "response_status"),
         nullable=False,

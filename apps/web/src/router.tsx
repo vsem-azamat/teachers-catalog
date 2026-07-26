@@ -8,6 +8,7 @@ import LifePage from '@/pages/Life';
 import MinePage from '@/pages/Mine';
 import NotFoundPage from '@/pages/NotFound';
 import ProfilePage from '@/pages/Profile';
+import RequestPage from '@/pages/Request';
 import ResultsPage from '@/pages/Results';
 import Root from '@/Root';
 
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
       { path: 'results', element: <ResultsPage /> },
       { path: 'helper/:id', element: <HelperPage /> },
       { path: 'mine', element: <MinePage /> },
+      { path: 'request/:id', element: <RequestPage /> },
       { path: 'chats', element: <ChatsPage /> },
       { path: 'become-helper', element: <BecomeHelperPage /> },
       { path: 'life', element: <LifePage /> },

@@ -186,4 +186,6 @@ class UserEventKind(StrEnum):
     HELPER_VIEW = "helper_view"
     CONTACT = "contact"
     REQUEST_CREATED = "request_created"
+    REQUEST_RESPONDED = "request_responded"
+    RESPONSE_ACCEPTED = "response_accepted"
     PROFILE_PUBLISHED = "profile_published"

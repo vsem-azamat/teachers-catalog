@@ -60,6 +60,12 @@ export function PhraseView({
       return <Trans>Ведёт предмет, но не привязан к этому вузу</Trans>;
     case 'reason.your_faculty':
       return <Trans>С твоего факультета</Trans>;
+    case 'feed.same_subject':
+      return <Trans>Твой предмет — {str(p.subject)}</Trans>;
+    case 'feed.same_institution':
+      return <Trans>Вуз, с которым ты работаешь</Trans>;
+    case 'feed.same_service':
+      return <Trans>То, чем ты занимаешься</Trans>;
     case 'reason.experience':
       return (
         <Plural

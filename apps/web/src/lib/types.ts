@@ -300,6 +300,43 @@ export interface RequestCreate {
   langs?: string[];
 }
 
+/**
+ * A request as a helper sees it: who is asking, and why it surfaced. No
+ * `responders` — who else is pitching for the same work is not shown.
+ */
+export interface FeedRequest extends Omit<HelpRequest, 'responders'> {
+  author: Avatar;
+  author_name: string;
+  budget: Price | null;
+  langs: string[];
+  reason: Phrase | null;
+}
+
+export type ResponseStatus = 'sent' | 'read' | 'accepted' | 'declined';
+
+/** One helper's answer to a request. */
+export interface RequestResponse {
+  id: number;
+  request_id: number;
+  helper_id: number;
+  name: string;
+  avatar: Avatar;
+  username: string | null;
+  affiliation: string | null;
+  rating: number | null;
+  deals_count: number;
+  message: string;
+  price: Price | null;
+  status: ResponseStatus;
+  created_at: string;
+}
+
+export interface ResponseCreate {
+  message: string;
+  price_amount?: number;
+  price_unit?: PriceUnit;
+}
+
 // ── becoming a helper ───────────────────────────────────────────────────
 
 export interface IntroResult {
