@@ -1,4 +1,4 @@
-# Konnekt
+# Students CZ
 
 A Telegram Mini App for students in the Czech Republic — mostly foreigners —
 looking for people who can help: tutors, entrance-exam preparation, help during
@@ -8,6 +8,10 @@ Alongside that sits a second line of things a foreign student here has to buy
 anyway: insurance, a language course that carries a visa, a bank statement, a
 sworn translation. Those are partner placements — always labelled, and shown on
 the screen for the task the person is already doing rather than as a banner.
+
+The Python package, the Docker images and the database are all called
+`konnekt`. That is the name of the code, not of the product: renaming what
+nobody sees costs a day of broken imports and buys nothing.
 
 ## How it is put together
 

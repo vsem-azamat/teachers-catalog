@@ -145,7 +145,7 @@ jobs:
         run: pnpm lint
 
       - name: Type-check
-        run: pnpm exec tsc --noEmit
+        run: pnpm typecheck
 
       - name: Check every message is translated
         # An untranslated string falls back to the Russian source *and* to

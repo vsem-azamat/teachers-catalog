@@ -2,6 +2,7 @@ import { Trans } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
 import { openLink } from '@tma.js/sdk-react';
 
+import { AppHeader } from '@/components/AppHeader';
 import {
   Empty,
   Hint,
