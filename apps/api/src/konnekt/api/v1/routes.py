@@ -469,9 +469,77 @@ async def search_offers(
             max_price=max_price,
             langs=langs,
         ),
-        chips=[],
+        # The same chips the parse screen showed, so the results screen can say
+        # what it is filtering on without re-resolving three ids itself.
+        chips=await _filter_chips(
+            session,
+            lang,
+            subject_id=subject_id,
+            institution_id=institution_id,
+            service_type_id=service_type_id,
+            max_price=max_price,
+        ),
         results=results,
     )
+
+
+async def _filter_chips(
+    session,
+    lang,
+    *,
+    subject_id: int | None,
+    institution_id: int | None,
+    service_type_id: int | None,
+    max_price: float | None,
+) -> list[Chip]:
+    chips: list[Chip] = []
+    if subject_id:
+        row = await session.scalar(
+            select(Subject)
+            .where(Subject.id == subject_id)
+            .options(selectinload(Subject.names))
+        )
+        if row:
+            chips.append(
+                Chip(
+                    kind="subject",
+                    label=_localised(row.names, lang) or row.slug,
+                    value=row.id,
+                )
+            )
+    if institution_id:
+        row = await session.scalar(
+            select(Institution)
+            .where(Institution.id == institution_id)
+            .options(selectinload(Institution.names))
+        )
+        if row:
+            chips.append(
+                Chip(
+                    kind="institution",
+                    label=_localised(row.names, lang, "short_name")
+                    or _localised(row.names, lang)
+                    or row.code,
+                    value=row.id,
+                )
+            )
+    if service_type_id:
+        row = await session.scalar(
+            select(ServiceType)
+            .where(ServiceType.id == service_type_id)
+            .options(selectinload(ServiceType.names))
+        )
+        if row:
+            chips.append(
+                Chip(
+                    kind="service_type",
+                    label=_localised(row.names, lang) or row.code,
+                    value=row.id,
+                )
+            )
+    if max_price is not None:
+        chips.append(Chip(kind="budget", label=str(int(max_price)), value=int(max_price)))
+    return chips
 
 
 @router.get("/helpers/{user_id}", response_model=HelperDetailOut, tags=["catalog"])

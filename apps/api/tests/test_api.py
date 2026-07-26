@@ -624,3 +624,77 @@ async def test_the_webhook_refuses_to_serve_without_a_secret(monkeypatch):
     async with AsyncClient(transport=transport, base_url="http://test") as http:
         response = await http.post(settings.webhook_path, json={"update_id": 1})
     assert response.status_code == 503
+
+
+async def test_a_matching_institution_ranks_above_one_without(
+    client, session, helper_factory
+):
+    """`institution_id = :x` is NULL when the offer has none.
+
+    Postgres sorts NULLs first under DESC, so the offers that did not match the
+    requested school were coming out above the ones that did.
+    """
+    from sqlalchemy import select
+
+    from konnekt.db.models import Institution, Subject
+
+    subject = await session.scalar(select(Subject).where(Subject.slug == "biochemie"))
+    cvut = await session.scalar(select(Institution).where(Institution.code == "cvut"))
+
+    await helper_factory(
+        tg_id=91201,
+        first_name="Unattached",
+        last_name=None,
+        subject_slug="biochemie",
+        institution_id=None,
+        price=100,
+    )
+    await helper_factory(
+        tg_id=91202,
+        first_name="Attached",
+        last_name=None,
+        subject_slug="biochemie",
+        institution_id=cvut.id,
+        price=900,
+    )
+    await session.flush()
+
+    body = (
+        await client.get(
+            "/api/v1/search",
+            params={"subject_id": subject.id, "institution_id": cvut.id},
+            headers=auth_header(90501),
+        )
+    ).json()
+
+    names = [r["name"] for r in body["results"]]
+    assert names[0] == "Attached", names
+    assert body["results"][0]["reason"]["code"].startswith("reason.same")
+
+
+async def test_search_reports_what_it_is_filtering_on(client, session):
+    from sqlalchemy import select
+
+    from konnekt.db.models import Institution, Subject
+
+    subject = await session.scalar(
+        select(Subject).where(Subject.slug == "matematicka-analyza")
+    )
+    cvut = await session.scalar(select(Institution).where(Institution.code == "cvut"))
+
+    body = (
+        await client.get(
+            "/api/v1/search",
+            params={
+                "subject_id": subject.id,
+                "institution_id": cvut.id,
+                "max_price": 700,
+            },
+            headers=auth_header(90502),
+        )
+    ).json()
+
+    kinds = {chip["kind"]: chip["label"] for chip in body["chips"]}
+    assert kinds["subject"] == "Математический анализ"
+    assert kinds["institution"] == "ČVUT"
+    assert kinds["budget"] == "700"

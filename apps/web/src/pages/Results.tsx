@@ -9,6 +9,8 @@ import {
   AvatarView,
   Card,
   Cards,
+  Chips,
+  ChipView,
   Empty,
   Free,
   Label,
@@ -73,7 +75,22 @@ export default function ResultsPage() {
   return (
     <>
       <Screen withTabs>
-        <div style={{ height: 8 }} />
+        {data && data.chips.length > 0 ? (
+          <div style={{ marginBottom: 12 }}>
+            <Chips>
+              {data.chips.map((chip) => (
+                <ChipView key={`${chip.kind}:${chip.value}`} active>
+                  {chip.kind === 'budget' ? `≤ ${chip.label} Kč` : chip.label}
+                </ChipView>
+              ))}
+              <ChipView ghost onClick={() => navigate('/ask')}>
+                <Trans>изменить</Trans>
+              </ChipView>
+            </Chips>
+          </div>
+        ) : (
+          <div style={{ height: 8 }} />
+        )}
         <Segmented
           value={sort}
           onChange={(next) => {

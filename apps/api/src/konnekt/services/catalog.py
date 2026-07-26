@@ -277,8 +277,13 @@ async def search(
 
     cheapest = await session.scalar(base.with_only_columns(func.min(Offer.price_amount)))
 
+    # coalesce, not a bare comparison: `institution_id = :x` evaluates to NULL
+    # when the offer has none, and Postgres sorts NULLs first under DESC — so
+    # the offers that did *not* match were coming out above the ones that did.
     institution_hit = (
-        (Offer.institution_id == institution_id).desc() if institution_id else literal(0)
+        func.coalesce(Offer.institution_id == institution_id, False).desc()
+        if institution_id
+        else literal(0)
     )
 
     # One offer per helper: the best-matching, then the cheapest, then by id.

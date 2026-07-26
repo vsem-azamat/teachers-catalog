@@ -379,6 +379,14 @@ async def populate(session: AsyncSession) -> tuple[int, int]:
 
         await session.execute(delete(Offer).where(Offer.helper_id == user.id))
         for service_code, subject_slug, inst_code, price, unit in spec["offers"]:
+            # Silently dropping an unknown code produced demo helpers with no
+            # institution, which then made every "same faculty" reason on the
+            # results screen quietly wrong. A missing reference is a broken
+            # seed, so say so.
+            if subject_slug and subject_slug not in subjects:
+                raise SystemExit(f"demo references unknown subject {subject_slug!r}")
+            if inst_code and inst_code not in institutions:
+                raise SystemExit(f"demo references unknown institution {inst_code!r}")
             session.add(
                 Offer(
                     helper_id=user.id,

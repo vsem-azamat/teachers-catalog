@@ -15,398 +15,442 @@ msgstr ""
 
 #: src/components/Phrase.tsx
 msgid "оценка"
-msgstr ""
+msgstr "hodnocení"
 
 #: src/pages/Results.tsx
 msgid "Свободны"
+msgstr "Volní"
+
+#: src/components/Phrase.tsx
+msgid "Онлайн"
 msgstr ""
 
 #: src/pages/BecomeHelper.tsx
 msgid "Напиши хотя бы пару предложений — предметы, цену и как удобно заниматься."
-msgstr ""
+msgstr "Napiš aspoň pár vět — jaké předměty, za kolik a jak ti vyhovuje mít hodiny."
 
 #: src/components/TabBar.tsx
 msgid "Поиск"
-msgstr ""
+msgstr "Hledat"
 
 #: src/pages/Profile.tsx
 msgid "Чешский для вуза"
-msgstr ""
+msgstr "Čeština na vejšku"
 
 #: src/pages/Helper.tsx
 msgid "Как проходит"
-msgstr ""
+msgstr "Jak to probíhá"
 
 #: src/components/Phrase.tsx
 msgid "за неделю"
-msgstr ""
+msgstr "za týden"
 
 #: src/pages/BecomeHelper.tsx
 msgid "Когда ты свободен"
+msgstr "Kdy máš čas"
+
+#: src/pages/Life.tsx
+msgid "Это не наши услуги. Мы получаем комиссию с партнёра, со студента — ничего."
 msgstr ""
 
 #: src/pages/BecomeHelper.tsx
 msgid "Какие предметы"
-msgstr ""
+msgstr "Jaké předměty"
 
 #: src/pages/Home.tsx
 msgid "Вещи"
-msgstr ""
+msgstr "Věci"
 
 #: src/pages/BecomeHelper.tsx
 msgid "Одним куском, как другу. Анкету соберём сами."
-msgstr ""
+msgstr "Napiš to naráz, jako kamarádovi. Anketu sestavíme sami."
 
 #: src/pages/Profile.tsx
 msgid "На каких языках тебе удобно"
-msgstr ""
+msgstr "Ve kterých jazycích se ti mluví dobře"
 
 #: src/components/Phrase.tsx
 msgid "первый год"
-msgstr ""
+msgstr "první rok"
 
 #: src/pages/Results.tsx
 msgid "По этому запросу ещё нет никого. Создай заявку — тогда найдут тебя."
-msgstr ""
+msgstr "Na tenhle dotaz zatím nikdo není. Založ poptávku — pak si tě najdou sami."
 
 #: src/pages/Profile.tsx
 msgid "Хочу помогать"
-msgstr ""
+msgstr "Chci pomáhat"
 
 #: src/pages/Profile.tsx
 msgid "расскажи своими словами, анкету соберём сами"
-msgstr ""
+msgstr "napiš to vlastními slovy, anketu sestavíme sami"
 
 #: src/pages/Mine.tsx
 #: src/pages/Results.tsx
 msgid "Не получилось загрузить"
-msgstr ""
+msgstr "Nepodařilo se načíst"
 
 #: src/components/Phrase.tsx
 msgid "Не понял запрос. Попробуй назвать предмет — «матан», «čeština B2», «сопромат»."
-msgstr ""
+msgstr "Nerozuměl jsem dotazu. Zkus napsat předmět — „matana“, „čeština B2“, „sopromat“."
 
 #: src/components/Phrase.tsx
 msgid "сдали"
+msgstr "uspěli"
+
+#: src/pages/Life.tsx
+msgid "Партнёр"
 msgstr ""
 
 #: src/pages/Helper.tsx
 msgid "Сколько стоит"
-msgstr ""
+msgstr "Kolik to stojí"
 
 #: src/components/TabBar.tsx
 #: src/pages/Chats.tsx
 msgid "Чаты"
-msgstr ""
+msgstr "Chaty"
 
 #: src/pages/BecomeHelper.tsx
 msgid "Сколько берёшь"
-msgstr ""
+msgstr "Kolik si bereš"
 
 #: src/pages/Profile.tsx
 msgid "опубликована"
-msgstr ""
+msgstr "zveřejněna"
 
 #: src/pages/Mine.tsx
 msgid "Пока без откликов"
-msgstr ""
+msgstr "Zatím bez odpovědí"
 
 #: src/pages/Chats.tsx
 msgid "Разговоры мы не храним"
-msgstr ""
+msgstr "Rozhovory neukládáme"
 
 #: src/components/Phrase.tsx
 msgid "за работу"
-msgstr ""
+msgstr "za práci"
 
 #: src/components/Phrase.tsx
 msgid "И то, и другое"
-msgstr ""
+msgstr "Obojí"
 
 #: src/pages/Ask.tsx
 msgid "нужен матан на ČVUT, экзамен 14 февраля"
-msgstr ""
+msgstr "potřebuju matanu na ČVUT, zkouška 14. února"
 
 #: src/components/Phrase.tsx
 msgid "за час"
-msgstr ""
+msgstr "za hodinu"
 
 #: src/pages/Mine.tsx
 msgid "Заявки"
-msgstr ""
+msgstr "Poptávky"
 
 #: src/pages/Mine.tsx
 msgid "Опиши, что нужно, и получай отклики — вместо того чтобы искать самому."
-msgstr ""
+msgstr "Popiš, co potřebuješ, a dostávej odpovědi — místo toho, abys hledal sám."
 
 #: src/components/Phrase.tsx
 msgid "за штуку"
+msgstr "za kus"
+
+#: src/components/Phrase.tsx
+msgid "Очно"
 msgstr ""
 
 #: src/pages/BecomeHelper.tsx
 msgid "Получилось так"
-msgstr ""
+msgstr "Vyšlo to takhle"
 
 #: src/components/Phrase.tsx
 msgid "договорная"
-msgstr ""
+msgstr "dohodou"
 
 #: src/components/Phrase.tsx
 msgid "за семестр"
-msgstr ""
+msgstr "za semestr"
 
 #: src/pages/Profile.tsx
 msgid "Помогать другим"
+msgstr "Pomáhat ostatním"
+
+#: src/pages/Life.tsx
+msgid "Здесь появятся страховка, визы, банк и переводы."
 msgstr ""
 
 #: src/pages/Ask.tsx
 msgid "Искать всё равно"
-msgstr ""
+msgstr "Hledat i tak"
 
 #: src/components/Phrase.tsx
 msgid "Ведёт предмет, но не привязан к этому вузу"
-msgstr ""
+msgstr "Učí ten předmět, ale na tuhle školu není vázaný"
 
 #: src/pages/Profile.tsx
 msgid "B1, B2, нострификация"
-msgstr ""
+msgstr "B1, B2, nostrifikace"
 
 #: src/components/TabBar.tsx
 #: src/pages/Profile.tsx
 msgid "Профиль"
-msgstr ""
+msgstr "Profil"
 
 #: src/pages/Helper.tsx
 msgid "Возможно, человек скрыл его."
-msgstr ""
+msgstr "Možná ho ten člověk skryl."
 
 #: src/pages/BecomeHelper.tsx
 msgid "Без расписания анкету покажем, но реже — люди чаще пишут тем, у кого видно свободные дни."
+msgstr "Bez rozvrhu anketu ukážeme, ale míň často — lidi častěji píšou těm, u koho vidí volné dny."
+
+#: src/components/Phrase.tsx
+msgid "Онлайн и очно"
 msgstr ""
 
 #. placeholder {0}: formatDay(str(p.date), locale)
 #: src/components/Phrase.tsx
 msgid "Свободен {0}"
+msgstr "Volný {0}"
+
+#: src/pages/Life.tsx
+msgid "Пока пусто"
 msgstr ""
 
 #: src/pages/Mine.tsx
 msgid "без срока"
-msgstr ""
+msgstr "bez termínu"
 
 #: src/pages/Home.tsx
 msgid "матан, čeština B2, přijímačky…"
-msgstr ""
+msgstr "matana, čeština B2, přijímačky…"
 
 #: src/pages/Results.tsx
 msgid "Кто может помочь"
-msgstr ""
+msgstr "Kdo může pomoct"
 
 #: src/pages/Profile.tsx
 msgid "По этому мы отсеиваем тех, с кем вы друг друга не поймёте."
+msgstr "Podle toho vyřazujeme ty, se kterými byste si nerozuměli."
+
+#: src/pages/Results.tsx
+msgid "изменить"
 msgstr ""
 
 #: src/pages/Home.tsx
 msgid "Что нужно?"
-msgstr ""
+msgstr "Co potřebuješ?"
 
 #: src/pages/Home.tsx
 msgid "Не удалось загрузить каталог"
-msgstr ""
+msgstr "Nepodařilo se načíst katalog"
 
 #: src/pages/Chats.tsx
 msgid "Мы сводим людей и запоминаем, что контакт состоялся — по этому считается время ответа. Сама переписка остаётся в Telegram."
-msgstr ""
+msgstr "Spojujeme lidi a zaznamenáváme, že ke kontaktu došlo — podle toho počítáme dobu odezvy. Samotná konverzace zůstává v Telegramu."
 
 #: src/pages/Home.tsx
 msgid "Люди"
-msgstr ""
+msgstr "Lidé"
 
 #: src/pages/BecomeHelper.tsx
 msgid "Онлайн или очно"
-msgstr ""
+msgstr "Online nebo osobně"
 
 #: src/pages/Helper.tsx
 msgid "Свободные окна"
-msgstr ""
+msgstr "Volné termíny"
 
 #: src/pages/BecomeHelper.tsx
 msgid "Не хватает"
-msgstr ""
+msgstr "Chybí"
 
 #: src/pages/Profile.tsx
 msgid "черновик — не видна в каталоге"
-msgstr ""
+msgstr "koncept — v katalogu není vidět"
 
 #: src/pages/Results.tsx
 msgid "Дешевле"
+msgstr "Levnější"
+
+#: src/pages/Life.tsx
+msgid "Загружаем"
 msgstr ""
 
 #. placeholder {0}: data.total
 #: src/pages/Results.tsx
 msgid "всего {0}"
-msgstr ""
+msgstr "celkem {0}"
 
 #: src/pages/Chats.tsx
 msgid "Открыть переписку в Telegram"
-msgstr ""
+msgstr "Otevřít konverzaci v Telegramu"
 
 #. placeholder {0}: num(p.deals)
 #: src/components/Phrase.tsx
 msgid "{0, plural, one {# занятие через нас} few {# занятия через нас} many {# занятий через нас} other {# занятия через нас}}"
-msgstr ""
+msgstr "{0, plural, one {# lekce přes nás} few {# lekce přes nás} many {# lekce přes nás} other {# lekcí přes nás}}"
 
 #: src/pages/Helper.tsx
 msgid "Чем помогает"
-msgstr ""
+msgstr "S čím pomáhá"
 
 #: src/components/Phrase.tsx
 msgid "в месяц"
-msgstr ""
+msgstr "za měsíc"
 
 #. placeholder {0}: formatDay(request.deadline_on, locale)
 #: src/pages/Mine.tsx
 msgid "до {0}"
-msgstr ""
+msgstr "do {0}"
 
 #: src/pages/Profile.tsx
 msgid "Жизнь в Чехии"
-msgstr ""
+msgstr "Život v Česku"
 
 #: src/components/Phrase.tsx
 msgid "за занятие"
-msgstr ""
+msgstr "za lekci"
 
 #: src/pages/Profile.tsx
 msgid "страховка, виза, банк, переводы"
-msgstr ""
+msgstr "pojištění, vízum, banka, převody"
 
 #. placeholder {0}: num(p.deals)
 #: src/components/Phrase.tsx
 msgid "{0, plural, one {Готовил к этому же экзамену # человека} few {Готовил к этому же экзамену # человек} many {Готовил к этому же экзамену # человек} other {Готовил к этому же экзамену # человека}}"
-msgstr ""
+msgstr "{0, plural, one {Připravil na tuhle zkoušku # člověka} few {Připravil na tuhle zkoušku # lidi} many {Připravil na tuhle zkoušku # člověka} other {Připravil na tuhle zkoušku # lidí}}"
 
 #: src/pages/Chats.tsx
 msgid "там же, где и все остальные разговоры"
-msgstr ""
+msgstr "tam, kde máš i ostatní konverzace"
 
 #: src/components/Phrase.tsx
 msgid "С твоего факультета"
-msgstr ""
+msgstr "Z tvojí fakulty"
 
 #: src/pages/BecomeHelper.tsx
 msgid "Опубликовать"
-msgstr ""
+msgstr "Zveřejnit"
 
 #. placeholder {0}: request.responses_count
 #: src/pages/Mine.tsx
 msgid "{0, plural, one {# отклик} few {# отклика} many {# откликов} other {# отклика}}"
-msgstr ""
+msgstr "{0, plural, one {# odpověď} few {# odpovědi} many {# odpovědi} other {# odpovědí}}"
 
 #: src/pages/Helper.tsx
 msgid "У этого человека нет открытого username в Telegram, написать не получится."
-msgstr ""
+msgstr "Tenhle člověk nemá veřejný username v Telegramu, napsat mu nepůjde."
 
 #. placeholder {0}: formatMoney(price.amount)
 #: src/pages/Helper.tsx
 msgid "Написать · {0} Kč"
-msgstr ""
+msgstr "Napsat · {0} Kč"
 
 #: src/components/Phrase.tsx
 msgid "Работает именно с этим вузом"
-msgstr ""
+msgstr "Pracuje přímo s touhle školou"
 
 #: src/pages/Results.tsx
 msgid "Проверь соединение и попробуй ещё раз."
-msgstr ""
+msgstr "Zkontroluj připojení a zkus to znovu."
 
 #: src/components/Phrase.tsx
 msgid "Помощь в день экзамена"
-msgstr ""
+msgstr "Pomoc v den zkoušky"
 
 #: src/pages/Helper.tsx
 msgid "Профиль недоступен"
-msgstr ""
+msgstr "Profil není dostupný"
 
 #: src/pages/Home.tsx
 msgid "Нажми, чтобы попробовать ещё раз"
-msgstr ""
+msgstr "Zkus to znovu"
 
 #: src/pages/Mine.tsx
 msgid "Заявок пока нет"
-msgstr ""
+msgstr "Zatím žádné poptávky"
 
 #: src/pages/Ask.tsx
 #: src/pages/BecomeHelper.tsx
 msgid "Убрать"
-msgstr ""
+msgstr "Odebrat"
 
 #: src/pages/Results.tsx
 msgid "Пока никого"
+msgstr "Zatím nikdo"
+
+#: src/pages/Life.tsx
+msgid "Не про учёбу"
 msgstr ""
 
 #: src/components/Phrase.tsx
 msgid "Дешевле остальных, но этот экзамен не вёл"
-msgstr ""
+msgstr "Levnější než ostatní, ale tuhle zkoušku nevedl"
 
 #: src/pages/Profile.tsx
 msgid "Язык приложения"
-msgstr ""
+msgstr "Jazyk aplikace"
 
 #. placeholder {0}: num(p.minutes)
 #: src/components/Phrase.tsx
 msgid "{0, plural, one {Отвечает примерно за # минуту} few {Отвечает примерно за # минуты} many {Отвечает примерно за # минут} other {Отвечает примерно за # минуты}}"
-msgstr ""
+msgstr "{0, plural, one {Odpovídá zhruba za # minutu} few {Odpovídá zhruba za # minuty} many {Odpovídá zhruba za # minuty} other {Odpovídá zhruba za # minut}}"
 
 #: src/pages/Ask.tsx
 msgid "Поняли так — поправь, если не то"
-msgstr ""
+msgstr "Pochopili jsme to takhle — oprav to, pokud to není ono"
 
 #: src/pages/Helper.tsx
 msgid "Написать"
-msgstr ""
+msgstr "Napsat"
 
 #: src/pages/BecomeHelper.tsx
 msgid "Расскажи своими словами"
-msgstr ""
+msgstr "Napiš vlastními slovy"
 
 #. placeholder {0}: parsed.matches
 #: src/pages/Ask.tsx
 msgid "Показать {0}"
-msgstr ""
+msgstr "Zobrazit {0}"
 
 #: src/pages/Profile.tsx
 msgid "Моя анкета"
-msgstr ""
+msgstr "Moje anketa"
 
 #: src/components/Phrase.tsx
 msgid "Помощь нужна до экзамена или на нём?"
-msgstr ""
+msgstr "Potřebuješ pomoc před zkouškou, nebo přímo na ní?"
 
 #: src/components/TabBar.tsx
 #: src/pages/Mine.tsx
 msgid "Мои"
-msgstr ""
+msgstr "Moje"
 
 #: src/pages/Results.tsx
 msgid "Ищем…"
+msgstr "Hledáme…"
+
+#: src/pages/Life.tsx
+msgid "Но без этого не доучишься. Сроки и требования — наши, предложения — партнёрские."
 msgstr ""
 
 #: src/components/Phrase.tsx
 msgid "лет на площадке"
-msgstr ""
+msgstr "let na platformě"
 
 #: src/pages/Ask.tsx
 msgid "Дальше вопросов не будет — остальное отфильтруешь прямо в списке."
-msgstr ""
+msgstr "Dál se už ptát nebudeme — zbytek si odfiltruješ přímo v seznamu."
 
 #: src/components/Phrase.tsx
 msgid "в день"
-msgstr ""
+msgstr "za den"
 
 #: src/pages/Results.tsx
 msgid "Подходят"
-msgstr ""
+msgstr "Vyhovují"
 
 #: src/components/Phrase.tsx
 msgid "Разобраться заранее"
-msgstr ""
+msgstr "Připravit se předem"
