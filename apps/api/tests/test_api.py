@@ -245,3 +245,150 @@ async def test_only_the_author_can_close_a_request(client):
     )
     assert mine.status_code == 200
     assert mine.json()["status"] == "closed"
+
+
+async def test_intro_is_read_into_a_draft_profile(client):
+    """The onboarding form is one field; the rest is extracted and shown back."""
+    body = (
+        await client.post(
+            "/api/v1/helper/intro",
+            json={
+                "text": (
+                    "Учусь на FEL, третий курс. Могу подтянуть матан и линейку, "
+                    "сам сдавал на A. Беру 500 в час, онлайн или в Дейвице."
+                )
+            },
+            headers=auth_header(90301),
+        )
+    ).json()
+
+    labels = [c["label"] for c in body["chips"] if c["kind"] == "subject"]
+    assert "Математический анализ" in labels
+    assert body["price"]["amount"] == 500
+    assert body["price"]["unit"] == "hour"
+    assert body["institution_id"] is not None
+    # Nothing in the text says when they are free, and that is worth asking for.
+    assert "availability" in body["missing"]
+
+
+async def test_publishing_makes_the_profile_findable(client, session):
+    from sqlalchemy import select
+
+    from konnekt.db.models import ServiceType, Subject
+
+    headers = auth_header(90302, first_name="Nový")
+    service = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "tutoring")
+    )
+    subject = await session.scalar(
+        select(Subject).where(Subject.slug == "linearni-algebra")
+    )
+
+    before = (
+        await client.get(
+            "/api/v1/search", params={"subject_id": subject.id}, headers=headers
+        )
+    ).json()["total"]
+
+    saved = await client.put(
+        "/api/v1/helper",
+        json={
+            "headline": "ČVUT FEL · 3. ročník",
+            "about": "Podtahuju linearni algebru.",
+            "work_format": "both",
+            "publish": True,
+            "offers": [
+                {
+                    "service_type_id": service.id,
+                    "subject_id": subject.id,
+                    "price_amount": 500,
+                    "price_unit": "hour",
+                    "langs": ["ru", "cs"],
+                }
+            ],
+        },
+        headers=headers,
+    )
+    assert saved.status_code == 200
+    assert saved.json()["is_helper"] is True
+    assert saved.json()["helper_status"] == "published"
+
+    after = (
+        await client.get(
+            "/api/v1/search", params={"subject_id": subject.id}, headers=headers
+        )
+    ).json()
+    assert after["total"] == before + 1
+
+
+async def test_an_unpublished_profile_stays_out_of_search(client, session):
+    from sqlalchemy import select
+
+    from konnekt.db.models import ServiceType, Subject
+
+    headers = auth_header(90303)
+    service = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "tutoring")
+    )
+    subject = await session.scalar(select(Subject).where(Subject.slug == "genetika"))
+
+    await client.put(
+        "/api/v1/helper",
+        json={
+            "publish": False,
+            "offers": [{"service_type_id": service.id, "subject_id": subject.id}],
+        },
+        headers=headers,
+    )
+    found = (
+        await client.get(
+            "/api/v1/search", params={"subject_id": subject.id}, headers=headers
+        )
+    ).json()
+    assert found["total"] == 0
+
+
+async def test_offers_are_replaced_not_appended(client, session):
+    """The client sends the whole set; a diff would leave deleted rows behind."""
+    from sqlalchemy import select
+
+    from konnekt.db.models import ServiceType, Subject
+
+    headers = auth_header(90304)
+    service = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "tutoring")
+    )
+    first = await session.scalar(select(Subject).where(Subject.slug == "fyzika-1"))
+    second = await session.scalar(select(Subject).where(Subject.slug == "fyzika-2"))
+
+    async def total(subject_id: int) -> int:
+        response = await client.get(
+            "/api/v1/search", params={"subject_id": subject_id}, headers=headers
+        )
+        return response.json()["total"]
+
+    # Deltas, not absolutes: the development database carries demo helpers and
+    # one of them already teaches physics.
+    before_first, before_second = await total(first.id), await total(second.id)
+
+    for subject in (first, second):
+        await client.put(
+            "/api/v1/helper",
+            json={
+                "publish": True,
+                "offers": [{"service_type_id": service.id, "subject_id": subject.id}],
+            },
+            headers=headers,
+        )
+
+    assert await total(first.id) == before_first, "the replaced offer survived"
+    assert await total(second.id) == before_second + 1
+
+
+async def test_an_unknown_service_type_is_refused(client):
+    response = await client.put(
+        "/api/v1/helper",
+        json={"offers": [{"service_type_id": 999999}]},
+        headers=auth_header(90305),
+    )
+    assert response.status_code == 422

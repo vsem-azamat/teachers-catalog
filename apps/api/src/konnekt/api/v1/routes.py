@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, time, timedelta
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import selectinload
 
 from konnekt.api.deps import LangDep, SessionDep, SettingsDep, UserDep
@@ -10,8 +10,11 @@ from konnekt.api.schemas import (
     Clarify,
     ClarifyOption,
     HelperDetailOut,
+    HelperUpsert,
     HomeOut,
     InstitutionOut,
+    IntroOut,
+    IntroRequest,
     LanguageOut,
     MeOut,
     MeUpdate,
@@ -19,6 +22,7 @@ from konnekt.api.schemas import (
     ParseRequest,
     Phrase,
     PlacementOut,
+    Price,
     RequestCreate,
     RequestOut,
     SearchFilters,
@@ -38,7 +42,13 @@ from konnekt.db.models import (
     Subject,
     User,
 )
-from konnekt.db.models.enums import ContentLang, PublishStatus, RequestStatus
+from konnekt.db.models.enums import (
+    ContentLang,
+    PriceUnit,
+    PublishStatus,
+    RequestStatus,
+    WorkFormat,
+)
 from konnekt.services import catalog, parser, placements
 from konnekt.services.catalog import _localised, avatar_for
 
@@ -453,6 +463,121 @@ async def helper_detail(
     if detail is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "no such published profile")
     return detail
+
+
+# ── becoming a helper ───────────────────────────────────────────────────
+
+
+@router.post("/helper/intro", response_model=IntroOut, tags=["helper"])
+async def read_intro(
+    payload: IntroRequest, session: SessionDep, lang: LangDep, user: UserDep
+) -> IntroOut:
+    """Read a free-text introduction into a draft profile.
+
+    Nothing is saved. The point is to show the person that they were
+    understood — and to let them correct it — before anything is published.
+    """
+    parsed = await parser.parse_intro(session, payload.text, lang.value)
+
+    chips = [
+        Chip(
+            kind="subject",
+            label=match.label,
+            value=match.id,
+            confidence=round(match.score, 2),
+        )
+        for match in parsed.subjects
+    ]
+    if parsed.institution:
+        chips.append(
+            Chip(
+                kind="institution",
+                label=parsed.institution.label,
+                value=parsed.institution.id,
+                confidence=round(parsed.institution.score, 2),
+            )
+        )
+    price = None
+    if parsed.price_amount is not None:
+        price = Price(
+            amount=parsed.price_amount,
+            unit=PriceUnit(parsed.price_unit or "hour"),
+        )
+        chips.append(
+            Chip(
+                kind="price",
+                label=str(int(parsed.price_amount)),
+                value=int(parsed.price_amount),
+            )
+        )
+    if parsed.work_format:
+        chips.append(
+            Chip(kind="work_format", label=parsed.work_format, value=parsed.work_format)
+        )
+
+    return IntroOut(
+        chips=chips,
+        price=price,
+        work_format=WorkFormat(parsed.work_format) if parsed.work_format else None,
+        institution_id=parsed.institution.id if parsed.institution else None,
+        subject_ids=[m.id for m in parsed.subjects],
+        missing=parsed.missing,
+    )
+
+
+@router.put("/helper", response_model=MeOut, tags=["helper"])
+async def upsert_helper(
+    payload: HelperUpsert, session: SessionDep, lang: LangDep, user: UserDep
+) -> MeOut:
+    """Create or replace the caller's helper profile and its offers.
+
+    Offers are replaced wholesale rather than diffed: the client always sends
+    the full set it is showing, and a partial update would leave rows behind
+    that the person believes they deleted.
+    """
+    helper = await session.get(HelperProfile, user.id)
+    if helper is None:
+        helper = HelperProfile(user_id=user.id)
+        session.add(helper)
+
+    helper.headline = payload.headline
+    helper.about = payload.about
+    helper.raw_intro = payload.raw_intro or helper.raw_intro
+    helper.about_lang = ContentLang(lang.value)
+    helper.work_format = payload.work_format
+    helper.city = payload.city
+    helper.place_note = payload.place_note
+    if payload.publish and helper.status != PublishStatus.PUBLISHED:
+        helper.status = PublishStatus.PUBLISHED
+        helper.published_at = helper.published_at or datetime.now(UTC)
+    elif not payload.publish and helper.status == PublishStatus.DRAFT:
+        helper.status = PublishStatus.DRAFT
+    await session.flush()
+
+    valid_service_ids = set(
+        (await session.scalars(select(ServiceType.id).where(ServiceType.is_active))).all()
+    )
+    await session.execute(delete(Offer).where(Offer.helper_id == user.id))
+    for spec in payload.offers:
+        if spec.service_type_id not in valid_service_ids:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                f"unknown service type {spec.service_type_id}",
+            )
+        session.add(
+            Offer(
+                helper_id=user.id,
+                service_type_id=spec.service_type_id,
+                subject_id=spec.subject_id,
+                institution_id=spec.institution_id,
+                price_amount=spec.price_amount,
+                price_unit=spec.price_unit,
+                langs=spec.langs or list(user.spoken_langs),
+                work_format=payload.work_format,
+            )
+        )
+    await session.commit()
+    return await read_me(user, session, lang)
 
 
 # ── requests: the catalog in reverse ────────────────────────────────────

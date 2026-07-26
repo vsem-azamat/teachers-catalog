@@ -156,6 +156,18 @@ _SUBJECT_SQL = text(
                             || CASE WHEN length(btrim(syn)) >= 4 THEN '' ELSE ' ' END
                         ) > 0
                    ) THEN 1.0 ELSE 0.0 END,
+                   -- Prefix matching handles a changed word *ending* only
+                   -- when the ending is added, not when it is replaced:
+                   -- "линал" reaches "линала" but "линейка" does not reach
+                   -- "линейку". Trigram similarity against the synonym itself
+                   -- covers that, scored just below an exact hit so exact
+                   -- hits still sort first.
+                   COALESCE((
+                       SELECT MAX(word_similarity(
+                           immutable_unaccent(lower(syn)), q.raw)) * 0.92
+                         FROM unnest(s.synonyms) syn
+                        WHERE length(btrim(syn)) >= 5
+                   ), 0.0),
                    CASE WHEN s.external_code IS NOT NULL
                          AND strpos(
                              q.tokens,
