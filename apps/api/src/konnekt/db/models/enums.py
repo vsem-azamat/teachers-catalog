@@ -1,0 +1,170 @@
+from enum import StrEnum
+
+from sqlalchemy import Enum as SAEnum
+
+
+def pg_enum(enum_cls: type[StrEnum], name: str) -> SAEnum:
+    """Native Postgres enum storing the member values, not the member names.
+
+    ``values_callable`` is required: without it SQLAlchemy writes member NAMES
+    (``RENT``) while the Python code compares against values (``rent``), so
+    hand-written SQL stops matching what the ORM reads.
+    """
+    return SAEnum(
+        enum_cls,
+        name=name,
+        native_enum=True,
+        values_callable=lambda e: [m.value for m in e],
+        create_constraint=False,
+    )
+
+
+class UiLang(StrEnum):
+    """Interface languages.
+
+    Separate from the languages people teach in — there can be more of those.
+    Note the standard codes: the legacy bot used ``cz``/``ua``, which have to be
+    mapped to ``cs``/``uk`` during the data import.
+    """
+
+    RU = "ru"
+    CS = "cs"
+    EN = "en"
+    UK = "uk"
+
+
+class ContentLang(StrEnum):
+    """Language a user-written text is in. ``xx`` covers mixed and undetected."""
+
+    RU = "ru"
+    CS = "cs"
+    EN = "en"
+    UK = "uk"
+    OTHER = "xx"
+
+
+class PublishStatus(StrEnum):
+    DRAFT = "draft"
+    PENDING = "pending"
+    PUBLISHED = "published"
+    HIDDEN = "hidden"
+    BANNED = "banned"
+
+
+class NodeKind(StrEnum):
+    """Position in a tree. Only leaves are selectable in search."""
+
+    GROUP = "group"
+    LEAF = "leaf"
+
+
+class InstitutionKind(StrEnum):
+    UNIVERSITY = "university"
+    FACULTY = "faculty"
+    SCHOOL = "school"
+    EXAM_BODY = "exam_body"
+    OTHER = "other"
+
+
+class WorkFormat(StrEnum):
+    ONLINE = "online"
+    OFFLINE = "offline"
+    BOTH = "both"
+
+
+class PriceUnit(StrEnum):
+    HOUR = "hour"
+    LESSON = "lesson"
+    WORK = "work"
+    DAY = "day"
+    WEEK = "week"
+    MONTH = "month"
+    SEMESTER = "semester"
+    ITEM = "item"
+    NEGOTIABLE = "negotiable"
+
+
+class RequestStatus(StrEnum):
+    DRAFT = "draft"
+    OPEN = "open"
+    CLOSED = "closed"
+    EXPIRED = "expired"
+
+
+class ResponseStatus(StrEnum):
+    SENT = "sent"
+    READ = "read"
+    ACCEPTED = "accepted"
+    DECLINED = "declined"
+
+
+class ItemKind(StrEnum):
+    RENT = "rent"
+    SALE = "sale"
+
+
+class ItemCondition(StrEnum):
+    NEW = "new"
+    GOOD = "good"
+    USED = "used"
+
+
+class ItemStatus(StrEnum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    RESERVED = "reserved"
+    HIDDEN = "hidden"
+    ARCHIVED = "archived"
+
+
+class MaterialKind(StrEnum):
+    NOTES = "notes"
+    PAST_EXAMS = "past_exams"
+    TEMPLATE = "template"
+    COURSE = "course"
+    OTHER = "other"
+
+
+class MaterialAccess(StrEnum):
+    """Payments are deferred, so only ``free`` and ``on_request`` are reachable
+    today. ``paid`` exists so adding a provider later is not a schema change."""
+
+    FREE = "free"
+    ON_REQUEST = "on_request"
+    PAID = "paid"
+
+
+class PayoutModel(StrEnum):
+    CPC = "cpc"
+    CPL = "cpl"
+    FIXED = "fixed"
+
+
+class PlacementSlot(StrEnum):
+    """Where a partner block may appear. Grows as screens are added."""
+
+    SCREEN_LIFE = "screen_life"
+    SCREEN_NOSTRIFICATION = "screen_nostrification"
+    SCREEN_LANGUAGES = "screen_languages"
+    SCREEN_SEARCH_EMPTY = "screen_search_empty"
+    AFTER_REQUEST_CREATED = "after_request_created"
+    PROFILE_FOOTER = "profile_footer"
+
+
+class PlacementEventKind(StrEnum):
+    IMPRESSION = "impression"
+    CLICK = "click"
+
+
+class ModerationVerdict(StrEnum):
+    AUTO_OK = "auto_ok"
+    NEEDS_REVIEW = "needs_review"
+    REJECTED = "rejected"
+
+
+class ModeratedEntity(StrEnum):
+    HELPER_PROFILE = "helper_profile"
+    OFFER = "offer"
+    REQUEST = "request"
+    ITEM = "item"
+    MATERIAL = "material"
