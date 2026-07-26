@@ -4,14 +4,36 @@ Its own router with no prefix: `/healthz` is not part of the versioned API and
 must not move when the API version does.
 """
 
+import asyncio
+import logging
+import time as clock
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, FastAPI, Request
 from sqlalchemy import select
 
 from konnekt.api.deps import SessionDep
+from konnekt.core.config import get_settings
+
+log = logging.getLogger("konnekt")
 
 _STARTED_AT = datetime.now(UTC)
+
+# The container healthcheck hits this every few seconds and the shared edge
+# adds its own. Long enough that Telegram is asked about once a minute, short
+# enough that a deployment watching this sees a webhook disappear.
+WEBHOOK_CHECK_TTL = 60.0
+
+# A failure is remembered too, but briefly: without this, an hour of Telegram
+# being unreachable is an hour of every probe waiting on it.
+WEBHOOK_FAILURE_TTL = 10.0
+
+# Well under the container healthcheck's own budget. aiogram's default session
+# waits 60 seconds, which is longer than anything watching this endpoint is
+# willing to wait — a Telegram that hangs rather than refuses would take the
+# API out of rotation, which is exactly what reporting this softly is meant to
+# avoid.
+WEBHOOK_CHECK_TIMEOUT = 2.5
 
 health_router = APIRouter(tags=["ops"])
 
@@ -20,16 +42,118 @@ health_router = APIRouter(tags=["ops"])
 async def healthz(request: Request, session: SessionDep) -> dict[str, str | int]:
     """Liveness plus the two things that fail independently.
 
-    A webhook that never registered leaves the catalog perfectly usable and the
-    bot deaf, which is exactly the kind of half-failure nobody notices. It is
-    reported here rather than folded into the status, because taking the whole
-    service out of rotation over it would be worse.
+    A webhook that never registered — or registered and was then cleared —
+    leaves the catalog perfectly usable and the bot deaf, which is exactly the
+    kind of half-failure nobody notices. It is reported here rather than folded
+    into the status, because taking the whole service out of rotation over it
+    would be worse.
     """
     await session.execute(select(1))
     uptime = datetime.now(UTC) - _STARTED_AT
     return {
         "status": "ok",
         "database": "ok",
-        "webhook": getattr(request.app.state, "webhook_status", "unknown"),
+        "webhook": await webhook_state(request.app),
         "uptime_seconds": int(uptime / timedelta(seconds=1)),
     }
+
+
+async def webhook_state(app: FastAPI) -> str:
+    """Where Telegram says it is sending updates, not where we asked it to.
+
+    The application remembering a past success is not evidence of one. A
+    webhook registers, something clears it afterwards, and the remembered
+    answer stays "ok" for as long as the process lives — so the one dial that
+    exists to catch a deaf bot reports green while the bot is deaf.
+
+    Asked at most once per `WEBHOOK_CHECK_TTL`, under a lock so a burst of
+    probes makes one call rather than a burst of calls, on a timeout far
+    shorter than anything watching this endpoint will wait, and never fatal:
+    Telegram having a bad minute is not a reason to fail a health check that
+    the edge uses to decide whether the catalog is up.
+    """
+    bot = getattr(app.state, "bot", None)
+    if bot is None:
+        return "not configured"
+
+    fresh = _cached(app)
+    if fresh is not None:
+        return fresh
+
+    async with _lock_for(app):
+        # Somebody else may have answered it while this one waited.
+        fresh = _cached(app)
+        if fresh is not None:
+            return fresh
+        return await _ask_telegram(app, bot)
+
+
+def _lock_for(app: FastAPI) -> asyncio.Lock:
+    """Kept beside the cache it guards, not at module level.
+
+    An `asyncio.Lock` binds to the first event loop that contends it and
+    refuses every later one, and the acquire sits outside the try below — so a
+    module-level lock would eventually raise straight out of a health check
+    that promises never to be fatal.
+    """
+    lock = getattr(app.state, "webhook_lock", None)
+    if lock is None:
+        lock = asyncio.Lock()
+        app.state.webhook_lock = lock
+    return lock
+
+
+def _cached(app: FastAPI) -> str | None:
+    """The last answer, while it is still worth trusting.
+
+    A failure is held for a fraction of the time a real answer is: an outage
+    must not pin the reading for a full minute, and a success is not worth
+    asking about again that often.
+    """
+    cached = getattr(app.state, "webhook_observed", None)
+    if cached is None:
+        return None
+    ttl = (
+        WEBHOOK_FAILURE_TTL
+        if getattr(app.state, "webhook_observed_failed", False)
+        else WEBHOOK_CHECK_TTL
+    )
+    checked_at = getattr(app.state, "webhook_checked_at", 0.0)
+    return cached if clock.monotonic() - checked_at < ttl else None
+
+
+async def _ask_telegram(app: FastAPI, bot) -> str:
+    expected = get_settings().webhook_url
+    failed = False
+    try:
+        info = await asyncio.wait_for(
+            bot.get_webhook_info(), timeout=WEBHOOK_CHECK_TIMEOUT
+        )
+    except Exception as exc:
+        # `str()` of a bare TimeoutError is empty, and an exception object is
+        # always truthy — so the reason has to be chosen on the text, not on
+        # the exception. Without this the timeout path reports "unknown: " and
+        # logs a line with no cause, which is the opposite of the point.
+        reason = str(exc) or type(exc).__name__
+        log.warning("could not read the webhook from Telegram: %s", reason)
+        state = f"unknown: {reason}"
+        failed = True
+    else:
+        observed = str(getattr(info, "url", "") or "")
+        if observed == expected:
+            state = "ok"
+        elif observed:
+            state = f"elsewhere: {observed}"
+            log.error("Telegram points at %s, expected %s", observed, expected)
+        else:
+            # Carry the reason registration gave, if it gave one: "missing"
+            # says the bot is deaf, and the attempt's own error says why.
+            attempted = getattr(app.state, "webhook_error", None)
+            why = f" (registration failed: {attempted})" if attempted else ""
+            state = f"missing: Telegram has no webhook for this bot{why}"
+            log.error("Telegram has no webhook; expected %s%s", expected, why)
+
+    app.state.webhook_observed = state
+    app.state.webhook_observed_failed = failed
+    app.state.webhook_checked_at = clock.monotonic()
+    return state

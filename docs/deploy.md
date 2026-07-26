@@ -111,6 +111,7 @@ ssh-keyscan -t ed25519 <host>          # for DEPLOY_KNOWN_HOSTS
 | `EDGE_CADDY_CONFIG_PATH` | Path to the Caddyfile *inside* that container. |
 | `POSTGRES_DB`, `POSTGRES_USER` | Optional; both default to `konnekt`. |
 | `INIT_DATA_MAX_AGE_SECONDS` | Optional; defaults to 86400. |
+| `LOG_LEVEL` | Optional; defaults to `INFO`. One of DEBUG, INFO, WARNING, ERROR, CRITICAL. |
 | `BACKUP_HOUR_UTC`, `BACKUP_RETENTION_DAYS` | Optional; default 3 and 14. |
 
 ### 5. In @BotFather
@@ -166,7 +167,24 @@ docker compose -f <DEPLOY_DIR>/docker-compose.yml ps
 docker compose -f <DEPLOY_DIR>/docker-compose.yml logs -f api
 ```
 
-Telegram's own view of the webhook, which is the one that matters:
+`/healthz` reports the webhook as **Telegram** sees it, not as the application
+remembers registering it. Asked at most once a minute, under a lock so a burst
+of probes makes one call, on a 2.5-second timeout, and never fatal — a bad
+minute at Telegram must not take the catalog out of rotation.
+
+| `webhook` | What it means |
+| --- | --- |
+| `ok` | Telegram is pointing at this host |
+| `missing: …` | Telegram has no webhook for this bot — it is deaf. Carries the registration error, if there was one |
+| `elsewhere: <url>` | something else claimed the token |
+| `unknown: <error>` | Telegram could not be reached or did not answer in time. Says nothing about the webhook either way; retried after ten seconds |
+| `not configured` | no bot token — the API runs without one on purpose |
+
+The distinction is not academic. A webhook registers, something clears it
+afterwards, and a status remembered at startup stays `ok` for as long as the
+process lives — which is how a deaf bot passes every health check it has.
+
+Telegram's own view, for when `/healthz` says something is wrong:
 
 ```sh
 curl "https://api.telegram.org/bot<token>/getWebhookInfo"
@@ -175,3 +193,10 @@ curl "https://api.telegram.org/bot<token>/getWebhookInfo"
 `pending_update_count` climbing means updates are arriving and not being
 accepted. A `last_error_message` naming a certificate or DNS problem is
 Cloudflare or the edge, not this project.
+
+### If the webhook goes missing
+
+`docker compose restart api` re-registers it: the application sets the webhook
+on startup and retries until Telegram agrees. Confirm from Telegram's side
+afterwards, not from `/healthz` alone, and give it a minute — the answer there
+is cached.

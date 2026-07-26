@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -47,6 +48,8 @@ class Settings(BaseSettings):
     database_url: str | None = None
     db_echo: bool = False
 
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+
     # One pool per process, and the Dockerfile pins `--workers 1`, so these are
     # the whole connection budget: at most `db_pool_size + db_max_overflow`
     # against Postgres. Raise them together with the worker count, never one
@@ -58,6 +61,17 @@ class Settings(BaseSettings):
     # cost of a round trip; recycling retires connections before they get old
     # enough for it to matter.
     db_pool_recycle_seconds: int = 1800
+
+    @computed_field
+    @property
+    def webhook_url(self) -> str:
+        """Where Telegram is told to send updates, and what /healthz compares.
+
+        Derived once: registration and the health check building the same
+        string separately is how a health check starts reporting "elsewhere"
+        about a webhook that is perfectly correct.
+        """
+        return f"{self.public_base_url.rstrip('/')}{self.webhook_path}"
 
     @computed_field
     @property
