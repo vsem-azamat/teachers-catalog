@@ -138,7 +138,8 @@ export function AvatarStack({
       className={css.stack}
       style={ring ? ({ '--stack-ring': ring } as React.CSSProperties) : undefined}
     >
-      {avatars.map((avatar) => (
+      {/* Reversed here too, so row-reverse puts them back in the given order. */}
+      {[...avatars].reverse().map((avatar) => (
         <AvatarView key={avatar.id} avatar={avatar} size={size} short />
       ))}
     </div>

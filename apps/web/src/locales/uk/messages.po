@@ -23,7 +23,7 @@ msgstr "Вільні"
 
 #: src/components/Phrase.tsx
 msgid "Онлайн"
-msgstr ""
+msgstr "Онлайн"
 
 #: src/pages/BecomeHelper.tsx
 msgid "Напиши хотя бы пару предложений — предметы, цену и как удобно заниматься."
@@ -51,7 +51,7 @@ msgstr "Коли ти вільний"
 
 #: src/pages/Life.tsx
 msgid "Это не наши услуги. Мы получаем комиссию с партнёра, со студента — ничего."
-msgstr ""
+msgstr "Це не наші послуги. Комісію ми отримуємо від партнера, зі студента — нічого."
 
 #: src/pages/BecomeHelper.tsx
 msgid "Какие предметы"
@@ -100,7 +100,7 @@ msgstr "склали"
 
 #: src/pages/Life.tsx
 msgid "Партнёр"
-msgstr ""
+msgstr "Партнер"
 
 #: src/pages/Helper.tsx
 msgid "Сколько стоит"
@@ -157,7 +157,7 @@ msgstr "за штуку"
 
 #: src/components/Phrase.tsx
 msgid "Очно"
-msgstr ""
+msgstr "Очно"
 
 #: src/pages/BecomeHelper.tsx
 msgid "Получилось так"
@@ -177,7 +177,7 @@ msgstr "Допомагати іншим"
 
 #: src/pages/Life.tsx
 msgid "Здесь появятся страховка, визы, банк и переводы."
-msgstr ""
+msgstr "Тут з'являться страхування, візи, банк і перекази."
 
 #: src/pages/Ask.tsx
 msgid "Искать всё равно"
@@ -206,7 +206,7 @@ msgstr "Без розкладу анкету покажемо, але рідше
 
 #: src/components/Phrase.tsx
 msgid "Онлайн и очно"
-msgstr ""
+msgstr "Онлайн і очно"
 
 #. placeholder {0}: formatDay(str(p.date), locale)
 #: src/components/Phrase.tsx
@@ -215,7 +215,7 @@ msgstr "Вільний {0}"
 
 #: src/pages/Life.tsx
 msgid "Пока пусто"
-msgstr ""
+msgstr "Поки порожньо"
 
 #: src/pages/Mine.tsx
 msgid "без срока"
@@ -235,7 +235,7 @@ msgstr "За цим ми відсіюємо тих, з ким ви не поро
 
 #: src/pages/Results.tsx
 msgid "изменить"
-msgstr ""
+msgstr "змінити"
 
 #: src/pages/Home.tsx
 msgid "Что нужно?"
@@ -275,7 +275,7 @@ msgstr "Дешевше"
 
 #: src/pages/Life.tsx
 msgid "Загружаем"
-msgstr ""
+msgstr "Завантажуємо"
 
 #. placeholder {0}: data.total
 #: src/pages/Results.tsx
@@ -382,7 +382,7 @@ msgstr "Поки нікого"
 
 #: src/pages/Life.tsx
 msgid "Не про учёбу"
-msgstr ""
+msgstr "Не про навчання"
 
 #: src/components/Phrase.tsx
 msgid "Дешевле остальных, но этот экзамен не вёл"
@@ -433,7 +433,7 @@ msgstr "Шукаємо…"
 
 #: src/pages/Life.tsx
 msgid "Но без этого не доучишься. Сроки и требования — наши, предложения — партнёрские."
-msgstr ""
+msgstr "Але без цього не доучишся. Строки й вимоги — наші, пропозиції — партнерські."
 
 #: src/components/Phrase.tsx
 msgid "лет на площадке"

@@ -1,4 +1,4 @@
-import { isTMA, mockTelegramEnv } from '@tma.js/sdk-react';
+import { mockTelegramEnv } from '@tma.js/sdk-react';
 
 /**
  * Pretend to be Telegram when we are not.
@@ -46,8 +46,23 @@ function buildInitData(): string {
   return params.toString();
 }
 
+/**
+ * Is there a real Telegram client on the other side of this page?
+ *
+ * Not `isTMA()`: that returns true once launch parameters exist anywhere,
+ * including the ones this module wrote into session storage a moment ago. On a
+ * reload it therefore reported "already in Telegram", the mock was skipped, and
+ * the SDK threw UnknownEnvError because the window-level bridge — which does
+ * not survive a navigation — was gone. The question that actually matters is
+ * whether the bridge is present right now.
+ */
+function insideRealTelegram(): boolean {
+  const w = window as unknown as { TelegramWebviewProxy?: unknown };
+  return Boolean(w.TelegramWebviewProxy) || window.parent !== window;
+}
+
 export function mockEnv(): void {
-  if (isTMA()) return;
+  if (insideRealTelegram()) return;
 
   const initDataRaw = import.meta.env.VITE_MOCK_INIT_DATA || buildInitData();
 

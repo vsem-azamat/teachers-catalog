@@ -234,18 +234,27 @@
   border-radius: var(--r-tile);
 }
 
+/* Reversed so the first face is drawn on top of the second, not under it.
+   With the natural order the next circle covers the previous one's initial,
+   which is the only thing in it. */
 .stack {
   display: flex;
   flex: none;
+  flex-direction: row-reverse;
 }
 
 .stack > * + * {
-  margin-left: -8px;
+  margin-right: -8px;
 }
 
 /* The ring makes overlapping circles legible; it has to match whatever is
-   behind them, hence the variable rather than a fixed colour. */
+   behind them, hence the variable rather than a fixed colour.
+
+   position:relative is not decoration: without it these are non-positioned
+   boxes whose paint order the browser is free to decide, and the second circle
+   was landing on top of the first one's initial — the only thing in it. */
 .stack > * {
+  position: relative;
   box-shadow: 0 0 0 2px var(--stack-ring, var(--surface));
 }
 
