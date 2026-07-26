@@ -39,12 +39,60 @@ export function Screen({
   );
 }
 
-export function Head({ right }: { right?: ReactNode }) {
+// The header moved to its own file when it grew controls: see AppHeader.
+
+/**
+ * Two columns of tiles.
+ *
+ * For a set small enough to see at once — the seven kinds of help — where a
+ * list would cost a scroll to say the same thing.
+ */
+export function Grid({ children }: { children: ReactNode }) {
+  return <div className={css.grid}>{children}</div>;
+}
+
+export function Cell({
+  leading,
+  title,
+  hint,
+  trailing,
+  /** Spans both columns and lays out as a row, for the one that matters most. */
+  wide = false,
+  onClick,
+}: {
+  leading?: ReactNode;
+  title: ReactNode;
+  hint?: ReactNode;
+  trailing?: ReactNode;
+  wide?: boolean;
+  onClick: () => void;
+}) {
+  if (wide) {
+    return (
+      <button
+        type="button"
+        className={`${css.cell} ${css.cellWide} ${css.pressable}`}
+        onClick={onClick}
+      >
+        {leading}
+        <span className={css.rowBody}>
+          <span className={css.rowName}>{title}</span>
+          {hint ? <span className={css.rowHint}>{hint}</span> : null}
+        </span>
+        {trailing ? <span className={css.rowTrailing}>{trailing}</span> : null}
+      </button>
+    );
+  }
+
   return (
-    <header className={css.head}>
-      <span className={css.wordmark}>Konnekt</span>
-      {right}
-    </header>
+    <button type="button" className={`${css.cell} ${css.pressable}`} onClick={onClick}>
+      {leading}
+      <span className={css.cellName}>{title}</span>
+      <span className={css.cellFoot}>
+        <span className={css.cellHint}>{hint}</span>
+        {trailing}
+      </span>
+    </button>
   );
 }
 

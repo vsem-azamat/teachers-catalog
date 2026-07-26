@@ -4,7 +4,6 @@ import { openLink } from '@tma.js/sdk-react';
 
 import {
   Empty,
-  Head,
   Hint,
   Label,
   Screen,
@@ -33,7 +32,7 @@ export default function LifePage() {
 
   return (
     <Screen>
-      <Head />
+      <AppHeader />
       <Title>
         <Trans>Не про учёбу</Trans>
       </Title>

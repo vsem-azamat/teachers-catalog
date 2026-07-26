@@ -135,9 +135,17 @@ msgstr "первый год"
 msgid "По этому запросу ещё нет никого. Создай заявку — тогда найдут тебя."
 msgstr "По этому запросу ещё нет никого. Создай заявку — тогда найдут тебя."
 
+#: src/components/AppHeader.tsx
+msgid "Оформление: как в системе. Нажми, чтобы сменить"
+msgstr "Оформление: как в системе. Нажми, чтобы сменить"
+
 #: src/pages/Profile.tsx
-msgid "Хочу помогать"
-msgstr "Хочу помогать"
+#~ msgid "Хочу помогать"
+#~ msgstr "Хочу помогать"
+
+#: src/components/AppHeader.tsx
+msgid "Язык"
+msgstr "Язык"
 
 #. placeholder {0}: str(p.subject)
 #: src/components/Phrase.tsx
@@ -145,8 +153,8 @@ msgid "Твой предмет — {0}"
 msgstr "Твой предмет — {0}"
 
 #: src/pages/Profile.tsx
-msgid "Тёмное"
-msgstr "Тёмное"
+#~ msgid "Тёмное"
+#~ msgstr "Тёмное"
 
 #: src/pages/Profile.tsx
 msgid "расскажи своими словами, анкету соберём сами"
@@ -213,8 +221,8 @@ msgstr "И так, и так"
 
 #: src/components/TabBar.tsx
 #: src/pages/Chats.tsx
-msgid "Чаты"
-msgstr "Чаты"
+#~ msgid "Чаты"
+#~ msgstr "Чаты"
 
 #: src/pages/MyHelper.tsx
 #~ msgid "Без предмета"
@@ -241,8 +249,8 @@ msgid "Пока без откликов"
 msgstr "Пока без откликов"
 
 #: src/pages/Chats.tsx
-msgid "Разговоры мы не храним"
-msgstr "Разговоры мы не храним"
+#~ msgid "Разговоры мы не храним"
+#~ msgstr "Разговоры мы не храним"
 
 #: src/pages/MyHelper.tsx
 msgid "За что цена"
@@ -282,6 +290,11 @@ msgstr "нужен матан на ČVUT, экзамен 14 февраля"
 msgid "за час"
 msgstr "за час"
 
+#: src/pages/Profile.tsx
+msgid "Предлагать услуги"
+msgstr "Предлагать услуги"
+
+#: src/components/TabBar.tsx
 #: src/pages/Mine.tsx
 msgid "Заявки"
 msgstr "Заявки"
@@ -312,6 +325,10 @@ msgstr "В каталоге"
 msgid "Очно"
 msgstr "Очно"
 
+#: src/components/TabBar.tsx
+msgid "репетиторство, работы, помощь"
+msgstr "репетиторство, работы, помощь"
+
 #: src/pages/BecomeHelper.tsx
 msgid "Получилось так"
 msgstr "Получилось так"
@@ -338,9 +355,17 @@ msgstr "Здесь появятся страховка, визы, банк и п
 msgid "Как занимаешься"
 msgstr "Как занимаешься"
 
+#: src/pages/Profile.tsx
+msgid "Мои услуги"
+msgstr "Мои услуги"
+
 #: src/pages/Ask.tsx
 msgid "Искать всё равно"
 msgstr "Искать всё равно"
+
+#: src/components/TabBar.tsx
+msgid "опиши задачу — придут отклики"
+msgstr "опиши задачу — придут отклики"
 
 #: src/pages/Request.tsx
 msgid "Заявку видят те, кто ведёт этот предмет. Обычно отвечают в течение дня."
@@ -358,7 +383,7 @@ msgstr "B1, B2, нострификация"
 msgid "Регистрации нет — заходишь своим аккаунтом Telegram. Помогать другим можно оттуда же."
 msgstr "Регистрации нет — заходишь своим аккаунтом Telegram. Помогать другим можно оттуда же."
 
-#: src/components/TabBar.tsx
+#: src/components/AppHeader.tsx
 #: src/pages/Profile.tsx
 msgid "Профиль"
 msgstr "Профиль"
@@ -392,6 +417,10 @@ msgstr "Свободен {0}"
 msgid "Пока пусто"
 msgstr "Пока пусто"
 
+#: src/components/TabBar.tsx
+msgid "Что делаем?"
+msgstr "Что делаем?"
+
 #: src/pages/Mine.tsx
 msgid "без срока"
 msgstr "без срока"
@@ -417,8 +446,16 @@ msgid "изменить"
 msgstr "изменить"
 
 #: src/pages/Profile.tsx
-msgid "Светлое"
-msgstr "Светлое"
+#~ msgid "Светлое"
+#~ msgstr "Светлое"
+
+#: src/components/TabBar.tsx
+msgid "Мне нужна помощь"
+msgstr "Мне нужна помощь"
+
+#: src/components/AppHeader.tsx
+msgid "Оформление. Нажми, чтобы сменить; удерживай, чтобы вернуть системное"
+msgstr "Оформление. Нажми, чтобы сменить; удерживай, чтобы вернуть системное"
 
 #: src/pages/Home.tsx
 msgid "Что нужно?"
@@ -429,8 +466,8 @@ msgid "Не удалось загрузить каталог"
 msgstr "Не удалось загрузить каталог"
 
 #: src/pages/Chats.tsx
-msgid "Мы сводим людей и запоминаем, что контакт состоялся — по этому считается время ответа. Сама переписка остаётся в Telegram."
-msgstr "Мы сводим людей и запоминаем, что контакт состоялся — по этому считается время ответа. Сама переписка остаётся в Telegram."
+#~ msgid "Мы сводим людей и запоминаем, что контакт состоялся — по этому считается время ответа. Сама переписка остаётся в Telegram."
+#~ msgstr "Мы сводим людей и запоминаем, что контакт состоялся — по этому считается время ответа. Сама переписка остаётся в Telegram."
 
 #: src/pages/Home.tsx
 msgid "Люди"
@@ -474,8 +511,8 @@ msgid "Вуз, с которым ты работаешь"
 msgstr "Вуз, с которым ты работаешь"
 
 #: src/pages/Chats.tsx
-msgid "Открыть переписку в Telegram"
-msgstr "Открыть переписку в Telegram"
+#~ msgid "Открыть переписку в Telegram"
+#~ msgstr "Открыть переписку в Telegram"
 
 #: src/pages/MyHelper.tsx
 msgid "Город"
@@ -492,9 +529,14 @@ msgstr "{0, plural, one {# занятие через нас} few {# заняти
 msgid "Чем помогает"
 msgstr "Чем помогает"
 
+#: src/components/AppHeader.tsx
+#: src/components/TabBar.tsx
+msgid "Закрыть"
+msgstr "Закрыть"
+
 #: src/pages/Profile.tsx
-msgid "Оформление"
-msgstr "Оформление"
+#~ msgid "Оформление"
+#~ msgstr "Оформление"
 
 #: src/components/Phrase.tsx
 #: src/pages/MyHelper.tsx
@@ -529,6 +571,10 @@ msgstr "Репетиторы, подготовка к přijímačky, помощ�
 msgid "Пока никто ничего не просит"
 msgstr "Пока никто ничего не просит"
 
+#: src/components/TabBar.tsx
+msgid "Разместить"
+msgstr "Разместить"
+
 #: src/pages/MyHelper.tsx
 msgid "Район или где удобно встречаться"
 msgstr "Район или где удобно встречаться"
@@ -556,8 +602,8 @@ msgid "{0, plural, one {Готовил к этому же экзамену # ч�
 msgstr "{0, plural, one {Готовил к этому же экзамену # человека} few {Готовил к этому же экзамену # человек} many {Готовил к этому же экзамену # человек} other {Готовил к этому же экзамену # человека}}"
 
 #: src/pages/Chats.tsx
-msgid "там же, где и все остальные разговоры"
-msgstr "там же, где и все остальные разговоры"
+#~ msgid "там же, где и все остальные разговоры"
+#~ msgstr "там же, где и все остальные разговоры"
 
 #: src/pages/MyHelper.tsx
 msgid "ČVUT FEL, 3 курс"
@@ -647,7 +693,7 @@ msgstr "Не про учёбу"
 msgid "Дешевле остальных, но этот экзамен не вёл"
 msgstr "Дешевле остальных, но этот экзамен не вёл"
 
-#: src/pages/Profile.tsx
+#: src/components/AppHeader.tsx
 msgid "Язык приложения"
 msgstr "Язык приложения"
 
@@ -661,8 +707,8 @@ msgid "Ты отказался"
 msgstr "Ты отказался"
 
 #: src/pages/Profile.tsx
-msgid "Как в системе"
-msgstr "Как в системе"
+#~ msgid "Как в системе"
+#~ msgstr "Как в системе"
 
 #: src/pages/Ask.tsx
 msgid "Поняли так — поправь, если не то"
@@ -683,7 +729,6 @@ msgid "Показать {0}"
 msgstr "Показать {0}"
 
 #: src/pages/MyHelper.tsx
-#: src/pages/Profile.tsx
 msgid "Моя анкета"
 msgstr "Моя анкета"
 
@@ -701,8 +746,8 @@ msgstr "Помощь нужна до экзамена или на нём?"
 
 #: src/components/TabBar.tsx
 #: src/pages/Mine.tsx
-msgid "Мои"
-msgstr "Мои"
+#~ msgid "Мои"
+#~ msgstr "Мои"
 
 #: src/pages/MyHelper.tsx
 msgid "Что преподаёшь, где учишься, как проходят занятия. Своими словами."
@@ -723,6 +768,10 @@ msgstr "Но без этого не доучишься. Сроки и требо
 #: src/pages/MyHelper.tsx
 msgid "Не получилось загрузить анкету"
 msgstr "Не получилось загрузить анкету"
+
+#: src/components/TabBar.tsx
+msgid "Предлагаю услугу"
+msgstr "Предлагаю услугу"
 
 #: src/pages/Landing.tsx
 msgid "Репетиторы"

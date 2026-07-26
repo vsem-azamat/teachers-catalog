@@ -1,9 +1,9 @@
 /**
  * The icon set, drawn inline.
  *
- * Hand-written rather than pulled from a library: there are fourteen of them,
- * they all share one stroke weight, and a package would ship several hundred
- * we never use. `currentColor` throughout, so a tile's foreground colour is the
+ * Hand-written rather than pulled from a library: there are under twenty of
+ * them, they all share one stroke weight, and a package would ship several
+ * hundred we never use. `currentColor` throughout, so a tile's foreground colour is the
  * only thing that has to be set.
  */
 
@@ -122,6 +122,36 @@ export const PlusIcon = (p: IconProps) => (
 export const CloseIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="m7 7 10 10M17 7 7 17" strokeWidth={2.2} />
+  </Svg>
+);
+
+/** The language button. A globe, not a flag: languages are not countries. */
+export const GlobeIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="8.2" />
+    <path d="M3.8 12h16.4" />
+    <path d="M12 3.8a13 13 0 0 1 0 16.4 13 13 0 0 1 0-16.4" />
+  </Svg>
+);
+
+export const SunIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2.8v2.1M12 19.1v2.1M4.9 4.9l1.5 1.5M17.6 17.6l1.5 1.5M2.8 12h2.1M19.1 12h2.1M4.9 19.1l1.5-1.5M17.6 6.4l1.5-1.5" />
+  </Svg>
+);
+
+export const MoonIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M20 14.2A8.2 8.2 0 0 1 9.8 4 8.4 8.4 0 1 0 20 14.2Z" />
+  </Svg>
+);
+
+/** Selling a thing, as opposed to offering a skill. */
+export const BagIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4.6 8.4h14.8v11.2H4.6z" />
+    <path d="M9 8.4V6.8a3 3 0 0 1 6 0v1.6" />
   </Svg>
 );
 

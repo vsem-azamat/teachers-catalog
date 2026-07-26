@@ -1,29 +1,25 @@
-import { Trans, useLingui } from '@lingui/react/macro';
+import { Trans } from '@lingui/react/macro';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
+import { AppHeader } from '@/components/AppHeader';
 import { LanguageIcon, PersonIcon, SealIcon } from '@/components/icons';
 import { TabBar } from '@/components/TabBar';
 import {
   AvatarView,
   Chips,
   ChipView,
-  Head,
   Hint,
   Label,
   Row,
   Rows,
   Screen,
-  Segmented,
   SkeletonRows,
   Sub,
   Tile,
   Title,
 } from '@/components/Ui';
-import { useAppTheme } from '@/hooks/useAppTheme';
 import { hapticSelection } from '@/hooks/useTelegram';
-import { activateLocale, LOCALE_NAMES, LOCALES, type Locale } from '@/i18n';
 import { api } from '@/lib/api';
-import type { ThemeChoice } from '@/lib/theme';
 
 /**
  * Settings, and the way in to offering help.
@@ -35,8 +31,6 @@ import type { ThemeChoice } from '@/lib/theme';
 export default function ProfilePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { i18n } = useLingui();
-  const theme = useAppTheme();
 
   const { data: me, isPending } = useQuery({
     queryKey: ['me'],
@@ -59,13 +53,6 @@ export default function ProfilePage() {
     },
   });
 
-  const setLocale = async (locale: Locale) => {
-    hapticSelection();
-    await activateLocale(locale);
-    document.documentElement.lang = locale;
-    update.mutate({ ui_lang: locale });
-  };
-
   const toggleLanguage = (code: string) => {
     if (!me) return;
     hapticSelection();
@@ -77,7 +64,7 @@ export default function ProfilePage() {
   return (
     <>
       <Screen withTabs>
-        <Head />
+        <AppHeader />
         {isPending || !me ? (
           <>
             <Title>
@@ -103,37 +90,9 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <Label>
-              <Trans>Язык приложения</Trans>
-            </Label>
-            <Chips>
-              {LOCALES.map((locale) => (
-                <ChipView
-                  key={locale}
-                  active={i18n.locale === locale}
-                  onClick={() => void setLocale(locale)}
-                >
-                  {LOCALE_NAMES[locale]}
-                </ChipView>
-              ))}
-            </Chips>
-
-            <Label>
-              <Trans>Оформление</Trans>
-            </Label>
-            <Segmented
-              value={theme.choice}
-              onChange={(choice) => {
-                hapticSelection();
-                theme.set(choice);
-              }}
-              options={[
-                { value: 'system' as ThemeChoice, label: <Trans>Как в системе</Trans> },
-                { value: 'light' as ThemeChoice, label: <Trans>Светлое</Trans> },
-                { value: 'dark' as ThemeChoice, label: <Trans>Тёмное</Trans> },
-              ]}
-            />
-
+            {/* The interface language and the palette live in the header, on
+                every screen. What stays here is the one language question that
+                is not a setting: which languages you can be taught in. */}
             <Label>
               <Trans>На каких языках тебе удобно</Trans>
             </Label>
@@ -166,7 +125,11 @@ export default function ProfilePage() {
                   </Tile>
                 }
                 title={
-                  me.is_helper ? <Trans>Моя анкета</Trans> : <Trans>Хочу помогать</Trans>
+                  me.is_helper ? (
+                    <Trans>Мои услуги</Trans>
+                  ) : (
+                    <Trans>Предлагать услуги</Trans>
+                  )
                 }
                 hint={
                   me.helper_status === 'published' ? (
@@ -203,7 +166,6 @@ export default function ProfilePage() {
             </Rows>
           </>
         )}
-        <div style={{ height: 20 }} />
       </Screen>
       <TabBar />
     </>

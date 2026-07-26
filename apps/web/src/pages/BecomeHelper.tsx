@@ -2,6 +2,7 @@ import { Trans, useLingui } from '@lingui/react/macro';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { AppHeader } from '@/components/AppHeader';
 import { ClockIcon } from '@/components/icons';
 import { PriceUnitLabel, WorkFormatLabel } from '@/components/Phrase';
 import {
@@ -119,6 +120,7 @@ export default function BecomeHelperPage() {
 
   return (
     <Screen>
+      <AppHeader />
       <div style={{ paddingTop: 8 }}>
         <Heading>
           <Trans>Расскажи своими словами</Trans>

@@ -66,7 +66,12 @@
   --gap-row: 8px;
   --pad-screen: 16px;
   --h-row: 52px;
-  --h-tab: 78px;
+
+  /* What the tab bar actually occupies, home indicator included. A screen
+     reserves this much at the bottom, so the number has to be the real one:
+     when it was a flat 78px the bar's own inset was reserved a second time by
+     the page and the last row floated 40px above it. */
+  --h-tab: calc(62px + var(--tg-viewport-safe-area-inset-bottom, 0px));
 
   /* Telegram's header overlaps the page in fullscreen, so a screen's first
      element has to clear it. The device notch is handled once on #root. */

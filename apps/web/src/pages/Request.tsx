@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { openTelegramLink } from '@tma.js/sdk-react';
 import { useParams } from 'react-router';
 
+import { AppHeader } from '@/components/AppHeader';
 import { formatDay, PriceUnitLabel } from '@/components/Phrase';
 import {
   Action,
@@ -12,7 +13,6 @@ import {
   Card,
   Cards,
   Empty,
-  Head,
   Hint,
   Label,
   PriceView,
@@ -60,7 +60,7 @@ export default function RequestPage() {
   if (!validId) {
     return (
       <Screen>
-        <Head />
+        <AppHeader />
         <Empty title={<Trans>Такой заявки нет</Trans>} />
       </Screen>
     );
@@ -68,7 +68,7 @@ export default function RequestPage() {
 
   return (
     <Screen>
-      <Head />
+      <AppHeader />
       <Title>{request?.subject ?? <Trans>Заявка</Trans>}</Title>
 
       {request ? (

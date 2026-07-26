@@ -1,12 +1,14 @@
 import { Trans, useLingui } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
+import { AppHeader } from '@/components/AppHeader';
 import { iconForService, SearchIcon } from '@/components/icons';
 import { TabBar } from '@/components/TabBar';
 import {
   AvatarStack,
+  Cell,
   Count,
-  Head,
+  Grid,
   Label,
   Row,
   Rows,
@@ -16,7 +18,6 @@ import {
   Title,
   ui,
 } from '@/components/Ui';
-import { useTelegramUser } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
 import type { HomeSection } from '@/lib/types';
 
@@ -30,7 +31,6 @@ import type { HomeSection } from '@/lib/types';
 export default function HomePage() {
   const navigate = useNavigate();
   const { t } = useLingui();
-  const user = useTelegramUser();
 
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ['home'],
@@ -40,18 +40,7 @@ export default function HomePage() {
   return (
     <>
       <Screen withTabs>
-        <Head
-          right={
-            user?.photo_url ? (
-              <img
-                className={ui.avatar}
-                src={user.photo_url}
-                alt=""
-                style={{ width: 30, height: 30 }}
-              />
-            ) : null
-          }
-        />
+        <AppHeader />
         <Title>
           <Trans>Что нужно?</Trans>
         </Title>
@@ -66,9 +55,16 @@ export default function HomePage() {
           <span>{t`матан, čeština B2, přijímačky…`}</span>
         </button>
 
-        <Label>
-          <Trans>Люди</Trans>
-        </Label>
+        {/* "Люди" only earns its line when there is a second group under it to
+            be told apart from. On its own it labels the whole screen, which
+            the heading above already does. */}
+        {data && data.things.length > 0 ? (
+          <Label>
+            <Trans>Люди</Trans>
+          </Label>
+        ) : (
+          <div style={{ height: 18 }} />
+        )}
 
         {isPending ? (
           <SkeletonRows count={6} />
@@ -82,15 +78,20 @@ export default function HomePage() {
           </Rows>
         ) : (
           <>
-            <Rows>
-              {data.people.map((section) => (
-                <SectionRow
+            {/* The first one spans both columns. Seven categories in two
+                columns leaves the last one alone in its row, which reads as
+                something failing to load; giving the widest use of the catalog
+                the wide cell fixes the shape and says which it is. */}
+            <Grid>
+              {data.people.map((section, index) => (
+                <SectionCell
                   key={section.code}
                   section={section}
+                  wide={index === 0}
                   onClick={() => navigate(`/results?service=${section.code}`)}
                 />
               ))}
-            </Rows>
+            </Grid>
 
             {data.things.length > 0 ? (
               <>
@@ -99,10 +100,17 @@ export default function HomePage() {
                 </Label>
                 <Rows>
                   {data.things.map((section) => (
-                    <SectionRow
+                    <Row
                       key={section.code}
-                      section={section}
                       onClick={() => navigate(`/results?category=${section.code}`)}
+                      leading={
+                        <Tile tone={section.tone}>
+                          <SectionIcon section={section} />
+                        </Tile>
+                      }
+                      title={section.name}
+                      hint={section.hint}
+                      trailing={section.count ? <Count>{section.count}</Count> : null}
                     />
                   ))}
                 </Rows>
@@ -110,27 +118,42 @@ export default function HomePage() {
             ) : null}
           </>
         )}
-        <div style={{ height: 20 }} />
       </Screen>
       <TabBar />
     </>
   );
 }
 
-function SectionRow({ section, onClick }: { section: HomeSection; onClick: () => void }) {
+function SectionIcon({ section }: { section: HomeSection }) {
   const Icon = iconForService(section.code);
+  return <Icon size={19} />;
+}
+
+function SectionCell({
+  section,
+  wide,
+  onClick,
+}: {
+  section: HomeSection;
+  wide: boolean;
+  onClick: () => void;
+}) {
   return (
-    <Row
+    <Cell
+      wide={wide}
       onClick={onClick}
       leading={
         <Tile tone={section.tone}>
-          <Icon size={19} />
+          <SectionIcon section={section} />
         </Tile>
       }
       title={section.name}
       hint={section.hint}
       trailing={
-        section.avatars.length ? (
+        // Faces only in the wide cell. A narrow tile has room for a number or
+        // for three overlapping circles, and the number is the one that says
+        // something a person cannot already guess.
+        wide && section.avatars.length ? (
           <AvatarStack avatars={section.avatars} />
         ) : section.count ? (
           <Count>{section.count}</Count>

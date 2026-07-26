@@ -1,7 +1,6 @@
 import { createBrowserRouter } from 'react-router';
 import AskPage from '@/pages/Ask';
 import BecomeHelperPage from '@/pages/BecomeHelper';
-import ChatsPage from '@/pages/Chats';
 import HelperPage from '@/pages/Helper';
 import HomePage from '@/pages/Home';
 import LifePage from '@/pages/Life';
@@ -31,7 +30,6 @@ export const router = createBrowserRouter([
       { path: 'helper/:id', element: <HelperPage /> },
       { path: 'mine', element: <MinePage /> },
       { path: 'request/:id', element: <RequestPage /> },
-      { path: 'chats', element: <ChatsPage /> },
       { path: 'become-helper', element: <BecomeHelperPage /> },
       { path: 'my-helper', element: <MyHelperPage /> },
       { path: 'life', element: <LifePage /> },
