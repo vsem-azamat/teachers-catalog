@@ -5,9 +5,10 @@ Since 20 July 2026 Telegram only allows Mini App API calls from the app's own
 origin, so the page and the API it talks to have to be the same host anyway.
 """
 
+import asyncio
 import logging
 import secrets
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from aiogram.types import Update
 from fastapi import FastAPI, Header, Request, Response, status
@@ -22,12 +23,49 @@ from konnekt.db.session import dispose_engine
 log = logging.getLogger("konnekt")
 
 
+# Backoff for webhook registration: quick at first, because the usual cause is
+# a DNS record that has just been created, then patient, because the other
+# cause is Telegram itself and there is nothing to gain by hammering it.
+WEBHOOK_RETRY_DELAYS = (5, 15, 60, 180, 300)
+
+
+async def _register_webhook(app: FastAPI, bot, dispatcher, settings) -> None:
+    """Point Telegram at us, and keep trying until it agrees."""
+    url = f"{settings.public_base_url.rstrip('/')}{settings.webhook_path}"
+    attempt = 0
+    while True:
+        try:
+            await bot.set_webhook(
+                url=url,
+                secret_token=settings.webhook_secret,
+                # Only the update types something actually handles, so Telegram
+                # stops sending the rest.
+                allowed_updates=dispatcher.resolve_used_update_types(),
+                drop_pending_updates=True,
+            )
+            await configure(bot, settings)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            attempt += 1
+            delay = WEBHOOK_RETRY_DELAYS[min(attempt - 1, len(WEBHOOK_RETRY_DELAYS) - 1)]
+            app.state.webhook_status = f"failed: {exc}"
+            log.error("webhook not registered (attempt %s): %s", attempt, exc)
+            await asyncio.sleep(delay)
+        else:
+            app.state.webhook_status = "ok"
+            log.info("webhook set to %s", url)
+            return
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
     app.state.settings = settings
     app.state.bot = None
     app.state.dispatcher = None
+    app.state.webhook_task = None
+    app.state.webhook_status = "not configured"
 
     if settings.bot_token:
         bot = build_bot(settings)
@@ -43,17 +81,13 @@ async def lifespan(app: FastAPI):
                     "PUBLIC_BASE_URL is set but WEBHOOK_SECRET is not — refusing "
                     "to register a webhook nobody can authenticate"
                 )
-            await bot.set_webhook(
-                url=f"{settings.public_base_url.rstrip('/')}{settings.webhook_path}",
-                secret_token=settings.webhook_secret,
-                # Only the update types something actually handles, so Telegram
-                # stops sending the rest.
-                allowed_updates=dispatcher.resolve_used_update_types(),
-                drop_pending_updates=True,
-            )
-            await configure(bot, settings)
-            log.info(
-                "webhook set to %s%s", settings.public_base_url, settings.webhook_path
+            # In the background, and retried. Telegram refuses a webhook whose
+            # host does not resolve yet, and it has hour-long bad gateway
+            # windows of its own; neither is a reason for the catalog to be
+            # down. The state is reported by /healthz so a webhook that never
+            # registers is visible rather than merely quiet.
+            app.state.webhook_task = asyncio.create_task(
+                _register_webhook(app, bot, dispatcher, settings)
             )
         else:
             log.warning("PUBLIC_BASE_URL is unset — bot is loaded but not reachable")
@@ -62,6 +96,11 @@ async def lifespan(app: FastAPI):
 
     yield
 
+    task = app.state.webhook_task
+    if task is not None and not task.done():
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
     if app.state.bot is not None:
         await app.state.dispatcher.emit_shutdown(
             bot=app.state.bot, dispatcher=app.state.dispatcher

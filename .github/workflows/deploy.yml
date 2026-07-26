@@ -322,13 +322,21 @@ jobs:
           PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
         run: |
           set -euo pipefail
-          info="$(curl --fail --silent --max-time 20 \
-            "https://api.telegram.org/bot$BOT_TOKEN/getWebhookInfo")"
-          url="$(echo "$info" | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"].get("url",""))')"
+          # Registration is asynchronous and retried by the application, so
+          # this polls rather than reading once: a webhook that takes a few
+          # seconds is normal, one that never arrives is not.
+          for attempt in $(seq 1 10); do
+            info="$(curl --fail --silent --max-time 20 \
+              "https://api.telegram.org/bot$BOT_TOKEN/getWebhookInfo")"
+            url="$(echo "$info" | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"].get("url",""))')"
+            [ "$url" = "$PUBLIC_HOST/tg/webhook" ] && break
+            echo "  attempt $attempt: Telegram points at '${url:-<none>}'"
+            sleep 6
+          done
           err="$(echo "$info" | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"].get("last_error_message",""))')"
           echo "webhook: ${url:-<none>}"
           [ "$url" = "$PUBLIC_HOST/tg/webhook" ] \
-            || { echo "FATAL: Telegram points at '${url:-<none>}'" >&2; exit 1; }
+            || { echo "FATAL: Telegram never accepted the webhook" >&2; exit 1; }
           # A stale error from before this deployment is not a failure, but an
           # empty webhook with a fresh error certainly is.
           [ -z "$err" ] || echo "note: Telegram last reported '$err'"

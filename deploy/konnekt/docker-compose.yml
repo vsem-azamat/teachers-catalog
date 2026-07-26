@@ -39,6 +39,9 @@ services:
     image: ghcr.io/${GHCR_OWNER}/konnekt-api:${IMAGE_TAG}
     command: ["alembic", "upgrade", "head"]
     restart: "no"
+    # Behind a profile so `up` leaves it alone. `compose run` enables the
+    # profile of whatever it is asked to run, so the deploy still gets it.
+    profiles: ["tools"]
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     depends_on:
