@@ -21,6 +21,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 COPY src ./src
 COPY alembic.ini ./
+# The reference data ships with the code that reads it: seeding production is
+# not a development-only task, and a seed file that drifts from its loader is
+# worse than no seed file.
+COPY seeds ./seeds
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev
 
@@ -41,6 +45,7 @@ WORKDIR /app
 COPY --from=builder --chown=konnekt:konnekt /app/.venv /app/.venv
 COPY --from=builder --chown=konnekt:konnekt /app/src /app/src
 COPY --from=builder --chown=konnekt:konnekt /app/alembic.ini /app/alembic.ini
+COPY --from=builder --chown=konnekt:konnekt /app/seeds /app/seeds
 
 USER konnekt
 EXPOSE 8000

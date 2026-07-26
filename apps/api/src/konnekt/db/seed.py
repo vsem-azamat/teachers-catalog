@@ -30,7 +30,22 @@ from konnekt.db.models import (
 from konnekt.db.models.enums import InstitutionKind, NodeKind, UiLang
 from konnekt.db.session import dispose_engine, get_sessionmaker
 
-SEEDS_DIR = Path(__file__).resolve().parents[3] / "seeds"
+
+def _find_seeds_dir() -> Path:
+    """Locate the seed files by searching upward, not by counting parents.
+
+    Three levels up is right in the checkout and right in the image, but only
+    by coincidence — the same fixed-depth assumption in the settings module
+    raised on import inside Docker. Searching is cheap and cannot be wrong.
+    """
+    for directory in Path(__file__).resolve().parents:
+        candidate = directory / "seeds"
+        if candidate.is_dir():
+            return candidate
+    return Path(__file__).resolve().parents[3] / "seeds"
+
+
+SEEDS_DIR = _find_seeds_dir()
 
 LANGS: tuple[UiLang, ...] = (UiLang.RU, UiLang.CS, UiLang.EN, UiLang.UK)
 
