@@ -41,6 +41,19 @@ If anything fails before step 6, the previous `.env` is restored and the
 previous stack is brought back up. After step 6 the release is committed;
 recovering from a bad release is `Rollback production`.
 
+### Reference data does not ship with the code
+
+Step 4 runs Alembic and nothing else. `konnekt.db.seed` — subjects,
+institutions, service types, languages — is a development and CI convenience;
+production was seeded once and is never re-seeded.
+
+So a change to `seed.py` alone reaches every fresh checkout and never reaches
+the catalog people are using. Anything that has to take effect in production
+needs a migration carrying the same change, and the migration writes the
+values out rather than importing the constant: a migration describes the
+database at one moment, and one that follows a constant changes meaning the
+next time that constant does.
+
 ## Rolling back
 
 Run the **Rollback production** workflow with a tag such as `prod-1a2b3c4`. It
