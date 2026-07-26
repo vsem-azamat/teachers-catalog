@@ -118,10 +118,10 @@ was typed as `object`, which meant every read of `.lower` and `.upper` was
 unverifiable, and once it was a real `Range[datetime]` the bounds turned out to
 be optional in the type and non-optional only by a database constraint.
 
-### The docs contract
+### The development loop
 
 A separate CI job runs [stdd](https://github.com/vsem-azamat/stdd), which
-guards two things this repository cares about because most of the code in it
+guards the things this repository cares about because most of the code in it
 is written with an agent.
 
 The first is that `docs/` and this file describe the present. An agent greps
@@ -136,9 +136,18 @@ reads the live body — not the webhook payload, which freezes at trigger time �
 and verifies the paths it claims against the actual diff. Draft the line with
 `npx @stdd/cli evidence --base origin/main`.
 
-Only that contract is adopted. stdd also offers a recorded loop and an
-orchestration layer with plans, slices and delegated review; this is one
-person and one agent, and neither has a problem those solve yet.
+The third is the loop itself. `stdd task start` opens a boundary that carries
+across prompts, and `stdd status --local` answers the one question an agent
+cannot answer about itself: whether the docs decision, the genuine red, the
+implementation and the verification have actually happened for the work in
+this checkout, rather than having been intended. `/stdd-start-change` routes a
+request to the smallest workflow that fits, `/stdd-implement` runs one slice,
+`/stdd-finish-change` closes it against terminal CI. The managed block in
+`CLAUDE.md` is what points an agent at all of it.
+
+The loop is mechanical on purpose. Every step in it is something a careful
+person does anyway and forgets under pressure — and the step that gets
+forgotten most is the last one, that green CI is not proof a deploy worked.
 
 ## The four languages
 

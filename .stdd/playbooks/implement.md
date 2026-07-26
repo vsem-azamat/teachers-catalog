@@ -1,0 +1,26 @@
+---
+name: stdd-implement
+description: Execute one agreed behavior slice through docs, genuine red, implementation, and fresh verification
+when: The behavior contract is agreed and production changes are ready to begin.
+---
+
+# Implement
+
+Run one narrow vertical slice at a time:
+
+1. Record the docs decision with `stdd docs`. For changed behavior, edit the
+   canonical docs first and record `updated-first`.
+2. Add the smallest test that proves the agreed behavior. Run it through
+   `stdd red -- <command>` and confirm the failure is genuine.
+3. Implement only enough production code to satisfy that contract.
+4. Run the focused and affected verification through
+   `stdd verify -- <command>`.
+5. Check `stdd status --local`; a later checkout change makes verification
+   stale and requires another verify.
+
+Frontend visual composition follows the method's design-first exception.
+Behavior embedded in the UI still follows the loop.
+
+Do not batch unrelated rules behind one red. If the plan has multiple items,
+update its checkboxes only after their named evidence exists.
+
