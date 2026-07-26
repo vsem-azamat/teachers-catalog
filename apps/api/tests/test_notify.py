@@ -168,7 +168,7 @@ def test_nobody_is_written_to_who_never_started_the_bot() -> None:
     block — losing the notification *and* recording them as having blocked a
     bot they never met.
     """
-    from konnekt.api.v1.routes import _queue_notification
+    from konnekt.api.v1.requests import _queue_notification
 
     recorder = _Recorder()
     _queue_notification(
@@ -178,7 +178,7 @@ def test_nobody_is_written_to_who_never_started_the_bot() -> None:
 
 
 def test_nobody_is_written_to_who_blocked_the_bot() -> None:
-    from konnekt.api.v1.routes import _queue_notification
+    from konnekt.api.v1.requests import _queue_notification
 
     recorder = _Recorder()
     _queue_notification(
@@ -189,7 +189,7 @@ def test_nobody_is_written_to_who_blocked_the_bot() -> None:
 
 def test_no_task_is_queued_when_there_is_no_bot() -> None:
     """The API runs without a token locally; the action must still succeed."""
-    from konnekt.api.v1.routes import _queue_notification
+    from konnekt.api.v1.requests import _queue_notification
 
     recorder = _Recorder()
     _queue_notification(recorder, _http(), recipient=_person(), text="привет")
@@ -202,7 +202,7 @@ def test_a_reachable_person_with_a_bot_is_written_to() -> None:
     Without it the three tests above pass for the wrong reason — there is no
     bot in any of them, so they would still pass with the guard deleted.
     """
-    from konnekt.api.v1.routes import _queue_notification
+    from konnekt.api.v1.requests import _queue_notification
 
     recorder = _Recorder()
     _queue_notification(
