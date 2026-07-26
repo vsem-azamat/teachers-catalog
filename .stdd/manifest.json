@@ -1,21 +1,28 @@
 {
 	"generatedBy": "stdd",
-	"version": "0.7.0",
+	"version": "0.8.0",
 	"files": {
-		".stdd/method.md": "sha256:b037242d6421961c7e330fd99009d36140d9b1f75367127968100c6eb226dde8",
+		".stdd/method.md": "sha256:6221d3f5177906e0e40dd6183a349ae0bb80535b77d9e0c9cb39a67b62c92611",
 		".stdd/playbooks/brainstorming.md": "sha256:084b6449355415ecdeb141e3f0d648dc87cda0c619afa4f7257eba06e8f5bebb",
 		".stdd/playbooks/debugging.md": "sha256:ebe8443ffac2e592cb735288e734684c255635f7cc994a57c4dc17502db5c288",
 		".stdd/playbooks/delegate-slice.md": "sha256:58ac67c9353968249281297df8f342a5c757787285405045868f8f48933589dd",
+		".stdd/playbooks/finish-change.md": "sha256:b223e6a40e1429496bb96ff196ec7d30404c1d951ba5fc6455fa1f1c7802605b",
+		".stdd/playbooks/implement.md": "sha256:48044e1cdf3eaca43b58d0f21ca37955bf61dfffb762738dddf87c6eff9fe8cf",
 		".stdd/playbooks/investigation.md": "sha256:d537ab7a9b02eac4d1bcda068e3860cec3655b266a58cf8b65a812bba5d1fa43",
-		".stdd/playbooks/planning.md": "sha256:71932b8478df10bd4a9d556bfd41ab1af5e96a761531706c57f1e0bc5ad490a5",
+		".stdd/playbooks/planning.md": "sha256:f7234508ddfeffb044c2dcb0a2964142ea37b7eb5113c811e37d9f3f15b1f856",
 		".stdd/playbooks/pr-green.md": "sha256:d66bf88b95eda0cbff55b873931c4a3571e712292cda63cf814c92d3e1d28a61",
-		".claude/skills/stdd-brainstorming/SKILL.md": "sha256:9f07b08f52381ba0e13c168f7c92f70a45cb30e00516644bc5cb8725db643017",
-		".claude/skills/stdd-debugging/SKILL.md": "sha256:133e8515179c5bfd24689699abea5062791909456d0d5611cf53499e171abff6",
-		".claude/skills/stdd-delegate-slice/SKILL.md": "sha256:8ab168a679f51e6bc0f10cd62fbe586a9754e9de77610574da05314d37f08540",
-		".claude/skills/stdd-investigation/SKILL.md": "sha256:e6eb1bc0c2e25accc145fcf264fea4f57366f42abee35e1ef3a7349cfe52e848",
-		".claude/skills/stdd-planning/SKILL.md": "sha256:fb00275fcfefc5096cbb4803e45d4dce6e03317131d669b8d7da0db9f2af10c3",
-		".claude/skills/stdd-pr-green/SKILL.md": "sha256:fd9b9d4b29b7a9cf79c2dca03a068c7457b31b48a91bc93d11041a072093f33f",
-		".github/workflows/stdd.yml": "sha256:591ee6b3be2129e95d1d0c0724c0daa63d06e0bcc30d2c17268eb8fc9b918166"
+		".stdd/playbooks/start-change.md": "sha256:f7df196485e0ffde480cc5b4715afa399e512a22b5a47a62700dba1f41360043",
+		".claude/skills/stdd-brainstorming/SKILL.md": "sha256:6da50340183d820c1deb586447c1a6dc37288fcfa32c4a71efdfe627f8893179",
+		".claude/skills/stdd-debugging/SKILL.md": "sha256:80a7c69687c6a7ab698f28c0a393d3220581263f1a32526317a46f780decd33c",
+		".claude/skills/stdd-delegate-slice/SKILL.md": "sha256:bced172bb7e98c7088cd61425b84e658e56d18c1bf6c547ce53da0ae46cd38de",
+		".claude/skills/stdd-finish-change/SKILL.md": "sha256:a7504021f3608ace280ac99e4285bbc0c7cf2596b61032abd634edfe450a2b7b",
+		".claude/skills/stdd-implement/SKILL.md": "sha256:4fb60de773e3bd4e47c78cca79358d0005484faf975b7b9dc36fe00782781ad7",
+		".claude/skills/stdd-investigation/SKILL.md": "sha256:19f5657eb2c317f3d542bc8a55fe70f250ed9f6d21c40c6f9fb831b33bf363b2",
+		".claude/skills/stdd-planning/SKILL.md": "sha256:e663a7e3aabe5c4a08f120986dd97eab5fb6846c517efaf06a0a7509429b65cd",
+		".claude/skills/stdd-pr-green/SKILL.md": "sha256:850f325bdce9eaeab1f54432dd6d16143cc82f3a083d9daffbe5afcc6cb93546",
+		".claude/skills/stdd-start-change/SKILL.md": "sha256:acbee11c798c8ce3a1749b80aa612d29968dc824f3447918eaad36d6baf1a1dc",
+		".stdd/CLAUDE-snippet.md": "sha256:b9652bff9991a3416bcfd8f920d0723d97150269267415418a22d33b65303c60",
+		".github/workflows/stdd.yml": "sha256:7a107d7cff2b38b355c4a65da610a988b2237914d934f11cd1737a889b959b3d"
 	},
 	"targets": {
 		"tools": [
