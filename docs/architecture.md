@@ -136,9 +136,12 @@ hides the bugs this rule exists to prevent.
 Written down because an agent greps this tree and builds against what it
 finds, and a rule with silent exceptions is worse than no rule.
 
-- **Ten endpoints write to the database directly**, without a service. The
-  largest is `requests.request_feed`, which holds the matching and ranking
-  algorithm.
+- **Most writes still happen in route bodies**, without a service: the whole
+  request lifecycle (`create`, `respond`, `accept`, `decline`, `close`, and
+  marking answers read), `browse.start_contact`, `me.update_me`, and the event
+  logging behind `home`, `helper_detail` and `search.parse`. Named rather than
+  counted — a number here is one nobody remembers to decrement, and this one
+  had already drifted twice.
 - **`services/` imports `api/schemas`,** which points the domain layer at the
   HTTP layer. Moving `schemas.py` to the package root fixes it.
 - **`services/catalog._localised` is imported across the package boundary** by
