@@ -48,7 +48,9 @@ def payload(
 def settings(**overrides) -> Settings:
     # _env_file=None so the developer's own .env cannot change the outcome.
     values = {"bot_token": BOT_TOKEN, "allow_unsigned_init_data": False} | overrides
-    return Settings(_env_file=None, **values)  # type: ignore[call-arg]
+    # ty: ignore[invalid-argument-type] — a **dict of mixed value types cannot
+    # be matched against the individual fields it is spread over.
+    return Settings(_env_file=None, **values)
 
 
 def test_a_correctly_signed_payload_is_accepted():

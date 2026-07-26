@@ -69,5 +69,7 @@ async def test_a_retired_language_disappears_from_the_endpoint(
     body = (await client.get("/api/v1/taxonomy/languages", headers=auth_header())).json()
 
     assert "sk" not in {row["code"] for row in body}
-    still_there = await session.scalars(select(Language.code).where(Language.code == "sk"))
+    still_there = await session.scalars(
+        select(Language.code).where(Language.code == "sk")
+    )
     assert still_there.all() == ["sk"]

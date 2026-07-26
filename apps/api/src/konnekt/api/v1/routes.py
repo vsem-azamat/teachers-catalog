@@ -279,15 +279,16 @@ async def subjects(
         .limit(limit)
     )
     rows = (await session.scalars(stmt)).all()
-    child_counts = dict(
-        (
+    child_counts = {
+        parent_id: count
+        for parent_id, count in (
             await session.execute(
                 select(Subject.parent_id, func.count(Subject.id))
                 .where(Subject.parent_id.in_([r.id for r in rows] or [0]))
                 .group_by(Subject.parent_id)
             )
         ).all()
-    )
+    }
     counts = await _offer_counts(session, [r.id for r in rows])
     return [
         SubjectOut(
@@ -512,7 +513,10 @@ async def search_offers(
     service_type_id: int | None = None,
     max_price: float | None = None,
     langs: list[str] = Query(default_factory=list),
-    sort: str = Query(default="relevance", pattern="^(relevance|price|available)$"),
+    # The literal rather than a string with a pattern: it is the same
+    # constraint, it reaches OpenAPI as an enum, and it is the type the
+    # catalog's own signature already asks for.
+    sort: catalog.SortKey = Query(default="relevance"),
     limit: int = Query(default=20, ge=1, le=50),
     offset: int = Query(default=0, ge=0),
 ) -> SearchOut:
@@ -525,7 +529,7 @@ async def search_offers(
         service_type_id=service_type_id,
         max_price=max_price,
         langs=langs,
-        sort=sort,  # type: ignore[arg-type]
+        sort=sort,
         limit=limit,
         offset=offset,
     )
@@ -751,15 +755,16 @@ async def my_helper(session: SessionDep, lang: LangDep, user: UserDep) -> MyHelp
     institution_names = await _names_by_id(
         session, Institution, [o.institution_id for o in offers], lang
     )
-    service_codes = dict(
-        (
+    service_codes = {
+        service_type_id: code
+        for service_type_id, code in (
             await session.execute(
                 select(ServiceType.id, ServiceType.code).where(
                     ServiceType.id.in_({o.service_type_id for o in offers} or {0})
                 )
             )
         ).all()
-    )
+    }
 
     return MyHelperOut(
         exists=True,

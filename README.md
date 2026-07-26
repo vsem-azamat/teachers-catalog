@@ -90,15 +90,29 @@ CI builds images, pushes them to GHCR and deploys over SSH to a shared VPS,
 behind Cloudflare and a shared Caddy. The runbook, the one-time setup and the
 two ways to break production are in [docs/deploy.md](docs/deploy.md).
 
-## Testing
+## Checks
 
 ```sh
-make test
+make check                # everything CI runs
+make test                 # just the API suite
 ```
 
 Tests run against a real Postgres, each inside a transaction that is rolled
 back. The interesting logic here is SQL — trigram matching, word-boundary
 synonym matching, exclusion constraints — and none of it survives being mocked.
+
+The tooling is [uv](https://docs.astral.sh/uv/) and
+[ruff](https://docs.astral.sh/ruff/) plus [ty](https://docs.astral.sh/ty/) on
+the API, [Biome](https://biomejs.dev/), TypeScript and
+[Vite](https://vite.dev/) on the mini app, and `lingui compile --strict` so an
+untranslated string fails the build rather than falling back to Russian.
+
+`ty` is in preview, so its version is pinned in the lockfile like everything
+else: a checker that changes its mind on an unrelated push is a checker people
+learn to ignore. It earned its place immediately — `availability_slots.period`
+was typed as `object`, which meant every read of `.lower` and `.upper` was
+unverifiable, and once it was a real `Range[datetime]` the bounds turned out to
+be optional in the type and non-optional only by a database constraint.
 
 ## The four languages
 

@@ -44,7 +44,9 @@ async def test_a_draft_reads_back_with_ids_and_names(
     subject = await session.scalar(
         select(Subject).where(Subject.slug == "matematicka-analyza")
     )
-    service = await session.scalar(select(ServiceType).where(ServiceType.code == "tutoring"))
+    service = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "tutoring")
+    )
     assert subject is not None and service is not None
 
     # Register the caller, then hand them a draft with one offer.
@@ -105,7 +107,7 @@ async def test_publishing_without_a_single_subject_is_allowed(
 async def test_hiding_a_published_profile_keeps_it_readable(
     client: AsyncClient,
 ) -> None:
-    """"Hide me" has to take it out of the catalog, not out of the person's hands."""
+    """ "Hide me" has to take it out of the catalog, not out of the person's hands."""
     await client.put(
         "/api/v1/helper",
         headers=auth_header(OWNER),

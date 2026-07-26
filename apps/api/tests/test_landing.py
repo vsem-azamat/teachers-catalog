@@ -6,11 +6,11 @@ build. That makes this the only unauthenticated route in the API, which is
 worth pinning down.
 """
 
-from collections.abc import AsyncIterator
 from types import SimpleNamespace
 
 import pytest
 import pytest_asyncio
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,7 +40,7 @@ async def app_with(session: AsyncSession):
     from konnekt.db.session import session_scope
     from konnekt.main import create_app
 
-    async def build(bot) -> AsyncIterator[tuple[AsyncClient, object]]:
+    async def build(bot) -> FastAPI:
         app = create_app()
         app.dependency_overrides[session_scope] = lambda: session
         app.state.bot = bot
@@ -49,7 +49,7 @@ async def app_with(session: AsyncSession):
     return build
 
 
-async def _client(app) -> AsyncClient:
+async def _client(app: FastAPI) -> AsyncClient:
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 

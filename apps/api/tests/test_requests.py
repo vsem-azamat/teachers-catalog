@@ -50,6 +50,7 @@ async def test_draft_helper_may_look_but_not_answer(
     created = await post_request(client, "нужна помощь с матаном, ЧВУТ")
     helper = await helper_factory(tg_id=HELPER)
     profile = await session.get(HelperProfile, helper.id)
+    assert profile is not None
     profile.status = PublishStatus.DRAFT
     await session.commit()
 
@@ -232,6 +233,7 @@ async def test_an_expired_request_cannot_be_answered(
     await helper_factory(tg_id=HELPER)
     created = await post_request(client, "матан, экзамен завтра")
     request = await session.get(HelpRequest, created["id"])
+    assert request is not None
     request.expires_at = datetime.now(UTC) - timedelta(days=1)
     await session.commit()
 
@@ -288,6 +290,7 @@ async def test_accepting_records_a_contact_and_leaves_the_request_open(
     assert accepted.json()["status"] == "accepted"
 
     student = await session.scalar(select(User).where(User.tg_id == STUDENT))
+    assert student is not None
     contact = await session.scalar(
         select(Contact).where(
             Contact.student_id == student.id, Contact.helper_id == helper.id
@@ -298,6 +301,7 @@ async def test_accepting_records_a_contact_and_leaves_the_request_open(
 
     # Needing two people for two subjects is ordinary.
     request = await session.get(HelpRequest, created["id"])
+    assert request is not None
     await session.refresh(request)
     assert request.status is RequestStatus.OPEN
 
@@ -358,6 +362,7 @@ async def test_a_banned_profile_cannot_read_the_feed(
     await post_request(client, "матан, ЧВУТ")
     helper = await helper_factory(tg_id=HELPER)
     profile = await session.get(HelperProfile, helper.id)
+    assert profile is not None
     profile.status = PublishStatus.BANNED
     await session.commit()
 
@@ -411,6 +416,7 @@ async def test_accepting_twice_records_one_contact(
         assert accepted.json()["status"] == "accepted"
 
     student = await session.scalar(select(User).where(User.tg_id == STUDENT))
+    assert student is not None
     contacts = await session.scalar(
         select(func.count(Contact.id)).where(
             Contact.student_id == student.id, Contact.helper_id == helper.id
