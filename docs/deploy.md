@@ -133,6 +133,10 @@ the webhook and holds aiogram's dispatcher state. Two workers register the
 webhook twice and keep half the state in the wrong process. The Dockerfile
 pins `--workers 1`; leave it there until the bot moves out of the API process.
 
+The connection pool is per process, so that pin is also what makes
+`db_pool_size` and `db_max_overflow` the whole budget against Postgres —
+15 connections by default. Raising the worker count multiplies it.
+
 ## Backups
 
 A sidecar runs `pg_dump --format=custom` daily at `BACKUP_HOUR_UTC` into

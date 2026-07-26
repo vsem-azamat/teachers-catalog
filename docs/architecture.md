@@ -66,6 +66,26 @@ Screens are assembled server-side — the client renders what it is given rather
 than joining data itself — so a schema often mirrors a screen, and that is
 intended.
 
+## One engine, one pool
+
+`db/session.py` holds the engine and the sessionmaker as module singletons,
+created once and lazily. Not on `app.state`, deliberately: the API is not the
+only door. The bot's middleware, the notifier's background task and the seed
+scripts all need a session and none of them has a FastAPI app to reach
+through, and a second engine would double the connection count against
+Postgres without anybody deciding to.
+
+A session is not a connection. Each request gets its own `AsyncSession`; the
+connection underneath it is checked out on the first query and handed back
+when the session closes, so a screen that runs four queries uses one
+connection, not four. FastAPI caches dependencies within a request, so
+`SessionDep`, `UserDep` and `LangDep` all resolve to the same session.
+
+`db_pool_size` and `db_max_overflow` are therefore the whole connection budget
+for the process — and the Dockerfile pins `--workers 1`, so process and
+deployment are the same thing here. Raise them together with the worker count,
+never one without looking at the other.
+
 ## One transaction per request
 
 **Services never commit. The request commits.**

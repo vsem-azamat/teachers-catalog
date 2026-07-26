@@ -15,14 +15,28 @@ _sessionmaker: async_sessionmaker[AsyncSession] | None = None
 
 
 def get_engine() -> AsyncEngine:
+    """The one engine, and with it the one connection pool.
+
+    A module-level singleton rather than something on `app.state`, because the
+    API is not the only door: the bot's middleware, the notifier's background
+    task and the seed scripts all need a session and none of them has a
+    FastAPI app to reach through. One pool for all of them is the point — a
+    second engine would double the connection count against Postgres without
+    anybody deciding to.
+
+    A session is not a connection. `session_scope` makes one per request; the
+    connection underneath it is checked out of this pool on the first query
+    and handed back when the session closes.
+    """
     global _engine
     if _engine is None:
         settings = get_settings()
         _engine = create_async_engine(
             settings.sqlalchemy_url,
             echo=settings.db_echo,
-            pool_size=5,
-            max_overflow=10,
+            pool_size=settings.db_pool_size,
+            max_overflow=settings.db_max_overflow,
+            pool_recycle=settings.db_pool_recycle_seconds,
             pool_pre_ping=True,
         )
     return _engine

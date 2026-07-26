@@ -47,6 +47,18 @@ class Settings(BaseSettings):
     database_url: str | None = None
     db_echo: bool = False
 
+    # One pool per process, and the Dockerfile pins `--workers 1`, so these are
+    # the whole connection budget: at most `db_pool_size + db_max_overflow`
+    # against Postgres. Raise them together with the worker count, never one
+    # without looking at the other.
+    db_pool_size: int = 5
+    db_max_overflow: int = 10
+    # Postgres and anything in front of it will close an idle connection
+    # eventually and say nothing. pool_pre_ping catches that on checkout at the
+    # cost of a round trip; recycling retires connections before they get old
+    # enough for it to matter.
+    db_pool_recycle_seconds: int = 1800
+
     @computed_field
     @property
     def sqlalchemy_url(self) -> str:
