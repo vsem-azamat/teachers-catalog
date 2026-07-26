@@ -30,7 +30,6 @@ async def home(session: SessionDep, lang: LangDep, user: UserDep) -> HomeOut:
     # The first screen stands in for "opened the app". Logging every request
     # would drown the signal in taxonomy fetches.
     await log_event(session, user.id, UserEventKind.APP_OPEN, lang=lang.value)
-    await session.commit()
     return HomeOut(people=people, things=things)
 
 
@@ -42,7 +41,6 @@ async def helper_detail(
     if detail is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "no such published profile")
     await log_event(session, user.id, UserEventKind.HELPER_VIEW, helper_id=user_id)
-    await session.commit()
     return detail
 
 
@@ -78,6 +76,5 @@ async def start_contact(
 
     session.add(Contact(student_id=user.id, helper_id=user_id, intro_text=None))
     await log_event(session, user.id, UserEventKind.CONTACT, helper_id=user_id)
-    await session.commit()
 
     return ContactOut(telegram_url=f"https://t.me/{helper.user.tg_username}")

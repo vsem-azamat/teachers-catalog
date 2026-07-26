@@ -10,7 +10,13 @@ from httpx import AsyncClient
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from konnekt.db.models import Contact, HelperProfile, HelpRequest, User
+from konnekt.db.models import (
+    Contact,
+    HelperProfile,
+    HelpRequest,
+    RequestResponse,
+    User,
+)
 from konnekt.db.models.enums import PublishStatus, RequestStatus
 
 from .conftest import auth_header
@@ -455,3 +461,40 @@ async def test_the_feed_does_not_say_how_many_others_answered(
     [row] = [item for item in feed if item["id"] == created["id"]]
     assert "responses_count" not in row
     assert "responders" not in row
+
+
+# ── the request is one transaction ──────────────────────────────────────
+
+
+async def test_a_failure_after_the_write_leaves_nothing_behind(
+    client: AsyncClient, session: AsyncSession, helper_factory, monkeypatch
+) -> None:
+    """Answering a request is all of it or none of it.
+
+    The row is written first and the notification to the author is composed
+    afterwards, so a failure in between used to leave an answer nobody was
+    told about — the helper saw a 500 and assumed it had not gone through.
+    """
+    from konnekt.api.v1 import requests as requests_api
+
+    await helper_factory(tg_id=HELPER)
+    created = await post_request(client, "матан")
+
+    def explode(*args, **kwargs):
+        raise RuntimeError("rendering the notification blew up")
+
+    monkeypatch.setattr(requests_api, "_queue_notification", explode)
+
+    with pytest.raises(RuntimeError):
+        await client.post(
+            f"/api/v1/requests/{created['id']}/respond",
+            json={"message": "могу помочь с этим"},
+            headers=helper_header(),
+        )
+
+    answered = await session.scalar(
+        select(func.count())
+        .select_from(RequestResponse)
+        .where(RequestResponse.request_id == created["id"])
+    )
+    assert answered == 0

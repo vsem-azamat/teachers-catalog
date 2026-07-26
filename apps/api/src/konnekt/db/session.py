@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -37,9 +38,41 @@ def get_sessionmaker() -> async_sessionmaker[AsyncSession]:
     return _sessionmaker
 
 
-async def session_scope() -> AsyncIterator[AsyncSession]:
-    async with get_sessionmaker()() as session:
+@asynccontextmanager
+async def unit_of_work(session: AsyncSession) -> AsyncIterator[AsyncSession]:
+    """Commit on the way out, roll back on a raise.
+
+    Separate from `session_scope` so the test fixture can wrap its own session
+    in the same rule rather than reimplementing it — a fixture more forgiving
+    than production hides exactly the bugs this exists to prevent.
+    """
+    try:
         yield session
+    except Exception:
+        await session.rollback()
+        raise
+    else:
+        await session.commit()
+
+
+async def session_scope() -> AsyncIterator[AsyncSession]:
+    """One transaction per request.
+
+    A unit of work rather than a bare provider. Without it every endpoint has
+    to remember to put its commit after the last thing that can fail, and the
+    one that did not left an answer in the database that its author was never
+    told about.
+
+    Depended on with `scope="function"`: FastAPI runs the teardown of a
+    request-scoped dependency after the response has been sent and after its
+    background tasks have run, which would mean notifying somebody about a
+    write before it committed, and answering a success to a request whose
+    commit then failed. The function stack closes earlier — after the handler
+    has returned and its response model has been validated, and before the
+    response is sent — so a serialisation error rolls back too.
+    """
+    async with get_sessionmaker()() as session, unit_of_work(session) as scoped:
+        yield scoped
 
 
 async def dispose_engine() -> None:

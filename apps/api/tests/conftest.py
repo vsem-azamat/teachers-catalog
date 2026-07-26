@@ -69,11 +69,19 @@ async def session(engine) -> AsyncIterator[AsyncSession]:
 @pytest_asyncio.fixture
 async def client(session: AsyncSession) -> AsyncIterator[AsyncClient]:
     """An HTTP client whose requests share the test's rolled-back session."""
-    from konnekt.db.session import session_scope
+    from konnekt.db.session import session_scope, unit_of_work
     from konnekt.main import create_app
 
     app = create_app()
-    app.dependency_overrides[session_scope] = lambda: session
+
+    # The same rule the real scope applies, not a copy of it. The whole test
+    # still disappears: this session is joined to an outer transaction as a
+    # savepoint, so its commits end only the inner one.
+    async def scope():
+        async with unit_of_work(session):
+            yield session
+
+    app.dependency_overrides[session_scope] = scope
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as http:
