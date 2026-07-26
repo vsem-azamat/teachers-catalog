@@ -7,7 +7,7 @@ accepted, closed — and every step of it notifies somebody.
 from datetime import UTC, datetime, time, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, status
-from sqlalchemy import false, func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import selectinload
 
@@ -34,7 +34,6 @@ from konnekt.db.models import (
     HelperProfile,
     HelpRequest,
     Institution,
-    Offer,
     RequestResponse,
     ServiceType,
     Subject,
@@ -49,6 +48,7 @@ from konnekt.db.models.enums import (
     UserEventKind,
 )
 from konnekt.services import notify, parser
+from konnekt.services import requests as requests_service
 from konnekt.services.catalog import _localised, avatar_for
 from konnekt.services.notify import quote
 from konnekt.services.people import log_event
@@ -149,139 +149,38 @@ async def request_feed(
     user: UserDep,
     limit: int = Query(20, ge=1, le=50),
 ) -> list[FeedRequestOut]:
-    """Open requests, for someone who could answer them.
+    """Open requests, for someone who could answer them."""
+    rows = await requests_service.feed_for(session, user=user, limit=limit)
 
-    Visible to any helper profile including a draft one: seeing that four
-    people want help with the thing you teach is the argument for finishing
-    the profile, and withholding it until published gets that backwards. What
-    a draft cannot do is answer — see `respond_to_request`.
-    """
-    helper = await session.get(HelperProfile, user.id)
-    if helper is None:
-        raise HTTPException(
-            status.HTTP_403_FORBIDDEN, "only helpers can see incoming requests"
+    rendered = await _requests_out(session, [row.request for row in rows], lang)
+    subjects_by_id = {item.id: item.subject for item in rendered}
+
+    return [
+        FeedRequestOut(
+            # Only the shared fields. `responses_count` and `responders` are
+            # not on FeedRequestOut at all — see the schema.
+            **base.model_dump(exclude={"responders", "responses_count"}),
+            author=avatar_for(row.author),
+            author_name=row.author.first_name,
+            budget=(
+                Price(
+                    amount=float(row.request.budget_max),
+                    currency=row.request.budget_currency,
+                    unit=row.request.budget_unit or PriceUnit.HOUR,
+                )
+                if row.request.budget_max is not None
+                else None
+            ),
+            langs=list(row.request.langs),
+            reason=_feed_reason(
+                on_subject=row.on_subject,
+                on_institution=row.on_institution,
+                on_service=row.on_service,
+                subject=subjects_by_id.get(row.request.id),
+            ),
         )
-    # A ban has to cover this too. The feed carries every author's name, photo,
-    # full text and budget — for someone banned for harassment it is a target
-    # list, and being unable to answer in-app does not help if the reason they
-    # were banned is that they contact people outside it.
-    if helper.status is PublishStatus.BANNED:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "this profile is banned")
-
-    axes = (
-        await session.execute(
-            select(Offer.subject_id, Offer.institution_id, Offer.service_type_id).where(
-                Offer.helper_id == user.id, Offer.is_active.is_(True)
-            )
-        )
-    ).all()
-    subject_ids = {row[0] for row in axes if row[0]}
-    institution_ids = {row[1] for row in axes if row[1]}
-    service_ids = {row[2] for row in axes if row[2]}
-    # Their own faculty counts too — a request from your own school is
-    # relevant whether or not you have listed an offer against it.
-    if user.institution_id:
-        institution_ids.add(user.institution_id)
-
-    def matches(column, ids: set[int]):
-        """Does this request hit one of the helper's axes?
-
-        coalesce, because `subject_id IN (...)` is NULL for a request with no
-        subject, and NULL sorts *first* under DESC — which would rank every
-        vague request above every matching one.
-
-        None when the helper has nothing on that axis: the term is then a
-        constant, and a constant cannot go in ORDER BY — Postgres reads a bare
-        `false` there as a column ordinal and rejects it.
-        """
-        if not ids:
-            return None
-        return func.coalesce(column.in_(ids), False)
-
-    subject_match = matches(HelpRequest.subject_id, subject_ids)
-    institution_match = matches(HelpRequest.institution_id, institution_ids)
-    service_match = matches(HelpRequest.service_type_id, service_ids)
-
-    # Strongest signal first. Anything the helper has no axis for is dropped
-    # rather than ordered by, since it would sort every row identically.
-    ranking = [
-        term.desc()
-        for term in (subject_match, service_match, institution_match)
-        if term is not None
+        for base, row in zip(rendered, rows, strict=True)
     ]
-
-    now = datetime.now(UTC)
-    answered = (
-        select(RequestResponse.id)
-        .where(
-            RequestResponse.request_id == HelpRequest.id,
-            RequestResponse.helper_id == user.id,
-        )
-        .exists()
-    )
-
-    rows = (
-        await session.execute(
-            select(
-                HelpRequest,
-                User,
-                subject_match if subject_match is not None else false(),
-                institution_match if institution_match is not None else false(),
-                service_match if service_match is not None else false(),
-            )
-            .join(User, User.id == HelpRequest.author_id)
-            .where(
-                HelpRequest.status == RequestStatus.OPEN,
-                # Answering your own request is not a thing.
-                HelpRequest.author_id != user.id,
-                or_(HelpRequest.expires_at.is_(None), HelpRequest.expires_at > now),
-                ~answered,
-            )
-            .order_by(
-                *ranking,
-                HelpRequest.created_at.desc(),
-                # Total, so paging is stable: created_at is the transaction
-                # clock and rows written together share it.
-                HelpRequest.id.desc(),
-            )
-            .limit(limit)
-        )
-    ).all()
-
-    requests = [row[0] for row in rows]
-    rendered = await _requests_out(session, requests, lang)
-    subjects_by_id = {r.id: r.subject for r in rendered}
-
-    out: list[FeedRequestOut] = []
-    for base, (request, author, on_subject, on_institution, on_service) in zip(
-        rendered, rows, strict=True
-    ):
-        out.append(
-            FeedRequestOut(
-                # Only the shared fields. `responses_count` and `responders`
-                # are not on FeedRequestOut at all — see the schema.
-                **base.model_dump(exclude={"responders", "responses_count"}),
-                author=avatar_for(author),
-                author_name=author.first_name,
-                budget=(
-                    Price(
-                        amount=float(request.budget_max),
-                        currency=request.budget_currency,
-                        unit=request.budget_unit or PriceUnit.HOUR,
-                    )
-                    if request.budget_max is not None
-                    else None
-                ),
-                langs=list(request.langs),
-                reason=_feed_reason(
-                    on_subject=bool(on_subject),
-                    on_institution=bool(on_institution),
-                    on_service=bool(on_service),
-                    subject=subjects_by_id.get(request.id),
-                ),
-            )
-        )
-    return out
 
 
 def _feed_reason(
