@@ -25,6 +25,28 @@ from konnekt.services import errors
 log = logging.getLogger("konnekt")
 
 
+def configure_logging(level: str) -> None:
+    """Give this application's logger somewhere to write.
+
+    Uvicorn configures its own loggers and nothing else, so without this the
+    `konnekt` logger has no handler and falls back to Python's last-resort
+    one — which only emits WARNING and above. Every `log.info` in the process
+    went nowhere, including the line that says the webhook was registered and
+    where, which is precisely the line wanted when the bot goes quiet.
+
+    Records still propagate. Uvicorn does not configure the root logger, so
+    there is nothing to duplicate against, and cutting propagation would also
+    cut off whatever a deployment attaches there with `--log-config`.
+    """
+    log.setLevel(level)
+    if any(isinstance(handler, logging.StreamHandler) for handler in log.handlers):
+        # `create_app()` runs once per process, and once per test.
+        return
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(levelname)s:     %(name)s: %(message)s"))
+    log.addHandler(handler)
+
+
 # Backoff for webhook registration: quick at first, because the usual cause is
 # a DNS record that has just been created, then patient, because the other
 # cause is Telegram itself and there is nothing to gain by hammering it.
@@ -33,7 +55,7 @@ WEBHOOK_RETRY_DELAYS = (5, 15, 60, 180, 300)
 
 async def _register_webhook(app: FastAPI, bot, dispatcher, settings) -> None:
     """Point Telegram at us, and keep trying until it agrees."""
-    url = f"{settings.public_base_url.rstrip('/')}{settings.webhook_path}"
+    url = settings.webhook_url
     attempt = 0
     while True:
         try:
@@ -51,11 +73,11 @@ async def _register_webhook(app: FastAPI, bot, dispatcher, settings) -> None:
         except Exception as exc:
             attempt += 1
             delay = WEBHOOK_RETRY_DELAYS[min(attempt - 1, len(WEBHOOK_RETRY_DELAYS) - 1)]
-            app.state.webhook_status = f"failed: {exc}"
+            app.state.webhook_error = str(exc) or type(exc).__name__
             log.error("webhook not registered (attempt %s): %s", attempt, exc)
             await asyncio.sleep(delay)
         else:
-            app.state.webhook_status = "ok"
+            app.state.webhook_error = None
             log.info("webhook set to %s", url)
             return
 
@@ -67,7 +89,10 @@ async def lifespan(app: FastAPI):
     app.state.bot = None
     app.state.dispatcher = None
     app.state.webhook_task = None
-    app.state.webhook_status = "not configured"
+    # Why registration failed, if it did. Whether there *is* a webhook is
+    # Telegram's to answer, and /healthz asks it — a status remembered here
+    # would be the same fiction that let a deaf bot pass every health check.
+    app.state.webhook_error = None
 
     if settings.bot_token:
         bot = build_bot(settings)
@@ -140,6 +165,7 @@ def status_for(exc: BaseException) -> int:
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    configure_logging(settings.log_level)
     app = FastAPI(
         title="Konnekt",
         description="Student help catalog for the Czech Republic",
