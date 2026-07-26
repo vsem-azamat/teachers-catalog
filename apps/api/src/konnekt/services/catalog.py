@@ -41,6 +41,7 @@ def avatar_for(user: User) -> Avatar:
     if user.last_name:
         initials += user.last_name[:1].upper()
     return Avatar(
+        id=user.id,
         initials=initials,
         tone=user.tg_id % TONE_COUNT,
         photo_url=user.photo_url,

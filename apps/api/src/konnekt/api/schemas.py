@@ -51,6 +51,9 @@ class Avatar(BaseModel):
     person the same colour across screens.
     """
 
+    # Carried so the client has a stable key for a list of faces. Two people
+    # with the same initials and the same tone are not rare.
+    id: int
     initials: str
     tone: int = Field(ge=0, le=5)
     photo_url: str | None = None

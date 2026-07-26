@@ -7,6 +7,12 @@ interface ImportMetaEnv {
    * origin, so a cross-origin base is the exception.
    */
   readonly VITE_API_BASE_URL?: string;
+  /**
+   * Raw init data to use instead of the generated mock when developing outside
+   * Telegram. Paste a real signed string here to exercise authenticated calls.
+   * Read only in development.
+   */
+  readonly VITE_MOCK_INIT_DATA?: string;
 }
 
 interface ImportMeta {

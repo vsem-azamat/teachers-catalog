@@ -10,10 +10,8 @@ import { defineConfig } from '@hey-api/openapi-ts';
  */
 export default defineConfig({
   input: process.env.OPENAPI_URL ?? 'http://127.0.0.1:8000/openapi.json',
-  output: {
-    path: './src/lib/generated',
-    format: false,
-    lint: false,
-  },
+  // Biome is excluded from the generated directory, so leave formatting and
+  // linting to it rather than having the generator shell out to a second tool.
+  output: './src/lib/generated',
   plugins: ['@hey-api/typescript'],
 });

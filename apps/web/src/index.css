@@ -1,0 +1,129 @@
+/*
+ * The bare minimum, on purpose.
+ *
+ * This file is a reset plus the wiring that connects Telegram's runtime CSS
+ * variables to the page. There is no design system here and there should not
+ * be one: component styles belong with their components.
+ *
+ * Variables available at runtime, published by `bindCssVars` in `main.tsx`:
+ *
+ *   --tg-theme-*     colours   (bg-color, text-color, hint-color, link-color,
+ *                               button-color, button-text-color,
+ *                               secondary-bg-color, section-bg-color, ...)
+ *   --tg-viewport-height, --tg-viewport-stable-height, --tg-viewport-width
+ *   --tg-viewport-safe-area-inset-{top,bottom,left,right}
+ *   --tg-viewport-content-safe-area-inset-{top,bottom,left,right}
+ *
+ * They only exist once the SDK has mounted, so every use needs a fallback.
+ */
+
+@import './styles/tokens.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+html {
+  /* Telegram clients may hand the page a text-size override. */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  /* stable-height, not height: the plain one follows the drag gesture and
+     makes anything pinned to the bottom jitter. Falls back to 100vh until the
+     SDK has mounted the viewport. */
+  min-height: var(--tg-viewport-stable-height, 100vh);
+
+  /* System font only. A webfont means a network round trip before first paint,
+     and inside Telegram this should look like part of the app. */
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', system-ui,
+    sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+
+  /* Own palette, not Telegram's. See styles/tokens.css for why, and main.tsx
+     for how the surrounding Telegram chrome is told to match it. */
+  color: var(--ink);
+  background-color: var(--bg);
+
+  /* Vertical overscroll would drag the whole Mini App down and close it. */
+  overscroll-behavior-y: none;
+}
+
+/* The device notch and home indicator. Telegram's own chrome is reported
+   separately as --tg-viewport-content-safe-area-inset-*; add it where a screen
+   actually needs to clear the header. */
+#root {
+  min-height: 100%;
+  padding-top: var(--tg-viewport-safe-area-inset-top, 0px);
+  padding-bottom: var(--tg-viewport-safe-area-inset-bottom, 0px);
+  padding-left: var(--tg-viewport-safe-area-inset-left, 0px);
+  padding-right: var(--tg-viewport-safe-area-inset-right, 0px);
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: var(--good);
+}
+
+/* Long subject names and Czech compounds have to break rather than scroll. */
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  overflow-wrap: break-word;
+}
+
+/* The grey flash on tap reads as a rendering glitch on mobile. */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* !important is the point here: an accessibility preference has to win over
+   whatever a component declares locally, which is the one case where reversing
+   the cascade is correct. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: accessibility override */
+    animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: accessibility override */
+    animation-iteration-count: 1 !important;
+    /* biome-ignore lint/complexity/noImportantStyles: accessibility override */
+    transition-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: accessibility override */
+    scroll-behavior: auto !important;
+  }
+}

@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!dist/**", "!src/locales/**/*.ts", "!src/lib/generated/**"]
+    "includes": ["**", "!dist", "!src/locales/**/*.ts", "!src/lib/generated"]
   },
   "formatter": {
     "enabled": true,
@@ -25,6 +25,11 @@
       "bracketSpacing": true
     }
   },
+  "css": {
+    "formatter": {
+      "quoteStyle": "single"
+    }
+  },
   "json": {
     "formatter": {
       "enabled": true
@@ -33,7 +38,7 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "correctness": {
         "useExhaustiveDependencies": "warn"
       },
