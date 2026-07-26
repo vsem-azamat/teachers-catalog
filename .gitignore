@@ -2,7 +2,8 @@
 .fleet
 .env
 .idea
-.gitignore
+# (was: .gitignore — a leftover that hid every nested ignore file from
+#  the repository, including the one Biome reads in CI)
 .vscode
 
 .vscode
