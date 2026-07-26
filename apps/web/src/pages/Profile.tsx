@@ -169,7 +169,7 @@ export default function ProfilePage() {
                 hint={<Trans>страховка, виза, банк, переводы</Trans>}
               />
               <Row
-                onClick={() => navigate('/language')}
+                onClick={() => navigate('/results?service=language_tutoring')}
                 leading={
                   <Tile tone={2}>
                     <LanguageIcon size={19} />

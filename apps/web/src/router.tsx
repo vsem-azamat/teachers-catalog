@@ -4,6 +4,7 @@ import BecomeHelperPage from '@/pages/BecomeHelper';
 import ChatsPage from '@/pages/Chats';
 import HelperPage from '@/pages/Helper';
 import HomePage from '@/pages/Home';
+import LifePage from '@/pages/Life';
 import MinePage from '@/pages/Mine';
 import NotFoundPage from '@/pages/NotFound';
 import ProfilePage from '@/pages/Profile';
@@ -29,6 +30,7 @@ export const router = createBrowserRouter([
       { path: 'mine', element: <MinePage /> },
       { path: 'chats', element: <ChatsPage /> },
       { path: 'become-helper', element: <BecomeHelperPage /> },
+      { path: 'life', element: <LifePage /> },
       { path: 'profile', element: <ProfilePage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
