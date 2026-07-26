@@ -51,13 +51,19 @@ async function bootstrap(): Promise<void> {
 /**
  * Is this a browser rather than Telegram?
  *
- * `?landing` forces it either way, which is the only way to see the page in
- * development: the mock has not run yet at this point, so `isTMA()` would say
- * no to every local session and the app would never start.
+ * In development the answer is always no unless `?landing` says otherwise:
+ * the mock has not run yet at this point, so `isTMA()` would say "browser" to
+ * every local session and the app would never start.
+ *
+ * That override is development-only on purpose. In production a browser
+ * already lands here on its own, so honouring the parameter could achieve
+ * exactly one thing — stranding somebody inside Telegram on a page whose only
+ * button sends them to Telegram.
  */
 function showLanding(): boolean {
-  if (new URLSearchParams(window.location.search).has('landing')) return true;
-  if (import.meta.env.DEV) return false;
+  if (import.meta.env.DEV) {
+    return new URLSearchParams(window.location.search).has('landing');
+  }
   return !isTMA();
 }
 
