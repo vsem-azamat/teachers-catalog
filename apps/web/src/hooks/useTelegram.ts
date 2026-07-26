@@ -4,8 +4,7 @@ import {
   initData,
   type MainButtonState,
   mainButton,
-  type ThemeParamsState,
-  themeParams,
+  miniApp,
   useSignal,
   viewport,
 } from '@tma.js/sdk-react';
@@ -23,16 +22,27 @@ import { useLocation, useNavigate } from 'react-router';
 
 // ── theme ───────────────────────────────────────────────────────────────
 
-export interface Theme {
-  params: ThemeParamsState;
-  isDark: boolean;
-}
+/**
+ * Tell Telegram what colour the page is.
+ *
+ * The app does not follow the client's theme — it has its own, see
+ * `lib/theme.ts` — so the header and the bottom bar have to be told, or a
+ * light page ends up framed in black. The value is read back out of the
+ * stylesheet rather than repeated here, so the palette still has exactly one
+ * definition. Call this after anything that changes `data-theme`.
+ *
+ * There is deliberately no hook exposing Telegram's own `themeParams`: a
+ * component reaching for it would be following the client's colours, which is
+ * the thing this app decided not to do.
+ */
+export function paintChrome(): void {
+  const styles = getComputedStyle(document.documentElement);
+  const background = styles.getPropertyValue('--bg').trim();
+  if (!background.startsWith('#')) return;
 
-/** Current theme parameters, re-rendering when the user switches theme. */
-export function useTheme(): Theme {
-  const params = useSignal(themeParams.state);
-  const isDark = useSignal(themeParams.isDark);
-  return { params, isDark };
+  miniApp.setHeaderColor.ifAvailable(background as `#${string}`);
+  miniApp.setBgColor.ifAvailable(background as `#${string}`);
+  miniApp.setBottomBarColor.ifAvailable(background as `#${string}`);
 }
 
 // ── safe area ───────────────────────────────────────────────────────────

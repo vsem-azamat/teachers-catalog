@@ -137,7 +137,7 @@ PEOPLE: list[dict] = [
         "username": "daniyar_cz",
         "headline": "Čeština B1–C1, готовлю к CCE",
         "about": "14 человек сдали B2 с первого раза. Занимаемся по материалам UJOP.",
-        "langs": ["ru", "kk", "cs"],
+        "langs": ["ru", "cs"],
         "deals": 27,
         "rating": 4.9,
         "response": 15,

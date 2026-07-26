@@ -55,12 +55,13 @@ async def on_start(message: Message, settings: Settings) -> None:
         )
         return
 
+    # No mention of announcements or of /stop. The greeting is the first thing
+    # a new person reads, and every sentence in it that is not about what the
+    # catalog does is a sentence spent talking about ourselves.
     await message.answer(
         "<b>Konnekt</b> — кто поможет с учёбой в Чехии.\n\n"
         "Репетиторы, подготовка к přijímačky, помощь на экзамене, "
-        "нострификация, работы и материалы.\n\n"
-        "Иногда буду писать, если появится что-то по твоей теме. "
-        "Надоест — /stop.",
+        "нострификация, работы и материалы.",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
                 [

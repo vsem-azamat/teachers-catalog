@@ -1,6 +1,8 @@
+import logging
 from datetime import UTC, datetime, time, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy import delete, false, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import selectinload
@@ -21,6 +23,8 @@ from konnekt.api.schemas import (
     LanguageOut,
     MeOut,
     MeUpdate,
+    MyHelperOut,
+    MyOfferOut,
     ParseOut,
     ParseRequest,
     Phrase,
@@ -72,6 +76,8 @@ from konnekt.services.catalog import _localised, avatar_for
 from konnekt.services.notify import quote
 from konnekt.services.people import log_event
 
+log = logging.getLogger("konnekt")
+
 router = APIRouter(prefix="/api/v1")
 
 
@@ -87,6 +93,44 @@ async def _require(session, model, value: int | None, field: str) -> None:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT, f"unknown {field}: {value}"
         )
+
+
+# ── the way in, for a browser ───────────────────────────────────────────
+
+
+async def _bot_username(app) -> str | None:
+    """The bot's public handle, asked for once and remembered."""
+    cached = getattr(app.state, "bot_username", None)
+    if cached:
+        return cached
+    bot = getattr(app.state, "bot", None)
+    if bot is None:
+        return None
+    try:
+        me = await bot.get_me()
+    except Exception:
+        log.warning("could not read the bot's own username", exc_info=True)
+        return None
+    app.state.bot_username = me.username
+    return me.username
+
+
+@router.get("/open", include_in_schema=False, tags=["public"])
+async def open_in_telegram(request: Request) -> RedirectResponse:
+    """Send a browser to the bot.
+
+    Unauthenticated on purpose: this is what the landing page's button points
+    at, and the landing is what someone sees who has never opened Telegram
+    here. It redirects rather than returning the handle so the handle exists
+    in exactly one place — the token the API is already running with. Change
+    the bot and nothing in the frontend or the build needs to know.
+    """
+    username = await _bot_username(request.app)
+    if username is None:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "no bot is configured")
+    # 302 rather than 301: a permanent redirect would be cached by the browser
+    # for ever, and the target is a handle that can change.
+    return RedirectResponse(f"https://t.me/{username}", status_code=302)
 
 
 # ── who am I ────────────────────────────────────────────────────────────
@@ -674,6 +718,88 @@ async def read_intro(
         subject_ids=[m.id for m in parsed.subjects],
         missing=parsed.missing,
     )
+
+
+@router.get("/helper", response_model=MyHelperOut, tags=["helper"])
+async def my_helper(session: SessionDep, lang: LangDep, user: UserDep) -> MyHelperOut:
+    """Read back the caller's own profile, whatever state it is in.
+
+    Answers with an empty shell rather than 404 when there is no profile yet:
+    the screen behind this is a form, and a form that has to branch on a
+    missing-resource error to decide whether to render is a form with two
+    code paths where one will do.
+    """
+    helper = await session.get(HelperProfile, user.id)
+    if helper is None:
+        return MyHelperOut(exists=False)
+
+    offers = (
+        await session.scalars(
+            select(Offer)
+            .where(Offer.helper_id == user.id, Offer.is_active.is_(True))
+            .order_by(Offer.id)
+        )
+    ).all()
+
+    # Names for every axis in one round trip each, rather than per offer.
+    service_names = await _names_by_id(
+        session, ServiceType, [o.service_type_id for o in offers], lang
+    )
+    subject_names = await _names_by_id(
+        session, Subject, [o.subject_id for o in offers], lang
+    )
+    institution_names = await _names_by_id(
+        session, Institution, [o.institution_id for o in offers], lang
+    )
+    service_codes = dict(
+        (
+            await session.execute(
+                select(ServiceType.id, ServiceType.code).where(
+                    ServiceType.id.in_({o.service_type_id for o in offers} or {0})
+                )
+            )
+        ).all()
+    )
+
+    return MyHelperOut(
+        exists=True,
+        status=helper.status.value,
+        headline=helper.headline,
+        about=helper.about,
+        work_format=helper.work_format,
+        city=helper.city,
+        place_note=helper.place_note,
+        offers=[
+            MyOfferOut(
+                service_type_id=offer.service_type_id,
+                service_type=service_codes.get(offer.service_type_id, ""),
+                service_type_name=service_names.get(offer.service_type_id, ""),
+                subject_id=offer.subject_id,
+                subject_name=subject_names.get(offer.subject_id),
+                institution_id=offer.institution_id,
+                institution_name=institution_names.get(offer.institution_id),
+                price_amount=float(offer.price_amount)
+                if offer.price_amount is not None
+                else None,
+                price_unit=offer.price_unit,
+                langs=list(offer.langs),
+            )
+            for offer in offers
+        ],
+    )
+
+
+async def _names_by_id(session, model, ids, lang) -> dict[int, str]:
+    """Translated names for a set of taxonomy rows, keyed by id."""
+    wanted = {value for value in ids if value is not None}
+    if not wanted:
+        return {}
+    rows = (
+        await session.scalars(
+            select(model).where(model.id.in_(wanted)).options(selectinload(model.names))
+        )
+    ).all()
+    return {row.id: _localised(row.names, lang) or "" for row in rows}
 
 
 @router.put("/helper", response_model=MeOut, tags=["helper"])

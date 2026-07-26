@@ -369,6 +369,38 @@ export interface HelperUpsert {
   publish?: boolean;
 }
 
+/**
+ * One of the caller's own offers, as the cabinet edits it.
+ *
+ * Ids and names side by side: the ids are what goes back in `OfferInput`, the
+ * names are what the person reads. `Offer` carries only names, which is right
+ * for a card and useless for a form.
+ */
+export interface MyOffer {
+  service_type_id: number;
+  service_type: string;
+  service_type_name: string;
+  subject_id: number | null;
+  subject_name: string | null;
+  institution_id: number | null;
+  institution_name: string | null;
+  price_amount: number | null;
+  price_unit: PriceUnit;
+  langs: string[];
+}
+
+/** The caller's own profile, drafts and hidden ones included. */
+export interface MyHelper {
+  exists: boolean;
+  status: string | null;
+  headline: string | null;
+  about: string | null;
+  work_format: WorkFormat;
+  city: string | null;
+  place_note: string | null;
+  offers: MyOffer[];
+}
+
 export interface ContactStart {
   telegram_url: string;
 }

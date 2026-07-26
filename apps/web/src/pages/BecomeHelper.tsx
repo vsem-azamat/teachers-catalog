@@ -59,7 +59,11 @@ export default function BecomeHelperPage() {
       hapticSuccess();
       queryClient.setQueryData(['me'], me);
       void queryClient.invalidateQueries({ queryKey: ['home'] });
-      navigate('/profile');
+      void queryClient.invalidateQueries({ queryKey: ['my-helper'] });
+      // Into the cabinet, not back to settings: what we understood is now
+      // editable, and whatever we missed is one screen away instead of
+      // needing to be found.
+      navigate('/my-helper');
     },
   });
 
@@ -80,7 +84,18 @@ export default function BecomeHelperPage() {
     (chip) => chip.kind === 'subject' && !dropped.has(chipKey(chip)),
   );
   const tutoringId = serviceTypes?.find((type) => type.code === 'tutoring')?.id;
-  const canPublish = keptSubjects.length > 0 && tutoringId !== undefined;
+
+  /*
+   * Written words are the whole requirement.
+   *
+   * This used to demand at least one subject the parser recognised, which
+   * made the parser the gatekeeper: someone teaching something the taxonomy
+   * has never heard of wrote a paragraph, watched the button stay grey, and
+   * left. The catalog needs people in it first; a profile with no subject is
+   * simply one that search cannot reach yet, and the cabinet is where that
+   * gets fixed — which is where this lands.
+   */
+  const canPublish = text.trim().length >= 3;
 
   useMainButton(
     canPublish
@@ -95,7 +110,8 @@ export default function BecomeHelperPage() {
               raw_intro: text.trim(),
               work_format: intro?.work_format ?? 'both',
               publish: true,
-              offers: toOffers(keptSubjects, tutoringId, intro),
+              offers:
+                tutoringId === undefined ? [] : toOffers(keptSubjects, tutoringId, intro),
             }),
         }
       : null,

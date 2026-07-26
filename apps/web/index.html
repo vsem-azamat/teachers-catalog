@@ -11,7 +11,35 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#ffffff" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
-    <title>Konnekt</title>
+    <title>Konnekt — кто поможет с учёбой в Чехии</title>
+    <meta
+      name="description"
+      content="Репетиторы, подготовка к přijímačky, помощь на экзамене и нострификация — для студентов в Чехии. Открывается в Telegram."
+    />
+    <script>
+      /*
+       * The palette, before the first paint.
+       *
+       * This has to run here and not in the bundle: by the time a module
+       * executes, the page has already been painted once, and a light flash
+       * ahead of a dark app is worse than no theming at all. It is the same
+       * key and the same resolution as src/lib/theme.ts — keep them in step.
+       */
+      (() => {
+        let mode = null;
+        try {
+          mode = localStorage.getItem('konnekt.theme');
+        } catch {
+          // Private mode, or storage disabled. Fall through to the system.
+        }
+        if (mode !== 'light' && mode !== 'dark') {
+          mode = window.matchMedia?.('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light';
+        }
+        document.documentElement.dataset.theme = mode;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

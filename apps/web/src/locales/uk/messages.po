@@ -34,6 +34,7 @@ msgid "Свободны"
 msgstr "Вільні"
 
 #: src/components/Phrase.tsx
+#: src/pages/MyHelper.tsx
 msgid "Онлайн"
 msgstr "Онлайн"
 
@@ -45,13 +46,37 @@ msgstr "Напиши хоча б кілька речень — предмети,
 msgid "Такой заявки нет"
 msgstr "Такої заявки немає"
 
+#: src/pages/Landing.tsx
+msgid "Přijímačky"
+msgstr "Přijímačky"
+
+#: src/pages/MyHelper.tsx
+msgid "Видимость"
+msgstr "Видимість"
+
 #: src/components/TabBar.tsx
 msgid "Поиск"
 msgstr "Пошук"
 
+#: src/pages/MyHelper.tsx
+msgid "Предметы и цены"
+msgstr "Предмети та ціни"
+
 #: src/components/Incoming.tsx
 msgid "Не сейчас"
 msgstr "Не зараз"
+
+#: src/pages/MyHelper.tsx
+msgid "Kč"
+msgstr "Kč"
+
+#: src/pages/MyHelper.tsx
+msgid "Скрыть"
+msgstr "Сховати"
+
+#: src/pages/MyHelper.tsx
+msgid "О себе"
+msgstr "Про себе"
 
 #: src/pages/Profile.tsx
 msgid "Чешский для вуза"
@@ -62,6 +87,7 @@ msgid "Как проходит"
 msgstr "Як це працює"
 
 #: src/components/Phrase.tsx
+#: src/pages/MyHelper.tsx
 msgid "за неделю"
 msgstr "за тиждень"
 
@@ -72,6 +98,10 @@ msgstr "Відгукнутися"
 #: src/pages/BecomeHelper.tsx
 msgid "Когда ты свободен"
 msgstr "Коли ти вільний"
+
+#: src/pages/MyHelper.tsx
+msgid "Где"
+msgstr "Де"
 
 #: src/pages/Life.tsx
 msgid "Это не наши услуги. Мы получаем комиссию с партнёра, со студента — ничего."
@@ -84,6 +114,10 @@ msgstr "Які предмети"
 #: src/pages/Home.tsx
 msgid "Вещи"
 msgstr "Речі"
+
+#: src/pages/MyHelper.tsx
+msgid "Всё можно менять когда угодно. Пустые поля просто не показываем."
+msgstr "Усе можна змінити будь-коли. Порожні поля просто не показуємо."
 
 #: src/pages/BecomeHelper.tsx
 msgid "Одним куском, как другу. Анкету соберём сами."
@@ -111,6 +145,10 @@ msgid "Твой предмет — {0}"
 msgstr "Твій предмет — {0}"
 
 #: src/pages/Profile.tsx
+msgid "Тёмное"
+msgstr "Темне"
+
+#: src/pages/Profile.tsx
 msgid "расскажи своими словами, анкету соберём сами"
 msgstr "розкажи своїми словами, анкету складемо самі"
 
@@ -124,6 +162,10 @@ msgstr "Заявку вже закрили"
 #: src/pages/Results.tsx
 msgid "Не получилось загрузить"
 msgstr "Не вдалося завантажити"
+
+#: src/pages/MyHelper.tsx
+msgid "Анкета сохранится, но в каталоге её не будет."
+msgstr "Анкета збережеться, але в каталозі її не буде."
 
 #: src/pages/Mine.tsx
 msgid "Мои заявки"
@@ -141,6 +183,10 @@ msgstr "склали"
 msgid "Партнёр"
 msgstr "Партнер"
 
+#: src/pages/MyHelper.tsx
+msgid "Сохранить"
+msgstr "Зберегти"
+
 #: src/pages/Mine.tsx
 msgid "Входящие"
 msgstr "Вхідні"
@@ -153,18 +199,38 @@ msgstr "Заявки бачать ті, хто може на них відпов
 msgid "Сколько стоит"
 msgstr "Скільки коштує"
 
+#: src/pages/MyHelper.tsx
+msgid "Не сохранилось — попробуй ещё раз."
+msgstr "Не збереглося — спробуй ще раз."
+
+#: src/pages/MyHelper.tsx
+msgid "Цена"
+msgstr "Ціна"
+
+#: src/pages/MyHelper.tsx
+msgid "И так, и так"
+msgstr "І так, і так"
+
 #: src/components/TabBar.tsx
 #: src/pages/Chats.tsx
 msgid "Чаты"
 msgstr "Чати"
 
+#: src/pages/MyHelper.tsx
+#~ msgid "Без предмета"
+#~ msgstr "Без предмета"
+
 #: src/pages/BecomeHelper.tsx
 msgid "Сколько берёшь"
 msgstr "Скільки береш"
 
+#: src/pages/Landing.tsx
+msgid "Работы и материалы"
+msgstr "Роботи та матеріали"
+
 #: src/pages/Profile.tsx
-msgid "опубликована"
-msgstr "опублікована"
+#~ msgid "опубликована"
+#~ msgstr "опублікована"
 
 #: src/pages/Request.tsx
 msgid "Отказать"
@@ -178,13 +244,30 @@ msgstr "Поки без відгуків"
 msgid "Разговоры мы не храним"
 msgstr "Розмови ми не зберігаємо"
 
+#: src/pages/MyHelper.tsx
+msgid "За что цена"
+msgstr "За що ціна"
+
 #: src/components/Phrase.tsx
+#: src/pages/MyHelper.tsx
 msgid "за работу"
 msgstr "за роботу"
+
+#: src/pages/MyHelper.tsx
+msgid "Пока ни одного. Найди предмет ниже — без них тебя не найдут по поиску."
+msgstr "Поки жодного. Знайди предмет нижче — без них тебе не знайдуть у пошуку."
+
+#: src/pages/MyHelper.tsx
+msgid "Тебя видят в поиске и могут написать."
+msgstr "Тебе бачать у пошуку й можуть написати."
 
 #: src/components/Incoming.tsx
 msgid "Не отправилось — попробуй ещё раз"
 msgstr "Не надіслалося — спробуй ще раз"
+
+#: src/pages/Profile.tsx
+msgid "в каталоге"
+msgstr "у каталозі"
 
 #: src/components/Phrase.tsx
 msgid "И то, и другое"
@@ -195,6 +278,7 @@ msgid "нужен матан на ČVUT, экзамен 14 февраля"
 msgstr "потрібен матан на ČVUT, іспит 14 лютого"
 
 #: src/components/Phrase.tsx
+#: src/pages/MyHelper.tsx
 msgid "за час"
 msgstr "за годину"
 
@@ -215,10 +299,16 @@ msgid "Сначала опубликуй профиль"
 msgstr "Спершу опублікуй профіль"
 
 #: src/components/Phrase.tsx
+#: src/pages/MyHelper.tsx
 msgid "за штуку"
 msgstr "за штуку"
 
+#: src/pages/MyHelper.tsx
+msgid "В каталоге"
+msgstr "У каталозі"
+
 #: src/components/Phrase.tsx
+#: src/pages/MyHelper.tsx
 msgid "Очно"
 msgstr "Очно"
 
@@ -227,10 +317,12 @@ msgid "Получилось так"
 msgstr "Вийшло так"
 
 #: src/components/Phrase.tsx
+#: src/pages/MyHelper.tsx
 msgid "договорная"
 msgstr "договірна"
 
 #: src/components/Phrase.tsx
+#: src/pages/MyHelper.tsx
 msgid "за семестр"
 msgstr "за семестр"
 
@@ -241,6 +333,10 @@ msgstr "Допомагати іншим"
 #: src/pages/Life.tsx
 msgid "Здесь появятся страховка, визы, банк и переводы."
 msgstr "Тут з'являться страхування, візи, банк і перекази."
+
+#: src/pages/MyHelper.tsx
+msgid "Как занимаешься"
+msgstr "Як займаєшся"
 
 #: src/pages/Ask.tsx
 msgid "Искать всё равно"
@@ -257,6 +353,10 @@ msgstr "Веде предмет, але не прив'язаний до цьог
 #: src/pages/Profile.tsx
 msgid "B1, B2, нострификация"
 msgstr "B1, B2, nostrifikace"
+
+#: src/pages/Landing.tsx
+msgid "Регистрации нет — заходишь своим аккаунтом Telegram. Помогать другим можно оттуда же."
+msgstr "Реєстрації немає — заходиш своїм акаунтом Telegram. Допомагати іншим можна звідти ж."
 
 #: src/components/TabBar.tsx
 #: src/pages/Profile.tsx
@@ -300,6 +400,10 @@ msgstr "матан, čeština B2, přijímačky…"
 msgid "Кто может помочь"
 msgstr "Хто може допомогти"
 
+#: src/pages/MyHelper.tsx
+msgid "Это первое, что читают. Пара живых предложений работает лучше списка."
+msgstr "Це перше, що читають. Пара живих речень працює краще за список."
+
 #: src/pages/Profile.tsx
 msgid "По этому мы отсеиваем тех, с кем вы друг друга не поймёте."
 msgstr "За цим ми відсіюємо тих, з ким ви не порозумієтесь."
@@ -307,6 +411,10 @@ msgstr "За цим ми відсіюємо тих, з ким ви не поро
 #: src/pages/Results.tsx
 msgid "изменить"
 msgstr "змінити"
+
+#: src/pages/Profile.tsx
+msgid "Светлое"
+msgstr "Світле"
 
 #: src/pages/Home.tsx
 msgid "Что нужно?"
@@ -327,6 +435,10 @@ msgstr "Люди"
 #: src/pages/BecomeHelper.tsx
 msgid "Онлайн или очно"
 msgstr "Онлайн чи очно"
+
+#: src/pages/Landing.tsx
+msgid "Кто поможет с учёбой в Чехии"
+msgstr "Хто допоможе з навчанням у Чехії"
 
 #: src/pages/Helper.tsx
 msgid "Свободные окна"
@@ -361,6 +473,10 @@ msgstr "Виш, з яким ти працюєш"
 msgid "Открыть переписку в Telegram"
 msgstr "Відкрити переписку в Telegram"
 
+#: src/pages/MyHelper.tsx
+msgid "Город"
+msgstr "Місто"
+
 #. placeholder {0}: num(p.deals)
 #. placeholder {0}: response.deals_count
 #: src/components/Phrase.tsx
@@ -372,9 +488,18 @@ msgstr "{0, plural, one {# заняття з нами} few {# заняття з 
 msgid "Чем помогает"
 msgstr "Чим допомагає"
 
+#: src/pages/Profile.tsx
+msgid "Оформление"
+msgstr "Оформлення"
+
 #: src/components/Phrase.tsx
+#: src/pages/MyHelper.tsx
 msgid "в месяц"
 msgstr "за місяць"
+
+#: src/pages/Landing.tsx
+msgid "Нострификация"
+msgstr "Нострифікація"
 
 #. placeholder {0}: formatDay(request.deadline_on, i18n.locale)
 #. placeholder {0}: formatDay(request.deadline_on, locale)
@@ -388,9 +513,21 @@ msgstr "до {0}"
 msgid "Жизнь в Чехии"
 msgstr "Життя в Чехії"
 
+#: src/pages/MyHelper.tsx
+msgid "Добавить предмет — матан, čeština, физика"
+msgstr "Додати предмет — матан, čeština, фізика"
+
+#: src/pages/Landing.tsx
+msgid "Репетиторы, подготовка к přijímačky, помощь на экзамене и нострификация — от студентов, которые это уже прошли."
+msgstr "Репетитори, підготовка до přijímačky, допомога на іспиті та нострифікація — від студентів, які це вже пройшли."
+
 #: src/components/Incoming.tsx
 msgid "Пока никто ничего не просит"
 msgstr "Поки ніхто нічого не просить"
+
+#: src/pages/MyHelper.tsx
+msgid "Район или где удобно встречаться"
+msgstr "Район або де зручно зустрічатися"
 
 #: src/components/Incoming.tsx
 msgid "Отправить"
@@ -401,6 +538,7 @@ msgid "У этого человека нет @username — написать не
 msgstr "У цієї людини немає @username — написати не вийде"
 
 #: src/components/Phrase.tsx
+#: src/pages/MyHelper.tsx
 msgid "за занятие"
 msgstr "за заняття"
 
@@ -443,6 +581,10 @@ msgstr "У цієї людини немає відкритого username в Tel
 msgid "Написать · {0} Kč"
 msgstr "Написати · {0} Kč"
 
+#: src/pages/Profile.tsx
+msgid "скрыта — в каталоге её не видно"
+msgstr "прихована — у каталозі її не видно"
+
 #: src/pages/Request.tsx
 msgid "выбран"
 msgstr "обраний"
@@ -450,6 +592,10 @@ msgstr "обраний"
 #: src/components/Phrase.tsx
 msgid "Работает именно с этим вузом"
 msgstr "Працює саме з цим вишем"
+
+#: src/pages/Landing.tsx
+msgid "Открыть в Telegram"
+msgstr "Відкрити в Telegram"
 
 #: src/pages/Results.tsx
 msgid "Проверь соединение и попробуй ещё раз."
@@ -477,6 +623,7 @@ msgstr "Заявок поки немає"
 
 #: src/pages/Ask.tsx
 #: src/pages/BecomeHelper.tsx
+#: src/pages/MyHelper.tsx
 msgid "Убрать"
 msgstr "Прибрати"
 
@@ -505,6 +652,10 @@ msgstr "{0, plural, one {Відповідає приблизно за # хвил
 msgid "Ты отказался"
 msgstr "Ти відмовив"
 
+#: src/pages/Profile.tsx
+msgid "Как в системе"
+msgstr "Як у системі"
+
 #: src/pages/Ask.tsx
 msgid "Поняли так — поправь, если не то"
 msgstr "Ми зрозуміли так — виправ, якщо не те"
@@ -523,6 +674,7 @@ msgstr "Розкажи своїми словами"
 msgid "Показать {0}"
 msgstr "Показати {0}"
 
+#: src/pages/MyHelper.tsx
 #: src/pages/Profile.tsx
 msgid "Моя анкета"
 msgstr "Моя анкета"
@@ -544,6 +696,10 @@ msgstr "Допомога потрібна до іспиту чи на ньому
 msgid "Мои"
 msgstr "Мої"
 
+#: src/pages/MyHelper.tsx
+msgid "Что преподаёшь, где учишься, как проходят занятия. Своими словами."
+msgstr "Що викладаєш, де вчишся, як проходять заняття. Своїми словами."
+
 #: src/pages/Request.tsx
 msgid "Отклики"
 msgstr "Відгуки"
@@ -556,6 +712,14 @@ msgstr "Шукаємо…"
 msgid "Но без этого не доучишься. Сроки и требования — наши, предложения — партнёрские."
 msgstr "Але без цього не доучишся. Строки й вимоги — наші, пропозиції — партнерські."
 
+#: src/pages/MyHelper.tsx
+msgid "Не получилось загрузить анкету"
+msgstr "Не вдалося завантажити анкету"
+
+#: src/pages/Landing.tsx
+msgid "Репетиторы"
+msgstr "Репетитори"
+
 #: src/components/Phrase.tsx
 msgid "лет на площадке"
 msgstr "років на майданчику"
@@ -565,6 +729,7 @@ msgid "Дальше вопросов не будет — остальное от
 msgstr "Далі питань не буде — решту відфільтруєш прямо у списку."
 
 #: src/components/Phrase.tsx
+#: src/pages/MyHelper.tsx
 msgid "в день"
 msgstr "за день"
 

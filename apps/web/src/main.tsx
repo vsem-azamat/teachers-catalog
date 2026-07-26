@@ -4,6 +4,7 @@ import {
   backButton,
   init,
   initData,
+  isTMA,
   mainButton,
   miniApp,
   themeParams,
@@ -13,8 +14,10 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router';
 
-import { activateLocale, i18n, resolveLocale } from '@/i18n';
+import { paintChrome } from '@/hooks/useTelegram';
+import { activateLocale, i18n, normalizeLocale, resolveLocale } from '@/i18n';
 import { ApiError } from '@/lib/api';
+import LandingPage from '@/pages/Landing';
 import { router } from '@/router';
 
 import './index.css';
@@ -25,6 +28,14 @@ import './index.css';
  * it, which is why this is a sequence and not a set of effects.
  */
 async function bootstrap(): Promise<void> {
+  // Before anything else, and in particular before the mock: outside Telegram
+  // there is no account, no chat to notify and nothing to sign a request
+  // with, so the catalog cannot run. That is a landing page, not an error.
+  if (showLanding()) {
+    await renderLanding();
+    return;
+  }
+
   if (import.meta.env.DEV) {
     // Dynamic import so the mock never reaches the production bundle.
     const { mockEnv } = await import('@/mockEnv');
@@ -35,6 +46,36 @@ async function bootstrap(): Promise<void> {
   initSdk();
   await initLocale();
   render();
+}
+
+/**
+ * Is this a browser rather than Telegram?
+ *
+ * `?landing` forces it either way, which is the only way to see the page in
+ * development: the mock has not run yet at this point, so `isTMA()` would say
+ * no to every local session and the app would never start.
+ */
+function showLanding(): boolean {
+  if (new URLSearchParams(window.location.search).has('landing')) return true;
+  if (import.meta.env.DEV) return false;
+  return !isTMA();
+}
+
+async function renderLanding(): Promise<void> {
+  const locale = normalizeLocale(navigator.language);
+  await activateLocale(locale);
+  document.documentElement.lang = locale;
+
+  const container = document.getElementById('root');
+  if (!container) throw new Error('#root is missing from index.html');
+
+  createRoot(container).render(
+    <StrictMode>
+      <I18nProvider i18n={i18n}>
+        <LandingPage />
+      </I18nProvider>
+    </StrictMode>,
+  );
 }
 
 /**
@@ -70,29 +111,11 @@ function initSdk(): void {
   mainButton.mount.ifAvailable();
 
   miniApp.mount.ifAvailable();
+  // The palette is already on the document — index.html resolves it before the
+  // first paint — so Telegram can be told the right colour straight away.
   paintChrome();
 
   initData.restore();
-}
-
-/**
- * Tell Telegram what colour the page is.
- *
- * The app does not follow the client's theme — see styles/tokens.css — so the
- * header and the bottom bar have to be told, or a dark client frames a light
- * page in black. The values are read from the stylesheet rather than repeated
- * here, so there is still exactly one place the palette is defined.
- */
-function paintChrome(): void {
-  const styles = getComputedStyle(document.documentElement);
-  const read = (name: string) => styles.getPropertyValue(name).trim();
-
-  const background = read('--bg');
-  if (!background.startsWith('#')) return;
-
-  miniApp.setHeaderColor.ifAvailable(background as `#${string}`);
-  miniApp.setBgColor.ifAvailable(background as `#${string}`);
-  miniApp.setBottomBarColor.ifAvailable(background as `#${string}`);
 }
 
 /** Load the one catalog we need before the first paint, to avoid a flash. */

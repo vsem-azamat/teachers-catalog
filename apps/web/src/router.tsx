@@ -6,6 +6,7 @@ import HelperPage from '@/pages/Helper';
 import HomePage from '@/pages/Home';
 import LifePage from '@/pages/Life';
 import MinePage from '@/pages/Mine';
+import MyHelperPage from '@/pages/MyHelper';
 import NotFoundPage from '@/pages/NotFound';
 import ProfilePage from '@/pages/Profile';
 import RequestPage from '@/pages/Request';
@@ -32,6 +33,7 @@ export const router = createBrowserRouter([
       { path: 'request/:id', element: <RequestPage /> },
       { path: 'chats', element: <ChatsPage /> },
       { path: 'become-helper', element: <BecomeHelperPage /> },
+      { path: 'my-helper', element: <MyHelperPage /> },
       { path: 'life', element: <LifePage /> },
       { path: 'profile', element: <ProfilePage /> },
       { path: '*', element: <NotFoundPage /> },

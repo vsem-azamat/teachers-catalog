@@ -66,6 +66,24 @@ make tunnel               # prints an https://….trycloudflare.com URL
 Put that URL in `PUBLIC_BASE_URL`, restart the API so it re-registers the
 webhook, and set the same URL as the mini app in @BotFather.
 
+## Outside Telegram
+
+The catalog only works inside Telegram — that is where the accounts, the
+conversations and the notifications are — so opening the domain in a browser
+gets a landing page instead of a broken app. It is one screen, does not
+scroll, and has one button.
+
+That button points at `/api/v1/open`, the only unauthenticated route in the
+API, which redirects to the bot. The handle therefore lives in one place, the
+token the server already runs with, rather than being copied into the frontend
+and into the build. Add `?landing` to any URL to see the page from inside
+development.
+
+The palette is the app's own, not Telegram's, and the person picks it:
+system, light or dark, from the profile screen. The choice is resolved by an
+inline script in `index.html` before the first paint, because a module that
+runs after one is a module that runs after the flash.
+
 ## Deploying
 
 CI builds images, pushes them to GHCR and deploys over SSH to a shared VPS,
@@ -96,6 +114,11 @@ Language is also a *matching* attribute, not only a display setting. A profile
 written in Russian stays Russian, and a Ukrainian first-year cannot work with a
 Czech-only tutor. `users.spoken_langs` and `offers.langs` are indexed arrays, so
 that filter is one query.
+
+The list people pick from is those four and no more. It used to be nine, and
+the tail of it — Slovak, German, Kazakh, Uzbek, Vietnamese — never matched a
+pair while making the question long enough to skip. Retired codes are
+deactivated rather than deleted, because profiles already hold them.
 
 ## What is not here yet
 

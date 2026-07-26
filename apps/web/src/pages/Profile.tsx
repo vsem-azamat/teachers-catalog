@@ -13,14 +13,17 @@ import {
   Row,
   Rows,
   Screen,
+  Segmented,
   SkeletonRows,
   Sub,
   Tile,
   Title,
 } from '@/components/Ui';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { hapticSelection } from '@/hooks/useTelegram';
 import { activateLocale, LOCALE_NAMES, LOCALES, type Locale } from '@/i18n';
 import { api } from '@/lib/api';
+import type { ThemeChoice } from '@/lib/theme';
 
 /**
  * Settings, and the way in to offering help.
@@ -33,6 +36,7 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { i18n } = useLingui();
+  const theme = useAppTheme();
 
   const { data: me, isPending } = useQuery({
     queryKey: ['me'],
@@ -115,6 +119,22 @@ export default function ProfilePage() {
             </Chips>
 
             <Label>
+              <Trans>Оформление</Trans>
+            </Label>
+            <Segmented
+              value={theme.choice}
+              onChange={(choice) => {
+                hapticSelection();
+                theme.set(choice);
+              }}
+              options={[
+                { value: 'system' as ThemeChoice, label: <Trans>Как в системе</Trans> },
+                { value: 'light' as ThemeChoice, label: <Trans>Светлое</Trans> },
+                { value: 'dark' as ThemeChoice, label: <Trans>Тёмное</Trans> },
+              ]}
+            />
+
+            <Label>
               <Trans>На каких языках тебе удобно</Trans>
             </Label>
             <Chips>
@@ -139,7 +159,7 @@ export default function ProfilePage() {
             </Label>
             <Rows>
               <Row
-                onClick={() => navigate('/become-helper')}
+                onClick={() => navigate(me.is_helper ? '/my-helper' : '/become-helper')}
                 leading={
                   <Tile tone={0}>
                     <PersonIcon size={19} />
@@ -150,7 +170,9 @@ export default function ProfilePage() {
                 }
                 hint={
                   me.helper_status === 'published' ? (
-                    <Trans>опубликована</Trans>
+                    <Trans>в каталоге</Trans>
+                  ) : me.helper_status === 'hidden' ? (
+                    <Trans>скрыта — в каталоге её не видно</Trans>
                   ) : me.is_helper ? (
                     <Trans>черновик — не видна в каталоге</Trans>
                   ) : (
