@@ -18,7 +18,7 @@ nobody sees costs a day of broken imports and buys nothing.
 ```
 apps/api     FastAPI + aiogram in one process, Postgres 18
 apps/web     React 19 + Vite, the mini app itself
-docs         data-model.md — the schema and the reasoning behind it
+docs         architecture.md — the layers; data-model.md — the schema
 infra        database bootstrap
 ```
 
@@ -83,10 +83,11 @@ token the server already runs with, rather than being copied into the frontend
 and into the build. Add `?landing` to any URL to see the page from inside
 development.
 
-The palette is the app's own, not Telegram's, and the person picks it:
-system, light or dark, from the profile screen. The choice is resolved by an
-inline script in `index.html` before the first paint, because a module that
-runs after one is a module that runs after the flash.
+The palette is the app's own, not Telegram's, and the person picks it from the
+header, which is the same on every screen: a tap swaps light and dark, a hold
+returns to following the system. Three states, one control. The choice is
+resolved by an inline script in `index.html` before the first paint, because a
+module that runs after one is a module that runs after the flash.
 
 ## Deploying
 

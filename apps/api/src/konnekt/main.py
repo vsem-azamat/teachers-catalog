@@ -14,8 +14,8 @@ from aiogram.types import Update
 from fastapi import FastAPI, Header, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 
-from konnekt.api.v1.routes import health_router
-from konnekt.api.v1.routes import router as api_router
+from konnekt.api.v1 import router as api_router
+from konnekt.api.v1.health import health_router
 from konnekt.bot import build_bot, build_dispatcher, configure
 from konnekt.core.config import get_settings
 from konnekt.db.session import dispose_engine
