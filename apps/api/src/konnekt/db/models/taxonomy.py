@@ -88,11 +88,15 @@ class SubjectI18n(Base):
 
     __table_args__ = (
         # Trigram index backing "what did the person actually mean" lookups.
+        # Indexed on the *normalised* expression, because that is what the
+        # query compares: an index on the raw column cannot serve
+        # word_similarity(immutable_unaccent(lower(name)), ...) and Postgres
+        # quietly falls back to a sequential scan.
         Index(
             "ix_subject_i18n_name_trgm",
-            "name",
+            text("immutable_unaccent(lower(name))"),
             postgresql_using="gin",
-            postgresql_ops={"name": "gin_trgm_ops"},
+            postgresql_ops={"immutable_unaccent(lower(name))": "gin_trgm_ops"},
         ),
     )
 
@@ -157,9 +161,15 @@ class InstitutionI18n(Base):
     __table_args__ = (
         Index(
             "ix_institution_i18n_name_trgm",
-            "name",
+            text("immutable_unaccent(lower(name))"),
             postgresql_using="gin",
-            postgresql_ops={"name": "gin_trgm_ops"},
+            postgresql_ops={"immutable_unaccent(lower(name))": "gin_trgm_ops"},
+        ),
+        Index(
+            "ix_institution_i18n_short_trgm",
+            text("immutable_unaccent(lower(short_name))"),
+            postgresql_using="gin",
+            postgresql_ops={"immutable_unaccent(lower(short_name))": "gin_trgm_ops"},
         ),
     )
 

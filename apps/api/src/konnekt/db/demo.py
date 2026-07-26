@@ -7,8 +7,8 @@ one avatar instead of three.
 
     uv run python -m konnekt.db.demo
 
-Idempotent, and it only ever touches rows it created (Telegram ids in the
-900000000 range, partner codes prefixed `demo_`), so it cannot damage real data.
+Idempotent, and it only ever touches rows it created: the exact Telegram ids
+listed in PEOPLE, and partner codes prefixed `demo_`.
 
     uv run python -m konnekt.db.demo --clear
 """
@@ -45,7 +45,10 @@ from konnekt.db.models.enums import (
 )
 from konnekt.db.session import dispose_engine, get_sessionmaker
 
-# Demo accounts live in a range no real Telegram id occupies.
+# Demo accounts are numbered from this base. It is a namespace, not a fence:
+# real Telegram ids passed 900 million long ago and are well into the billions,
+# so deleting "everything at or above the base" would delete the entire user
+# table. clear() works from the exact list below and nothing else.
 DEMO_TG_BASE = 900_000_000
 
 PEOPLE: list[dict] = [
@@ -287,8 +290,15 @@ PARTNERS: list[dict] = [
 ]
 
 
+def demo_tg_ids() -> list[int]:
+    """Exactly the accounts this script creates, and no others."""
+    return [DEMO_TG_BASE + spec["tg"] for spec in PEOPLE]
+
+
 async def clear(session: AsyncSession) -> None:
-    users = (await session.scalars(select(User).where(User.tg_id >= DEMO_TG_BASE))).all()
+    users = (
+        await session.scalars(select(User).where(User.tg_id.in_(demo_tg_ids())))
+    ).all()
     ids = [u.id for u in users]
     if ids:
         await session.execute(delete(Offer).where(Offer.helper_id.in_(ids)))

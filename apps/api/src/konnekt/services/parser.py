@@ -154,7 +154,7 @@ for _idx, _names in enumerate(
         ("фев", "unor", "unora", "feb", "лют"),
         ("мар", "brezen", "brezna", "mar", "берез"),
         ("апр", "duben", "dubna", "apr", "квіт"),
-        ("ма", "kveten", "kvetna", "may", "трав"),
+        ("мая", "мае", "май", "kveten", "kvetna", "may", "трав"),
         ("июн", "cerven", "cervna", "jun", "черв"),
         ("июл", "cervenec", "cervence", "jul", "лип"),
         ("авг", "srpen", "srpna", "aug", "серп"),
@@ -285,7 +285,9 @@ def _match_budget(norm: str) -> float | None:
     for match in _BUDGET.finditer(norm):
         whole = match.group(0)
         has_currency = re.search(r"kc|kč|czk|крон|korun", whole)
-        has_limit_word = re.match(r"\s*(до|max|не более|не більше|maximalne)", whole)
+        has_limit_word = re.match(
+            r"\s*(до|max|maximalne|not more than|не более|не більше)", whole
+        )
         if has_currency or has_limit_word:
             value = float(match.group(1))
             if 50 <= value <= 100_000:
@@ -343,10 +345,10 @@ async def parse_intro(session: AsyncSession, text: str, lang: str) -> ParsedIntr
     norm = normalise(text)
     result = ParsedIntro()
 
-    # A low threshold on purpose: an introduction is long and mentions subjects
-    # in passing, so recall matters more than precision here — every guess is
-    # shown back as a removable chip.
-    result.subjects = await find_subjects(session, text, lang, limit=8, threshold=0.62)
+    # Recall over precision: an introduction is long and mentions subjects in
+    # passing ("могу и по терверу немного"), and every guess is shown back as a
+    # chip the person can remove. A miss is invisible; a spare chip is one tap.
+    result.subjects = await find_subjects(session, text, lang, limit=8, threshold=0.45)
     institutions = await find_institutions(session, text, lang, limit=1)
     result.institution = institutions[0] if institutions else None
 

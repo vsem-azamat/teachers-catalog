@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from typing import Literal
 
-from sqlalchemy import func, select
+from sqlalchemy import func, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -18,6 +18,7 @@ from konnekt.api.schemas import (
     Stat,
 )
 from konnekt.db.models import (
+    AvailabilitySlot,
     HelperProfile,
     Institution,
     Offer,
@@ -66,10 +67,19 @@ def _localised(rows, lang: UiLang, attr: str = "name") -> str | None:
 async def home_sections(
     session: AsyncSession, lang: UiLang
 ) -> tuple[list[HomeSection], list[HomeSection]]:
+    """The whole home screen in one round trip.
+
+    Counts are of *people*, not offers: a tutor who lists calculus and linear
+    algebra is one person to show, and "9" under a category that has four
+    tutors would be a lie the moment anyone counted the faces.
+    """
     counts = dict(
         (
             await session.execute(
-                select(Offer.service_type_id, func.count(Offer.id))
+                select(
+                    Offer.service_type_id,
+                    func.count(func.distinct(Offer.helper_id)),
+                )
                 .join(HelperProfile, HelperProfile.user_id == Offer.helper_id)
                 .where(
                     Offer.is_active.is_(True),
@@ -89,19 +99,20 @@ async def home_sections(
         )
     ).all()
 
-    people: list[HomeSection] = []
-    for index, st in enumerate(service_types):
-        people.append(
-            HomeSection(
-                kind="service_type",
-                code=st.code,
-                name=_localised(st.names, lang) or st.code,
-                hint=_localised(st.names, lang, "hint"),
-                tone=index % TONE_COUNT,
-                count=counts.get(st.id, 0),
-                avatars=await _sample_avatars(session, st.id),
-            )
+    avatars = await _sample_avatars(session, [st.id for st in service_types])
+
+    people = [
+        HomeSection(
+            kind="service_type",
+            code=st.code,
+            name=_localised(st.names, lang) or st.code,
+            hint=_localised(st.names, lang, "hint"),
+            tone=index % TONE_COUNT,
+            count=counts.get(st.id, 0),
+            avatars=avatars.get(st.id, []),
         )
+        for index, st in enumerate(service_types)
+    ]
 
     # Things are not seeded yet; the section stays empty rather than absent so
     # the client layout does not change shape once it fills.
@@ -109,23 +120,64 @@ async def home_sections(
 
 
 async def _sample_avatars(
-    session: AsyncSession, service_type_id: int, limit: int = 3
-) -> list[Avatar]:
-    users = (
-        await session.scalars(
-            select(User)
-            .join(HelperProfile, HelperProfile.user_id == User.id)
-            .join(Offer, Offer.helper_id == HelperProfile.user_id)
-            .where(
-                Offer.service_type_id == service_type_id,
-                Offer.is_active.is_(True),
-                HelperProfile.status == PublishStatus.PUBLISHED,
-            )
-            .order_by(HelperProfile.deals_count.desc())
-            .limit(limit)
+    session: AsyncSession, service_type_ids: list[int], per_section: int = 3
+) -> dict[int, list[Avatar]]:
+    """Top helpers per category, for every category in one query.
+
+    One query rather than one per category, and de-duplicated *before* the
+    limit: a helper with two offers in the same category used to consume two
+    of the three slots and leave the row looking half-empty.
+    """
+    if not service_type_ids:
+        return {}
+
+    distinct_pairs = (
+        select(
+            Offer.service_type_id.label("service_type_id"),
+            User.id.label("user_id"),
+            HelperProfile.deals_count.label("deals_count"),
         )
-    ).unique()
-    return [avatar_for(u) for u in users]
+        .join(HelperProfile, HelperProfile.user_id == Offer.helper_id)
+        .join(User, User.id == HelperProfile.user_id)
+        .where(
+            Offer.service_type_id.in_(service_type_ids),
+            Offer.is_active.is_(True),
+            HelperProfile.status == PublishStatus.PUBLISHED,
+        )
+        .distinct()
+        .subquery()
+    )
+    ranked = (
+        select(
+            distinct_pairs.c.service_type_id,
+            distinct_pairs.c.user_id,
+            func.row_number()
+            .over(
+                partition_by=distinct_pairs.c.service_type_id,
+                order_by=(
+                    distinct_pairs.c.deals_count.desc(),
+                    distinct_pairs.c.user_id,
+                ),
+            )
+            .label("rank"),
+        )
+        .select_from(distinct_pairs)
+        .subquery()
+    )
+
+    rows = (
+        await session.execute(
+            select(ranked.c.service_type_id, User)
+            .join(User, User.id == ranked.c.user_id)
+            .where(ranked.c.rank <= per_section)
+            .order_by(ranked.c.service_type_id, ranked.c.rank)
+        )
+    ).all()
+
+    out: dict[int, list[Avatar]] = {}
+    for service_type_id, user in rows:
+        out.setdefault(service_type_id, []).append(avatar_for(user))
+    return out
 
 
 def _offer_query(
@@ -164,6 +216,18 @@ def _offer_query(
     return stmt
 
 
+def _has_free_slot():
+    """Whether the helper has an availability window still ahead of them."""
+    return (
+        select(AvailabilitySlot.id)
+        .where(
+            AvailabilitySlot.helper_id == Offer.helper_id,
+            func.upper(AvailabilitySlot.period) > func.now(),
+        )
+        .exists()
+    )
+
+
 async def search(
     session: AsyncSession,
     lang: UiLang,
@@ -178,6 +242,18 @@ async def search(
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[int, list[HelperCardOut]]:
+    """One card per person, ordered in SQL so paging is coherent.
+
+    Three things this has to get right, and each was wrong when it was done
+    the obvious way:
+
+    * A person appears once. Matching two of their offers is a reason to rank
+      them higher, not to show them twice.
+    * Ordering is total. Every sort ends in the offer id, because ties left
+      to the planner's discretion make page two overlap page one.
+    * Sorting and "cheapest" are computed over the whole result, not over the
+      slice already in memory.
+    """
     langs = langs or []
     base = _offer_query(
         subject_id=subject_id,
@@ -187,19 +263,60 @@ async def search(
         langs=langs,
     )
 
-    total = await session.scalar(select(func.count()).select_from(base.subquery())) or 0
+    # with_only_columns on the base query, not a count over base.subquery():
+    # the latter leaves the aggregate pointing at the outer offers table and
+    # silently produces a cartesian product with the subquery.
+    total = (
+        await session.scalar(
+            base.with_only_columns(func.count(func.distinct(Offer.helper_id)))
+        )
+    ) or 0
+    if not total:
+        return 0, []
 
-    stmt = base.options(
-        selectinload(Offer.helper).selectinload(HelperProfile.user),
-        selectinload(Offer.helper).selectinload(HelperProfile.availability),
+    cheapest = await session.scalar(base.with_only_columns(func.min(Offer.price_amount)))
+
+    institution_hit = (
+        (Offer.institution_id == institution_id).desc() if institution_id else literal(0)
     )
+
+    # One offer per helper: the best-matching, then the cheapest, then by id.
+    best_per_helper = (
+        base.with_only_columns(Offer.id.label("offer_id"))
+        .distinct(Offer.helper_id)
+        .order_by(
+            Offer.helper_id,
+            institution_hit,
+            Offer.price_amount.asc().nulls_last(),
+            Offer.id,
+        )
+        .subquery()
+    )
+
+    stmt = (
+        select(Offer)
+        .join(best_per_helper, best_per_helper.c.offer_id == Offer.id)
+        .join(HelperProfile, HelperProfile.user_id == Offer.helper_id)
+        .options(
+            selectinload(Offer.helper).selectinload(HelperProfile.user),
+            selectinload(Offer.helper).selectinload(HelperProfile.availability),
+        )
+    )
+
     if sort == "price":
-        stmt = stmt.order_by(Offer.price_amount.asc().nulls_last())
+        stmt = stmt.order_by(Offer.price_amount.asc().nulls_last(), Offer.id)
+    elif sort == "available":
+        stmt = stmt.order_by(
+            _has_free_slot().desc(),
+            HelperProfile.response_minutes_avg.asc().nulls_last(),
+            Offer.id,
+        )
     else:
         stmt = stmt.order_by(
-            (Offer.institution_id == institution_id).desc()
-            if institution_id
-            else Offer.id.asc()
+            institution_hit,
+            HelperProfile.deals_count.desc(),
+            HelperProfile.rating.desc().nulls_last(),
+            Offer.id,
         )
 
     offers = (await session.scalars(stmt.limit(limit).offset(offset))).unique().all()
@@ -213,25 +330,19 @@ async def search(
             )
         ).all()
     )
+    if viewer.institution_id:
+        viewer_institutions.add(viewer.institution_id)
 
-    cheapest = min(
-        (o.price_amount for o in offers if o.price_amount is not None), default=None
-    )
-
-    cards = [
+    return total, [
         _to_card(
             offer,
             lang,
             requested_institution_id=institution_id,
             viewer_institutions=viewer_institutions,
-            cheapest=cheapest,
+            cheapest=float(cheapest) if cheapest is not None else None,
         )
         for offer in offers
     ]
-
-    if sort == "available":
-        cards.sort(key=lambda c: c.availability is None)
-    return total, cards
 
 
 def _to_card(

@@ -104,6 +104,10 @@ class Offer(IdMixin, TimestampMixin, Base):
             "is_active",
         ),
         Index("ix_offers_helper", "helper_id"),
+        # The commonest query of all is "everyone who teaches X", with no kind
+        # of help named. ix_offers_lookup leads with service_type_id and so
+        # cannot serve it.
+        Index("ix_offers_subject", "subject_id", "is_active"),
         Index("ix_offers_langs", "langs", postgresql_using="gin"),
         Index("ix_offers_attrs", "attrs", postgresql_using="gin"),
         Index("ix_offers_price", "price_currency", "price_amount"),

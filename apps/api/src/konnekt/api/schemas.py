@@ -14,10 +14,15 @@ Two conventions worth stating once:
 """
 
 from datetime import date, datetime
+from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 
 from konnekt.db.models.enums import PriceUnit, UiLang, WorkFormat
+
+# Matches ARRAY(String(8)) in the schema; a longer code cannot be stored, and a
+# request carrying one should be told so rather than fail at the database.
+LangCode = Annotated[str, StringConstraints(min_length=2, max_length=8)]
 
 
 class Phrase(BaseModel):
@@ -258,8 +263,10 @@ class MeOut(BaseModel):
 
 class MeUpdate(BaseModel):
     ui_lang: UiLang | None = None
-    spoken_langs: list[str] | None = None
-    city: str | None = None
+    # Bounds mirror the columns: an over-long value would otherwise reach
+    # Postgres and come back as a 500 rather than a validation error.
+    spoken_langs: list[LangCode] | None = Field(default=None, max_length=12)
+    city: str | None = Field(default=None, max_length=96)
     institution_id: int | None = None
 
 
@@ -290,9 +297,9 @@ class OfferIn(BaseModel):
     service_type_id: int
     subject_id: int | None = None
     institution_id: int | None = None
-    price_amount: float | None = Field(default=None, ge=0)
+    price_amount: float | None = Field(default=None, ge=0, le=1_000_000)
     price_unit: PriceUnit = PriceUnit.HOUR
-    langs: list[str] = Field(default_factory=list)
+    langs: list[LangCode] = Field(default_factory=list, max_length=12)
 
 
 class HelperUpsert(BaseModel):
@@ -300,9 +307,11 @@ class HelperUpsert(BaseModel):
     about: str | None = Field(default=None, max_length=4000)
     raw_intro: str | None = Field(default=None, max_length=4000)
     work_format: WorkFormat = WorkFormat.BOTH
-    city: str | None = None
+    city: str | None = Field(default=None, max_length=96)
     place_note: str | None = Field(default=None, max_length=240)
-    offers: list[OfferIn] = Field(default_factory=list)
+    # A person offers a handful of things, not a catalogue. The cap keeps one
+    # request from writing tens of thousands of rows in a single transaction.
+    offers: list[OfferIn] = Field(default_factory=list, max_length=60)
     publish: bool = False
 
 
@@ -315,8 +324,8 @@ class RequestCreate(BaseModel):
     institution_id: int | None = None
     service_type_id: int | None = None
     deadline_on: date | None = None
-    budget_max: float | None = None
-    langs: list[str] = Field(default_factory=list)
+    budget_max: float | None = Field(default=None, ge=0, le=1_000_000)
+    langs: list[LangCode] = Field(default_factory=list, max_length=12)
 
 
 class RequestOut(BaseModel):

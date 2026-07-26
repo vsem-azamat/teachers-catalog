@@ -95,10 +95,12 @@ def _parse_unsigned(raw: str) -> TelegramIdentity:
         user = json.loads(fields.get("user", "{}"))
     except json.JSONDecodeError as exc:
         raise InitDataError("unparsable user field") from exc
-    if not user.get("id"):
-        raise InitDataError("unsigned init data has no user id")
+    try:
+        tg_id = int(user["id"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise InitDataError("unsigned init data has no usable user id") from exc
     return TelegramIdentity(
-        tg_id=int(user["id"]),
+        tg_id=tg_id,
         first_name=user.get("first_name") or "Anonymous",
         last_name=user.get("last_name"),
         username=user.get("username"),

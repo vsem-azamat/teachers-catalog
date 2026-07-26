@@ -2,6 +2,7 @@ from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from konnekt.core.config import Settings, get_settings
@@ -58,17 +59,29 @@ async def current_user(
     user = await session.scalar(select(User).where(User.tg_id == identity.tg_id))
 
     if user is None:
-        user = User(
-            tg_id=identity.tg_id,
-            first_name=identity.first_name,
-            last_name=identity.last_name,
-            tg_username=identity.username,
-            photo_url=identity.photo_url,
-            ui_lang=_pick_ui_lang(identity.language_code, settings),
+        # A mini app opens by firing /me, /home and /taxonomy at once, each on
+        # its own session, and all three see no user. INSERT ... ON CONFLICT
+        # makes the first one win and the rest read the winner's row instead of
+        # colliding on users.tg_id.
+        insert_stmt = (
+            pg_insert(User)
+            .values(
+                tg_id=identity.tg_id,
+                first_name=identity.first_name,
+                last_name=identity.last_name,
+                tg_username=identity.username,
+                photo_url=identity.photo_url,
+                ui_lang=_pick_ui_lang(identity.language_code, settings),
+            )
+            .on_conflict_do_nothing(index_elements=[User.tg_id])
         )
-        session.add(user)
+        await session.execute(insert_stmt)
         await session.commit()
-        await session.refresh(user)
+        user = await session.scalar(select(User).where(User.tg_id == identity.tg_id))
+        if user is None:  # pragma: no cover - only if the row vanished mid-flight
+            raise HTTPException(
+                status.HTTP_503_SERVICE_UNAVAILABLE, "could not register the account"
+            )
         return user
 
     changed = False

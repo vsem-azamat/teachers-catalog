@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import selectinload
 
-from konnekt.api.deps import LangDep, SessionDep, SettingsDep, UserDep
+from konnekt.api.deps import LangDep, SessionDep, UserDep
 from konnekt.api.schemas import (
     Chip,
     Clarify,
@@ -36,6 +36,7 @@ from konnekt.db.models import (
     Institution,
     Language,
     Offer,
+    Placement,
     RequestResponse,
     SearchQuery,
     ServiceType,
@@ -44,6 +45,7 @@ from konnekt.db.models import (
 )
 from konnekt.db.models.enums import (
     ContentLang,
+    PlacementSlot,
     PriceUnit,
     PublishStatus,
     RequestStatus,
@@ -53,6 +55,20 @@ from konnekt.services import catalog, parser, placements
 from konnekt.services.catalog import _localised, avatar_for
 
 router = APIRouter(prefix="/api/v1")
+
+
+async def _require(session, model, value: int | None, field: str) -> None:
+    """Reject an unknown foreign key here rather than at the database.
+
+    Without this a typo'd id surfaces as ForeignKeyViolation — a 500 that says
+    nothing useful — instead of a 422 naming the field.
+    """
+    if value is None:
+        return
+    if await session.scalar(select(model.id).where(model.id == value)) is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, f"unknown {field}: {value}"
+        )
 
 
 # ── who am I ────────────────────────────────────────────────────────────
@@ -97,6 +113,9 @@ async def update_me(
     if payload.city is not None:
         user.city = payload.city or None
     if payload.institution_id is not None:
+        await _require(
+            session, Institution, payload.institution_id or None, "institution_id"
+        )
         user.institution_id = payload.institution_id or None
     await session.commit()
     return await read_me(user, session, payload.ui_lang or lang)
@@ -148,7 +167,7 @@ async def subjects(
     user: UserDep,
     parent_id: int | None = None,
     q: str | None = Query(default=None, max_length=200),
-    limit: int = Query(default=100, le=300),
+    limit: int = Query(default=100, ge=1, le=300),
 ) -> list[SubjectOut]:
     """Browse the tree, or search it.
 
@@ -391,7 +410,7 @@ async def parse_query(
         chips=chips,
         clarify=_clarify_for(parsed),
         matches=total,
-        note=Phrase(code="parse.nothing_recognised") if parsed.unmatched else None,
+        note=Phrase(code="parse.nothing_recognised") if not chips else None,
     )
 
 
@@ -425,8 +444,8 @@ async def search_offers(
     max_price: float | None = None,
     langs: list[str] = Query(default_factory=list),
     sort: str = Query(default="relevance", pattern="^(relevance|price|available)$"),
-    limit: int = Query(default=20, le=50),
-    offset: int = 0,
+    limit: int = Query(default=20, ge=1, le=50),
+    offset: int = Query(default=0, ge=0),
 ) -> SearchOut:
     total, results = await catalog.search(
         session,
@@ -540,6 +559,10 @@ async def upsert_helper(
         helper = HelperProfile(user_id=user.id)
         session.add(helper)
 
+    # A ban is not something the banned person can lift by pressing publish.
+    if helper.status == PublishStatus.BANNED:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "this profile is blocked")
+
     helper.headline = payload.headline
     helper.about = payload.about
     helper.raw_intro = payload.raw_intro or helper.raw_intro
@@ -547,23 +570,43 @@ async def upsert_helper(
     helper.work_format = payload.work_format
     helper.city = payload.city
     helper.place_note = payload.place_note
-    if payload.publish and helper.status != PublishStatus.PUBLISHED:
+
+    if payload.publish:
         helper.status = PublishStatus.PUBLISHED
         helper.published_at = helper.published_at or datetime.now(UTC)
-    elif not payload.publish and helper.status == PublishStatus.DRAFT:
-        helper.status = PublishStatus.DRAFT
+    else:
+        # HIDDEN, not DRAFT, once it has been out: "hide me" has to actually
+        # take the profile out of the catalog, and the distinction preserves
+        # whether anyone has ever seen it.
+        helper.status = (
+            PublishStatus.HIDDEN if helper.published_at else PublishStatus.DRAFT
+        )
     await session.flush()
 
     valid_service_ids = set(
         (await session.scalars(select(ServiceType.id).where(ServiceType.is_active))).all()
     )
     await session.execute(delete(Offer).where(Offer.helper_id == user.id))
+    seen_axes: set[tuple[int, int | None, int | None]] = set()
     for spec in payload.offers:
         if spec.service_type_id not in valid_service_ids:
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_CONTENT,
                 f"unknown service type {spec.service_type_id}",
             )
+        await _require(session, Subject, spec.subject_id, "subject_id")
+        await _require(session, Institution, spec.institution_id, "institution_id")
+
+        axes = (spec.service_type_id, spec.subject_id, spec.institution_id)
+        if axes in seen_axes:
+            # The same three axes twice violates uq_offers_axes. Saying which
+            # entry is duplicated beats a unique-violation traceback.
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                f"duplicate offer for service {axes[0]}, subject {axes[1]}, "
+                f"institution {axes[2]}",
+            )
+        seen_axes.add(axes)
         session.add(
             Offer(
                 helper_id=user.id,
@@ -599,6 +642,10 @@ async def create_request(
     days; with one, the day after — an exam on the 14th is worthless on the
     15th, and a stale board is worse than an empty one.
     """
+    await _require(session, Subject, payload.subject_id, "subject_id")
+    await _require(session, Institution, payload.institution_id, "institution_id")
+    await _require(session, ServiceType, payload.service_type_id, "service_type_id")
+
     parsed = await parser.parse(session, payload.text, lang.value)
 
     subject_id = payload.subject_id or (parsed.subject.id if parsed.subject else None)
@@ -651,7 +698,7 @@ async def my_requests(
             .limit(50)
         )
     ).all()
-    return [await _request_out(session, row, lang) for row in rows]
+    return await _requests_out(session, list(rows), lang)
 
 
 @router.post(
@@ -671,57 +718,89 @@ async def close_request(
 
 
 async def _request_out(session, request: HelpRequest, lang) -> RequestOut:
-    subject = institution = service = None
-    if request.subject_id:
-        subject = await session.scalar(
-            select(Subject)
-            .where(Subject.id == request.subject_id)
-            .options(selectinload(Subject.names))
-        )
-    if request.institution_id:
-        institution = await session.scalar(
-            select(Institution)
-            .where(Institution.id == request.institution_id)
-            .options(selectinload(Institution.names))
-        )
-    if request.service_type_id:
-        service = await session.scalar(
-            select(ServiceType)
-            .where(ServiceType.id == request.service_type_id)
-            .options(selectinload(ServiceType.names))
-        )
+    [out] = await _requests_out(session, [request], lang)
+    return out
 
-    responders = (
-        await session.scalars(
-            select(User)
-            .join(RequestResponse, RequestResponse.helper_id == User.id)
-            .where(RequestResponse.request_id == request.id)
-            .limit(4)
+
+async def _requests_out(session, requests: list[HelpRequest], lang) -> list[RequestOut]:
+    """Render a whole page of requests in a fixed number of queries.
+
+    Done per request this was five round trips each — 250 for a full page —
+    and every one of them was fetching the same handful of subject and
+    faculty names over and over.
+    """
+    if not requests:
+        return []
+
+    async def names_by_id(model, ids: set[int]) -> dict:
+        if not ids:
+            return {}
+        rows = (
+            await session.scalars(
+                select(model).where(model.id.in_(ids)).options(selectinload(model.names))
+            )
+        ).all()
+        return {row.id: row for row in rows}
+
+    subjects = await names_by_id(
+        Subject, {r.subject_id for r in requests if r.subject_id}
+    )
+    institutions = await names_by_id(
+        Institution, {r.institution_id for r in requests if r.institution_id}
+    )
+    services = await names_by_id(
+        ServiceType, {r.service_type_id for r in requests if r.service_type_id}
+    )
+
+    request_ids = [r.id for r in requests]
+    counts = dict(
+        (
+            await session.execute(
+                select(RequestResponse.request_id, func.count(RequestResponse.id))
+                .where(RequestResponse.request_id.in_(request_ids))
+                .group_by(RequestResponse.request_id)
+            )
+        ).all()
+    )
+    responder_rows = (
+        await session.execute(
+            select(RequestResponse.request_id, User)
+            .join(User, User.id == RequestResponse.helper_id)
+            .where(RequestResponse.request_id.in_(request_ids))
+            .order_by(RequestResponse.request_id, RequestResponse.id)
         )
     ).all()
-    total = await session.scalar(
-        select(func.count(RequestResponse.id)).where(
-            RequestResponse.request_id == request.id
-        )
-    )
+    responders: dict[int, list] = {}
+    for request_id, responder in responder_rows:
+        bucket = responders.setdefault(request_id, [])
+        if len(bucket) < 4:
+            bucket.append(avatar_for(responder))
 
-    return RequestOut(
-        id=request.id,
-        text=request.raw_text,
-        subject=_localised(subject.names, lang) if subject else None,
-        institution=(
-            _localised(institution.names, lang, "short_name")
-            or _localised(institution.names, lang)
-            if institution
-            else None
-        ),
-        service_type=_localised(service.names, lang) if service else None,
-        deadline_on=request.deadline_on,
-        status=request.status.value,
-        responses_count=total or 0,
-        responders=[avatar_for(u) for u in responders],
-        created_at=request.created_at,
-    )
+    out = []
+    for request in requests:
+        subject = subjects.get(request.subject_id)
+        institution = institutions.get(request.institution_id)
+        service = services.get(request.service_type_id)
+        out.append(
+            RequestOut(
+                id=request.id,
+                text=request.raw_text,
+                subject=_localised(subject.names, lang) if subject else None,
+                institution=(
+                    _localised(institution.names, lang, "short_name")
+                    or _localised(institution.names, lang)
+                    if institution
+                    else None
+                ),
+                service_type=_localised(service.names, lang) if service else None,
+                deadline_on=request.deadline_on,
+                status=request.status.value,
+                responses_count=counts.get(request.id, 0),
+                responders=responders.get(request.id, []),
+                created_at=request.created_at,
+            )
+        )
+    return out
 
 
 # ── partner placements ──────────────────────────────────────────────────
@@ -732,8 +811,7 @@ async def placements_for_slot(
     session: SessionDep,
     lang: LangDep,
     user: UserDep,
-    settings: SettingsDep,
-    slot: str,
+    slot: PlacementSlot,
     service_type: str | None = None,
     subject_id: int | None = None,
 ) -> list[PlacementOut]:
@@ -746,6 +824,8 @@ async def placements_for_slot(
             "subject_id": subject_id,
             "ui_lang": user.ui_lang.value,
             "month": datetime.now(UTC).month,
+            # Impressions are worth nothing without knowing who saw them.
+            "user_id": user.id,
         },
     )
 
@@ -756,6 +836,16 @@ async def placements_for_slot(
     tags=["partners"],
 )
 async def register_click(placement_id: int, session: SessionDep, user: UserDep) -> None:
+    """Record that a partner block was followed.
+
+    The id is checked first: the partner is billed per click, so an unknown one
+    must be a 404 rather than a foreign-key traceback.
+    """
+    exists = await session.scalar(
+        select(Placement.id).where(Placement.id == placement_id)
+    )
+    if exists is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such placement")
     await placements.record(session, placement_id, user.id, kind="click")
 
 

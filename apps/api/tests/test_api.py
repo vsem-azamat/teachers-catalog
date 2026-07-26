@@ -392,3 +392,173 @@ async def test_an_unknown_service_type_is_refused(client):
         headers=auth_header(90305),
     )
     assert response.status_code == 422
+
+
+async def test_hiding_a_published_profile_takes_it_out_of_the_catalog(client, session):
+    """ "Hide me" has to actually hide; it used to be a no-op once published."""
+    from sqlalchemy import select
+
+    from konnekt.db.models import ServiceType, Subject
+
+    headers = auth_header(90401)
+    service = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "tutoring")
+    )
+    subject = await session.scalar(select(Subject).where(Subject.slug == "histologie"))
+    offers = [{"service_type_id": service.id, "subject_id": subject.id}]
+
+    await client.put(
+        "/api/v1/helper", json={"publish": True, "offers": offers}, headers=headers
+    )
+    published = (
+        await client.get(
+            "/api/v1/search", params={"subject_id": subject.id}, headers=headers
+        )
+    ).json()["total"]
+    assert published == 1
+
+    hidden = await client.put(
+        "/api/v1/helper", json={"publish": False, "offers": offers}, headers=headers
+    )
+    assert hidden.json()["helper_status"] == "hidden"
+    assert (
+        await client.get(
+            "/api/v1/search", params={"subject_id": subject.id}, headers=headers
+        )
+    ).json()["total"] == 0
+
+
+async def test_a_banned_profile_cannot_publish_itself(client, session):
+    from konnekt.db.models import HelperProfile
+    from konnekt.db.models.enums import PublishStatus
+
+    headers = auth_header(90402)
+    await client.get("/api/v1/me", headers=headers)  # registers the account
+    await client.put("/api/v1/helper", json={"publish": False}, headers=headers)
+
+    from sqlalchemy import select
+
+    from konnekt.db.models import User
+
+    user = await session.scalar(select(User).where(User.tg_id == 90402))
+    helper = await session.get(HelperProfile, user.id)
+    helper.status = PublishStatus.BANNED
+    await session.commit()
+
+    refused = await client.put("/api/v1/helper", json={"publish": True}, headers=headers)
+    assert refused.status_code == 403
+
+
+async def test_the_same_axes_twice_is_a_422_not_a_traceback(client, session):
+    from sqlalchemy import select
+
+    from konnekt.db.models import ServiceType, Subject
+
+    service = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "tutoring")
+    )
+    subject = await session.scalar(select(Subject).where(Subject.slug == "genetika"))
+    duplicate = {"service_type_id": service.id, "subject_id": subject.id}
+
+    response = await client.put(
+        "/api/v1/helper",
+        json={"offers": [duplicate, duplicate]},
+        headers=auth_header(90403),
+    )
+    assert response.status_code == 422
+    assert "duplicate" in response.json()["detail"]
+
+
+async def test_unknown_foreign_keys_are_named_not_crashed(client):
+    headers = auth_header(90404)
+    bad_institution = await client.patch(
+        "/api/v1/me", json={"institution_id": 999999}, headers=headers
+    )
+    assert bad_institution.status_code == 422
+    assert "institution_id" in bad_institution.json()["detail"]
+
+    bad_subject = await client.post(
+        "/api/v1/requests",
+        json={"text": "матан", "subject_id": 999999},
+        headers=headers,
+    )
+    assert bad_subject.status_code == 422
+
+
+async def test_one_person_appears_once_however_many_offers_match(
+    client, session, helper_factory
+):
+    """Two matching offers is a reason to rank higher, not to show twice."""
+    from sqlalchemy import select
+
+    from konnekt.db.models import Offer, ServiceType, Subject
+
+    user = await helper_factory(tg_id=91101, subject_slug="anatomie")
+    subject = await session.scalar(select(Subject).where(Subject.slug == "anatomie"))
+    second = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "exam_prep")
+    )
+    session.add(
+        Offer(
+            helper_id=user.id,
+            service_type_id=second.id,
+            subject_id=subject.id,
+            price_amount=800,
+        )
+    )
+    await session.flush()
+
+    body = (
+        await client.get(
+            "/api/v1/search",
+            params={"subject_id": subject.id},
+            headers=auth_header(90405),
+        )
+    ).json()
+    assert body["total"] == 1
+    assert len(body["results"]) == 1
+
+
+async def test_clicking_an_unknown_placement_is_a_404(client):
+    response = await client.post(
+        "/api/v1/placements/999999/click", headers=auth_header(90406)
+    )
+    assert response.status_code == 404
+
+
+async def test_an_unknown_placement_slot_is_rejected(client):
+    response = await client.get(
+        "/api/v1/placements", params={"slot": "nowhere"}, headers=auth_header(90407)
+    )
+    assert response.status_code == 422
+
+
+async def test_partner_blocks_are_matched_by_condition(client):
+    """Sworn translation belongs on the nostrification screen, not everywhere."""
+    on_topic = (
+        await client.get(
+            "/api/v1/placements",
+            params={"slot": "screen_nostrification", "service_type": "nostrification"},
+            headers=auth_header(90408),
+        )
+    ).json()
+    assert any("překlad" in p["title"] or "перевод" in p["title"] for p in on_topic)
+
+    off_topic = (
+        await client.get(
+            "/api/v1/placements",
+            params={"slot": "screen_nostrification"},
+            headers=auth_header(90409),
+        )
+    ).json()
+    assert off_topic == []
+
+
+async def test_paging_bounds_are_enforced(client):
+    headers = auth_header(90410)
+    assert (
+        await client.get("/api/v1/search", params={"offset": -1}, headers=headers)
+    ).status_code == 422
+    assert (
+        await client.get("/api/v1/search", params={"limit": 0}, headers=headers)
+    ).status_code == 422

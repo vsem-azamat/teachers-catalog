@@ -177,6 +177,13 @@ class AvailabilitySlot(IdMixin, Base):
             name="availability_slots_no_overlap",
             using="gist",
         ),
+        # tstzrange allows unbounded ends, and "free from now until the heat
+        # death of the universe" is not a thing a person offers. Rejecting it
+        # here also spares every reader a None check on the bounds.
+        CheckConstraint(
+            "NOT lower_inf(period) AND NOT upper_inf(period) AND NOT isempty(period)",
+            name="period_is_bounded",
+        ),
         Index("ix_availability_slots_period", "period", postgresql_using="gist"),
     )
 

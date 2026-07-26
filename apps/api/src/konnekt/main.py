@@ -38,9 +38,14 @@ async def lifespan(app: FastAPI):
 
         await dispatcher.emit_startup(bot=bot, dispatcher=dispatcher)
         if settings.public_base_url:
+            if not settings.webhook_secret:
+                raise RuntimeError(
+                    "PUBLIC_BASE_URL is set but WEBHOOK_SECRET is not — refusing "
+                    "to register a webhook nobody can authenticate"
+                )
             await bot.set_webhook(
                 url=f"{settings.public_base_url.rstrip('/')}{settings.webhook_path}",
-                secret_token=settings.webhook_secret or None,
+                secret_token=settings.webhook_secret,
                 # Only the update types something actually handles, so Telegram
                 # stops sending the rest.
                 allowed_updates=dispatcher.resolve_used_update_types(),
@@ -96,11 +101,15 @@ def create_app() -> FastAPI:
             return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
 
         expected = settings.webhook_secret
+        if not expected:
+            # Fail closed. With a token configured but no secret, an open
+            # webhook lets anyone post a forged Update and make the bot speak
+            # into any chat — so refuse to serve rather than skip the check.
+            log.error("WEBHOOK_SECRET is unset; refusing webhook traffic")
+            return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
         # compare_digest rather than ==: the comparison must not leak how much
         # of the secret a guess got right.
-        if expected and not secrets.compare_digest(
-            x_telegram_bot_api_secret_token, expected
-        ):
+        if not secrets.compare_digest(x_telegram_bot_api_secret_token, expected):
             return Response(status_code=status.HTTP_401_UNAUTHORIZED)
 
         # context={"bot": bot} is required — without it the message shortcuts
