@@ -16,7 +16,7 @@ Two conventions worth stating once:
 from datetime import date, datetime
 from typing import Annotated
 
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 
 from konnekt.db.models.enums import PriceUnit, UiLang, WorkFormat
 
@@ -337,7 +337,9 @@ class RequestCreate(BaseModel):
     langs: list[LangCode] = Field(default_factory=list, max_length=12)
 
 
-class RequestOut(BaseModel):
+class RequestBase(BaseModel):
+    """What a request is, to anyone looking at it."""
+
     id: int
     text: str
     subject: str | None = None
@@ -345,6 +347,62 @@ class RequestOut(BaseModel):
     service_type: str | None = None
     deadline_on: date | None = None
     status: str
+    created_at: datetime
+
+
+class RequestOut(RequestBase):
+    """Your own request. Who answered is the whole point of the screen."""
+
     responses_count: int = 0
     responders: list[Avatar] = Field(default_factory=list)
+
+
+class FeedRequestOut(RequestBase):
+    """A request as a helper sees it.
+
+    Deliberately not a subclass of RequestOut: how many people have already
+    answered, and who they are, is the competition's business and not this
+    reader's. A helper who can see "3 answers already" simply skips those,
+    which is the opposite of what the feed is for — and inheriting the fields
+    to blank them would still leave them in the schema.
+    """
+
+    author: Avatar
+    author_name: str
+    budget: Price | None = None
+    langs: list[str] = Field(default_factory=list)
+    # Why this request surfaced: the same subject you teach, your faculty, or
+    # simply that it is new. Rendered by the client, like every other Phrase.
+    reason: Phrase | None = None
+
+
+class ResponseCreate(BaseModel):
+    # Validated after stripping, below: min_length alone sees the raw string,
+    # so "   " passes it and lands in the database as "".
+    message: str = Field(max_length=1000)
+    price_amount: float | None = Field(default=None, ge=0, le=1_000_000)
+    price_unit: PriceUnit | None = None
+
+    @field_validator("message")
+    @classmethod
+    def _not_blank(cls, value: str) -> str:
+        stripped = value.strip()
+        if len(stripped) < 3:
+            raise ValueError("write at least a few words")
+        return stripped
+
+
+class ResponseOut(BaseModel):
+    id: int
+    request_id: int
+    helper_id: int
+    name: str
+    avatar: Avatar
+    username: str | None = None
+    affiliation: str | None = None
+    rating: float | None = None
+    deals_count: int = 0
+    message: str
+    price: Price | None = None
+    status: str
     created_at: datetime

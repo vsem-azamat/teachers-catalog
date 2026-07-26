@@ -2,6 +2,7 @@ import { retrieveRawInitData } from '@tma.js/sdk-react';
 
 import type {
   ContactStart,
+  FeedRequest,
   HelperDetail,
   HelperUpsert,
   HelpRequest,
@@ -14,6 +15,8 @@ import type {
   ParseResult,
   Placement,
   RequestCreate,
+  RequestResponse,
+  ResponseCreate,
   SearchParams,
   SearchResult,
   ServiceType,
@@ -233,6 +236,26 @@ export const api = {
 
   closeRequest: (requestId: number) =>
     request<HelpRequest>(`/requests/${requestId}/close`, { method: 'POST' }),
+
+  /** Open requests worth answering. Helpers only; 403 for everyone else. */
+  getRequestFeed: (signal?: AbortSignal) =>
+    request<FeedRequest[]>('/requests/feed', { signal }),
+
+  respondToRequest: (requestId: number, payload: ResponseCreate) =>
+    request<RequestResponse>(`/requests/${requestId}/respond`, {
+      method: 'POST',
+      body: payload,
+    }),
+
+  /** Who answered. The author of the request only. */
+  getResponses: (requestId: number, signal?: AbortSignal) =>
+    request<RequestResponse[]>(`/requests/${requestId}/responses`, { signal }),
+
+  acceptResponse: (responseId: number) =>
+    request<RequestResponse>(`/responses/${responseId}/accept`, { method: 'POST' }),
+
+  declineResponse: (responseId: number) =>
+    request<RequestResponse>(`/responses/${responseId}/decline`, { method: 'POST' }),
 
   // ── becoming a helper ─────────────────────────────────────────────────
 

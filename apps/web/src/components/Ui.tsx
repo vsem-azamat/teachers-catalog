@@ -348,6 +348,41 @@ export function Segmented<T extends string>({
   );
 }
 
+// ── actions ─────────────────────────────────────────────────────────────
+
+export function Actions({ children }: { children: ReactNode }) {
+  return <div className={css.actions}>{children}</div>;
+}
+
+/**
+ * A button inside the page, as opposed to Telegram's main button.
+ *
+ * There is only one main button and it belongs to the screen; a list where
+ * every card can be accepted or turned down needs its own.
+ */
+export function Action({
+  children,
+  onClick,
+  quiet,
+  disabled,
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  quiet?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      className={`${css.action} ${quiet ? css.actionQuiet : ''} ${css.pressable}`}
+      onClick={onClick}
+      disabled={disabled}
+    >
+      {children}
+    </button>
+  );
+}
+
 // ── states ──────────────────────────────────────────────────────────────
 
 export function Empty({ title, body }: { title: ReactNode; body?: ReactNode }) {

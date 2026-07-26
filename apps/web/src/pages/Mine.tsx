@@ -1,6 +1,7 @@
 import { Plural, Trans, useLingui } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
+import { Incoming } from '@/components/Incoming';
 import { DocumentIcon, iconForService } from '@/components/icons';
 import { formatDay } from '@/components/Phrase';
 import { TabBar } from '@/components/TabBar';
@@ -13,6 +14,7 @@ import {
   Label,
   Reason,
   Screen,
+  Segmented,
   SkeletonRows,
   Tile,
   Title,
@@ -20,15 +22,38 @@ import {
 import { api } from '@/lib/api';
 import type { HelpRequest } from '@/lib/types';
 
+type Tab = 'mine' | 'incoming';
+
 /**
- * The other direction: what you asked for, and who answered.
+ * Both directions of the same relationship.
  *
- * A catalog only works once it is full. Until then this is the side that does
- * work — you post what you need and helpers come to you.
+ * What you asked for, and — if you are also a helper — what other people are
+ * asking for. One screen rather than a fifth tab: the two are the same person's
+ * business, and most people will only ever see the first.
  */
 export default function MinePage() {
   const navigate = useNavigate();
   const { i18n } = useLingui();
+  // In the URL, so the notification that brings a helper back can land on the
+  // right half and a reload does not lose it.
+  const [params, setParams] = useSearchParams();
+
+  const me = useQuery({ queryKey: ['me'], queryFn: ({ signal }) => api.getMe(signal) });
+  const isHelper = me.data?.is_helper ?? false;
+
+  // Forced back to 'mine' for someone who is not a helper: the control that
+  // switches back is only rendered for helpers, so /mine?tab=incoming would
+  // otherwise strand them on "fill in your profile" with no way out.
+  const tab: Tab = isHelper && params.get('tab') === 'incoming' ? 'incoming' : 'mine';
+
+  const switchTo = (next: Tab) => {
+    // Rebuilt from the current params rather than replaced: a wholesale
+    // object drops every other search parameter on the screen.
+    const updated = new URLSearchParams(params);
+    if (next === 'mine') updated.delete('tab');
+    else updated.set('tab', next);
+    setParams(updated, { replace: true });
+  };
 
   const { data, isPending, isError } = useQuery({
     queryKey: ['requests'],
@@ -43,11 +68,30 @@ export default function MinePage() {
           <Trans>Мои</Trans>
         </Title>
 
-        <Label>
-          <Trans>Заявки</Trans>
-        </Label>
+        {isHelper ? (
+          <div style={{ marginTop: 14 }}>
+            <Segmented<Tab>
+              value={tab}
+              onChange={switchTo}
+              options={[
+                { value: 'mine', label: <Trans>Мои заявки</Trans> },
+                { value: 'incoming', label: <Trans>Входящие</Trans> },
+              ]}
+            />
+          </div>
+        ) : (
+          <Label>
+            <Trans>Заявки</Trans>
+          </Label>
+        )}
 
-        {isPending ? (
+        {/* The segmented control replaces the section label, and with it the
+            gap the label used to provide above the list. */}
+        <div style={{ height: isHelper ? 14 : 0 }} />
+
+        {tab === 'incoming' ? (
+          <Incoming />
+        ) : isPending ? (
           <SkeletonRows count={2} />
         ) : isError ? (
           <Empty title={<Trans>Не получилось загрузить</Trans>} />
@@ -67,7 +111,7 @@ export default function MinePage() {
                 key={request.id}
                 request={request}
                 locale={i18n.locale}
-                onClick={() => navigate(`/ask?from=${request.id}`)}
+                onClick={() => navigate(`/request/${request.id}`)}
               />
             ))}
           </Cards>
