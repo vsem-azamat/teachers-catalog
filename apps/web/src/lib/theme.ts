@@ -8,6 +8,13 @@
  * written to `data-theme` on the root element, which is the only thing
  * `styles/tokens.css` looks at.
  *
+ * A module, not a hook. The choice outlives any one screen: the switch is on
+ * the profile page, and it has to keep holding while the person is anywhere
+ * else. Two things follow — the operating system is watched from here rather
+ * than from a component, and the choice is remembered in memory as well as in
+ * storage, so a browser that refuses to store it still honours it for the rest
+ * of the session instead of snapping back the next time the profile mounts.
+ *
  * The same key and the same resolution are duplicated, deliberately, by the
  * inline script in index.html — that copy runs before the first paint, so the
  * page never flashes the wrong palette. Keep the two in step.
@@ -29,23 +36,23 @@ export function isThemeChoice(value: unknown): value is ThemeChoice {
   );
 }
 
-export function readThemeChoice(): ThemeChoice {
+function readStored(): ThemeChoice {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     return isThemeChoice(stored) ? stored : 'system';
   } catch {
     // Private mode, or storage disabled. Following the system is a fine
-    // answer for someone whose choice we cannot remember anyway.
+    // answer for someone whose choice we cannot remember across a reload.
     return 'system';
   }
 }
 
-export function writeThemeChoice(choice: ThemeChoice): void {
+function writeStored(choice: ThemeChoice): void {
   try {
     if (choice === 'system') localStorage.removeItem(STORAGE_KEY);
     else localStorage.setItem(STORAGE_KEY, choice);
   } catch {
-    // Ignore — the choice simply will not survive a restart.
+    // Ignore — `choice` below still holds it for this session.
   }
 }
 
@@ -55,29 +62,54 @@ export function systemTheme(): Theme {
     : 'light';
 }
 
-export function resolveTheme(choice: ThemeChoice): Theme {
-  return choice === 'system' ? systemTheme() : choice;
+export function resolveTheme(value: ThemeChoice): Theme {
+  return value === 'system' ? systemTheme() : value;
 }
 
-/** Put the resolved palette on the document, and say which one it was. */
-export function applyTheme(choice: ThemeChoice): Theme {
-  const theme = resolveTheme(choice);
+let choice: ThemeChoice = readStored();
+let theme: Theme = resolveTheme(choice);
+
+const listeners = new Set<() => void>();
+
+function apply(): void {
+  theme = resolveTheme(choice);
   document.documentElement.dataset.theme = theme;
+  for (const listener of listeners) listener();
+}
+
+export function getThemeChoice(): ThemeChoice {
+  return choice;
+}
+
+export function getTheme(): Theme {
   return theme;
 }
 
-/**
- * Follow the operating system while the choice is "system".
- *
- * Returns the unsubscribe function. Worth wiring up: a phone that switches to
- * dark at sunset does it while the app is open.
- */
-export function watchSystemTheme(onChange: (theme: Theme) => void): () => void {
-  if (typeof matchMedia !== 'function') return () => {};
-  const query = matchMedia(DARK_QUERY);
-  const listener = (event: MediaQueryListEvent) => {
-    onChange(event.matches ? 'dark' : 'light');
-  };
-  query.addEventListener('change', listener);
-  return () => query.removeEventListener('change', listener);
+export function setThemeChoice(next: ThemeChoice): void {
+  choice = next;
+  writeStored(next);
+  apply();
 }
+
+/**
+ * Called whenever the palette changes, for anything outside React that has to
+ * keep up — Telegram's own chrome does not read our stylesheet.
+ */
+export function subscribeTheme(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+// Follow the operating system for as long as nobody has overridden it. Set up
+// once, at import: a phone that switches to dark at sunset does it while the
+// app is open, and on whatever screen the person happens to be looking at.
+if (typeof matchMedia === 'function') {
+  matchMedia(DARK_QUERY).addEventListener('change', () => {
+    if (choice === 'system') apply();
+  });
+}
+
+// The inline script in index.html has already written the attribute; doing it
+// again here costs nothing and makes this module's state and the document
+// agree even if that script never ran.
+apply();

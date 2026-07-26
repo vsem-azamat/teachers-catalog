@@ -371,6 +371,10 @@ msgstr "Можливо, людина його приховала."
 msgid "Без расписания анкету покажем, но реже — люди чаще пишут тем, у кого видно свободные дни."
 msgstr "Без розкладу анкету покажемо, але рідше — люди частіше пишуть тим, у кого видно вільні дні."
 
+#: src/pages/MyHelper.tsx
+msgid "Строчка под именем"
+msgstr "Рядок під іменем"
+
 #: src/components/Phrase.tsx
 msgid "Онлайн и очно"
 msgstr "Онлайн і очно"
@@ -554,6 +558,10 @@ msgstr "{0, plural, one {Готував до цього ж іспиту # люд
 #: src/pages/Chats.tsx
 msgid "там же, где и все остальные разговоры"
 msgstr "там само, де й усі інші розмови"
+
+#: src/pages/MyHelper.tsx
+msgid "ČVUT FEL, 3 курс"
+msgstr "ČVUT FEL, 3 курс"
 
 #: src/components/Phrase.tsx
 msgid "С твоего факультета"

@@ -4,20 +4,27 @@
  * One screen, no scroll: everything is sized against the viewport rather than
  * against a fixed type scale, so a 568-pixel-tall phone and a desktop window
  * both get the whole thing at once. There is exactly one thing to do here.
+ *
+ * A browser too old to understand `safe` drops that declaration entirely and
+ * lays the content out from the top, which is the same thing the keyword buys
+ * on a short screen — so there is nothing to fall back to.
  */
 
 .page {
   min-height: 100dvh;
   display: grid;
-  align-content: center;
+  /* `safe` is the whole trick. Centred content that outgrows its box overflows
+     in both directions, and the half above the top edge cannot be scrolled to
+     — so on a 320-pixel-tall viewport (a small phone in landscape, or any
+     phone at 200% zoom) the only button on the page would be unreachable.
+     `safe center` falls back to top alignment exactly then, and the page
+     scrolls instead. On every ordinary screen it centres and does not. */
+  align-content: safe center;
   justify-items: start;
   gap: clamp(14px, 3.2vh, 22px);
   padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
   max-width: 34rem;
   margin: 0 auto;
-  /* The one screen is the promise; anything taller than the viewport would
-     break it, and a clipped line is a louder bug than a missing one. */
-  overflow: hidden;
 }
 
 .wordmark {

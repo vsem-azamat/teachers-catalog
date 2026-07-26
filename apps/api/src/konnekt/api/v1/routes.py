@@ -1,4 +1,5 @@
 import logging
+import time as clock
 from datetime import UTC, datetime, time, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, status
@@ -98,6 +99,13 @@ async def _require(session, model, value: int | None, field: str) -> None:
 # ── the way in, for a browser ───────────────────────────────────────────
 
 
+# How long to stop asking Telegram after it has refused to answer. This route
+# is unauthenticated, so without a pause a burst of traffic against a revoked
+# token becomes one getMe per request — and the 429 that earns is charged to
+# the bot, which is also how real messages go out.
+BOT_LOOKUP_COOLDOWN = 30.0
+
+
 async def _bot_username(app) -> str | None:
     """The bot's public handle, asked for once and remembered."""
     cached = getattr(app.state, "bot_username", None)
@@ -106,9 +114,14 @@ async def _bot_username(app) -> str | None:
     bot = getattr(app.state, "bot", None)
     if bot is None:
         return None
+    quiet_until = getattr(app.state, "bot_lookup_quiet_until", 0.0)
+    now = clock.monotonic()
+    if now < quiet_until:
+        return None
     try:
         me = await bot.get_me()
     except Exception:
+        app.state.bot_lookup_quiet_until = now + BOT_LOOKUP_COOLDOWN
         log.warning("could not read the bot's own username", exc_info=True)
         return None
     app.state.bot_username = me.username
@@ -813,9 +826,16 @@ async def upsert_helper(
 ) -> MeOut:
     """Create or replace the caller's helper profile and its offers.
 
-    Offers are replaced wholesale rather than diffed: the client always sends
-    the full set it is showing, and a partial update would leave rows behind
-    that the person believes they deleted.
+    The set of offers is authoritative — whatever the client did not send is
+    deleted, because a partial update would leave rows behind that the person
+    believes they removed. The *rows*, though, are matched on their axes and
+    updated in place. Deleting and reinserting was simpler and cost every past
+    `contacts` row its `offer_id`, which is `ON DELETE SET NULL`: harmless when
+    publishing happened once in a lifetime, and not harmless now that the
+    cabinet invites someone to fix a price in ten seconds.
+
+    Fields the payload does not carry are left alone. A profile is edited by
+    more than one screen, and each of them sends what it knows about.
     """
     helper = await session.get(HelperProfile, user.id)
     if helper is None:
@@ -826,13 +846,22 @@ async def upsert_helper(
     if helper.status == PublishStatus.BANNED:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "this profile is blocked")
 
-    helper.headline = payload.headline
-    helper.about = payload.about
+    # `model_fields_set` distinguishes "omitted" from "explicitly null", which
+    # a plain assignment cannot: the cabinet sends no headline, and an
+    # unconditional write there wiped the line under the person's name on
+    # every card in the catalog the first time they changed a price.
+    given = payload.model_fields_set
+    if "headline" in given:
+        helper.headline = payload.headline
+    if "about" in given:
+        helper.about = payload.about
+    if "city" in given:
+        helper.city = payload.city
+    if "place_note" in given:
+        helper.place_note = payload.place_note
     helper.raw_intro = payload.raw_intro or helper.raw_intro
     helper.about_lang = ContentLang(lang.value)
     helper.work_format = payload.work_format
-    helper.city = payload.city
-    helper.place_note = payload.place_note
 
     if payload.publish:
         was_published = helper.status == PublishStatus.PUBLISHED
@@ -852,7 +881,13 @@ async def upsert_helper(
     valid_service_ids = set(
         (await session.scalars(select(ServiceType.id).where(ServiceType.is_active))).all()
     )
-    await session.execute(delete(Offer).where(Offer.helper_id == user.id))
+    existing = {
+        (row.service_type_id, row.subject_id, row.institution_id): row
+        for row in (
+            await session.scalars(select(Offer).where(Offer.helper_id == user.id))
+        ).all()
+    }
+
     seen_axes: set[tuple[int, int | None, int | None]] = set()
     for spec in payload.offers:
         if spec.service_type_id not in valid_service_ids:
@@ -873,18 +908,25 @@ async def upsert_helper(
                 f"institution {axes[2]}",
             )
         seen_axes.add(axes)
-        session.add(
-            Offer(
+
+        offer = existing.get(axes)
+        if offer is None:
+            offer = Offer(
                 helper_id=user.id,
                 service_type_id=spec.service_type_id,
                 subject_id=spec.subject_id,
                 institution_id=spec.institution_id,
-                price_amount=spec.price_amount,
-                price_unit=spec.price_unit,
-                langs=spec.langs or list(user.spoken_langs),
-                work_format=payload.work_format,
             )
-        )
+            session.add(offer)
+        offer.price_amount = spec.price_amount
+        offer.price_unit = spec.price_unit
+        offer.langs = spec.langs or list(user.spoken_langs)
+        offer.work_format = payload.work_format
+        offer.is_active = True
+
+    dropped = [row.id for axes, row in existing.items() if axes not in seen_axes]
+    if dropped:
+        await session.execute(delete(Offer).where(Offer.id.in_(dropped)))
     await session.commit()
     return await read_me(user, session, lang)
 

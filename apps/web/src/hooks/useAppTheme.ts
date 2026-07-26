@@ -1,13 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
-import { paintChrome } from '@/hooks/useTelegram';
 import {
-  applyTheme,
-  readThemeChoice,
+  getTheme,
+  getThemeChoice,
+  setThemeChoice,
+  subscribeTheme,
   type Theme,
   type ThemeChoice,
-  watchSystemTheme,
-  writeThemeChoice,
 } from '@/lib/theme';
 
 export interface AppTheme {
@@ -21,31 +20,14 @@ export interface AppTheme {
 /**
  * The palette, and the control over it.
  *
- * Reads the stored choice rather than the attribute the inline boot script
- * wrote: the attribute only ever says light or dark, and "system" has to
- * survive a reload as itself, or a phone that flips at sunset would be stuck
- * on whatever it happened to be when the page loaded.
+ * A thin view onto `lib/theme.ts`, which owns the choice and applies it. That
+ * is the whole point of `useSyncExternalStore` here: the state has to survive
+ * the profile screen unmounting, and every reader has to see the same value —
+ * two components each holding their own copy would disagree the moment one of
+ * them changed it.
  */
 export function useAppTheme(): AppTheme {
-  const [choice, setChoice] = useState<ThemeChoice>(readThemeChoice);
-  const [theme, setTheme] = useState<Theme>(() => applyTheme(readThemeChoice()));
-
-  const set = useCallback((next: ThemeChoice) => {
-    setChoice(next);
-    writeThemeChoice(next);
-    setTheme(applyTheme(next));
-    // Telegram paints the frame around the page, and it does not read our
-    // stylesheet. Without this the header stays the old colour.
-    paintChrome();
-  }, []);
-
-  useEffect(() => {
-    if (choice !== 'system') return;
-    return watchSystemTheme(() => {
-      setTheme(applyTheme('system'));
-      paintChrome();
-    });
-  }, [choice]);
-
-  return { choice, theme, set };
+  const choice = useSyncExternalStore(subscribeTheme, getThemeChoice, getThemeChoice);
+  const theme = useSyncExternalStore(subscribeTheme, getTheme, getTheme);
+  return { choice, theme, set: setThemeChoice };
 }

@@ -15,8 +15,9 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router';
 
 import { paintChrome } from '@/hooks/useTelegram';
-import { activateLocale, i18n, normalizeLocale, resolveLocale } from '@/i18n';
+import { activateLocale, i18n, resolveLocale } from '@/i18n';
 import { ApiError } from '@/lib/api';
+import { subscribeTheme } from '@/lib/theme';
 import LandingPage from '@/pages/Landing';
 import { router } from '@/router';
 
@@ -68,7 +69,9 @@ function showLanding(): boolean {
 }
 
 async function renderLanding(): Promise<void> {
-  const locale = normalizeLocale(navigator.language);
+  // The same precedence the app itself uses, with the browser standing in for
+  // Telegram's `language_code`: a stored choice outranks it.
+  const locale = resolveLocale(navigator.language);
   await activateLocale(locale);
   document.documentElement.lang = locale;
 
@@ -118,8 +121,11 @@ function initSdk(): void {
 
   miniApp.mount.ifAvailable();
   // The palette is already on the document — index.html resolves it before the
-  // first paint — so Telegram can be told the right colour straight away.
+  // first paint — so Telegram can be told the right colour straight away, and
+  // told again whenever it changes. Subscribed here rather than from a screen
+  // because the frame around the page belongs to no screen in particular.
   paintChrome();
+  subscribeTheme(paintChrome);
 
   initData.restore();
 }

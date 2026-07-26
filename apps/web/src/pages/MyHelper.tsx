@@ -39,6 +39,7 @@ export default function MyHelperPage() {
     queryFn: ({ signal }) => api.getMyHelper(signal),
   });
 
+  const [headline, setHeadline] = useState('');
   const [about, setAbout] = useState('');
   const [city, setCity] = useState('');
   const [placeNote, setPlaceNote] = useState('');
@@ -51,6 +52,7 @@ export default function MyHelperPage() {
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     if (!data || loaded) return;
+    setHeadline(data.headline ?? '');
     setAbout(data.about ?? '');
     setCity(data.city ?? '');
     setPlaceNote(data.place_note ?? '');
@@ -69,6 +71,7 @@ export default function MyHelperPage() {
   const save = useMutation({
     mutationFn: () =>
       api.saveHelper({
+        headline: headline.trim() || null,
         about: about.trim() || null,
         work_format: workFormat,
         city: city.trim() || null,
@@ -84,13 +87,19 @@ export default function MyHelperPage() {
     },
   });
 
-  useMainButton({
-    text: t`Сохранить`,
-    isVisible: true,
-    isEnabled: loaded && !save.isPending,
-    isLoaderVisible: save.isPending,
-    onClick: () => save.mutate(),
-  });
+  // Null while the profile has not arrived, so the error screen below does not
+  // get a disabled Save button floating over it with nothing to save.
+  useMainButton(
+    loaded
+      ? {
+          text: t`Сохранить`,
+          isVisible: true,
+          isEnabled: !save.isPending,
+          isLoaderVisible: save.isPending,
+          onClick: () => save.mutate(),
+        }
+      : null,
+  );
 
   const tutoring = serviceTypes?.find((type) => type.code === 'tutoring');
   const tutoringId = tutoring?.id;
@@ -143,6 +152,22 @@ export default function MyHelperPage() {
         </div>
       ) : (
         <>
+          {/* The line under the name on every card in the catalog. It was
+              being written by nothing and read by three screens, which is how
+              it got silently erased; giving it an owner fixes that end too. */}
+          <Label>
+            <Trans>Строчка под именем</Trans>
+          </Label>
+          <div className={ui.field}>
+            <input
+              value={headline}
+              onChange={(event) => setHeadline(event.target.value)}
+              placeholder={t`ČVUT FEL, 3 курс`}
+              maxLength={160}
+              style={{ all: 'unset', width: '100%' }}
+            />
+          </div>
+
           <Label>
             <Trans>О себе</Trans>
           </Label>
@@ -330,9 +355,19 @@ function SubjectRow({
       </span>
       <input
         value={row.price}
-        onChange={(event) => onPrice(event.target.value)}
+        /*
+         * Digits only, filtered as they are typed.
+         *
+         * Prices here are whole crowns, and parsing free text was a way to be
+         * quietly wrong in two directions at once: "1,500" became 1.5 Kč,
+         * because a comma is a decimal point on a Czech or Russian keyboard,
+         * and "1 500" became nothing at all. Both saved without complaint and
+         * left the field still showing what the person had typed. Refusing
+         * the characters is the version with no failure mode to explain.
+         */
+        onChange={(event) => onPrice(event.target.value.replace(/\D/g, '').slice(0, 7))}
         placeholder={t`Kč`}
-        inputMode="decimal"
+        inputMode="numeric"
         aria-label={t`Цена`}
         style={{
           all: 'unset',
@@ -470,22 +505,22 @@ function toDraft(offer: MyOffer): Draft {
     subject_name: offer.subject_name,
     institution_id: offer.institution_id,
     institution_name: offer.institution_name,
-    price: offer.price_amount == null ? '' : String(offer.price_amount),
+    // Rounded, because the field holds digits: an older row saved as 550.5
+    // would otherwise render a decimal point the input then refuses to accept.
+    price: offer.price_amount == null ? '' : String(Math.round(offer.price_amount)),
     unit: offer.price_unit,
     langs: offer.langs,
   };
 }
 
 function toOffer(row: Draft): OfferInput {
-  // A comma is what a Czech or Russian keyboard produces for a decimal point,
-  // and Number() reads it as NaN.
-  const amount = Number(row.price.replace(',', '.'));
   return {
     service_type_id: row.service_type_id,
     subject_id: row.subject_id,
     institution_id: row.institution_id,
-    // An empty field means "did not say", not free.
-    price_amount: row.price.trim() && Number.isFinite(amount) ? amount : null,
+    // The field holds digits and nothing else, so there is no parse to get
+    // wrong. An empty one means "did not say", not free.
+    price_amount: row.price ? Number(row.price) : null,
     price_unit: row.unit,
     langs: row.langs,
   };
