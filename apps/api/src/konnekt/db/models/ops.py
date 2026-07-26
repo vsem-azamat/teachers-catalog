@@ -17,6 +17,7 @@ from konnekt.db.models.enums import (
     ContentLang,
     ModeratedEntity,
     ModerationVerdict,
+    UserEventKind,
     pg_enum,
 )
 
@@ -55,6 +56,39 @@ class SearchQuery(IdMixin, CreatedAtMixin, Base):
         Index("ix_search_queries_created", "created_at"),
         Index("ix_search_queries_empty", "results_count", "created_at"),
         Index("ix_search_queries_parsed", "parsed", postgresql_using="gin"),
+    )
+
+
+class UserEvent(IdMixin, CreatedAtMixin, Base):
+    """Append-only record of what people did.
+
+    Two things it is for. The obvious one is knowing which parts of the product
+    are used. The one that pays for itself is choosing who to tell about
+    something: "people who searched for nostrification and never wrote to
+    anyone" is a question this table can answer and a user row cannot.
+
+    Never a source of truth — deleting the whole table must lose nothing but
+    hindsight.
+    """
+
+    __tablename__ = "user_events"
+
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE")
+    )
+    kind: Mapped[UserEventKind] = mapped_column(
+        pg_enum(UserEventKind, "user_event_kind"), nullable=False
+    )
+    # Whatever the event needs: {"query": "матан", "results": 3},
+    # {"helper_id": 42}, {"source": "instagram"}.
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
+
+    __table_args__ = (
+        # "What did this person do" and "who did this thing recently" are the
+        # two questions actually asked of it.
+        Index("ix_user_events_person", "user_id", "created_at"),
+        Index("ix_user_events_kind", "kind", "created_at"),
+        Index("ix_user_events_payload", "payload", postgresql_using="gin"),
     )
 
 

@@ -8,7 +8,7 @@ modules, or migrations will silently miss tables.
 from konnekt.db.base import Base
 from konnekt.db.models.catalog import Offer
 from konnekt.db.models.goods import Item, Material
-from konnekt.db.models.ops import ModerationReview, SearchQuery
+from konnekt.db.models.ops import ModerationReview, SearchQuery, UserEvent
 from konnekt.db.models.partners import (
     Partner,
     PartnerOffer,
@@ -68,5 +68,6 @@ __all__ = [
     "SubjectI18n",
     "User",
     "UserEducation",
+    "UserEvent",
     "WeeklyAvailability",
 ]

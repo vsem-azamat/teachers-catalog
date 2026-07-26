@@ -9,6 +9,7 @@ from konnekt.api.schemas import (
     Chip,
     Clarify,
     ClarifyOption,
+    ContactOut,
     HelperDetailOut,
     HelperUpsert,
     HomeOut,
@@ -31,6 +32,7 @@ from konnekt.api.schemas import (
     SubjectOut,
 )
 from konnekt.db.models import (
+    Contact,
     HelperProfile,
     HelpRequest,
     Institution,
@@ -49,10 +51,12 @@ from konnekt.db.models.enums import (
     PriceUnit,
     PublishStatus,
     RequestStatus,
+    UserEventKind,
     WorkFormat,
 )
 from konnekt.services import catalog, parser, placements
 from konnekt.services.catalog import _localised, avatar_for
+from konnekt.services.people import log_event
 
 router = APIRouter(prefix="/api/v1")
 
@@ -127,6 +131,10 @@ async def update_me(
 @router.get("/home", response_model=HomeOut, tags=["catalog"])
 async def home(session: SessionDep, lang: LangDep, user: UserDep) -> HomeOut:
     people, things = await catalog.home_sections(session, lang)
+    # The first screen stands in for "opened the app". Logging every request
+    # would drown the signal in taxonomy fetches.
+    await log_event(session, user.id, UserEventKind.APP_OPEN, lang=lang.value)
+    await session.commit()
     return HomeOut(people=people, things=things)
 
 
@@ -389,6 +397,9 @@ async def parse_query(
         limit=1,
     )
 
+    await log_event(
+        session, user.id, UserEventKind.SEARCH, text=payload.text, results=total
+    )
     session.add(
         SearchQuery(
             user_id=user.id,
@@ -549,7 +560,46 @@ async def helper_detail(
     detail = await catalog.helper_detail(session, user_id, lang)
     if detail is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "no such published profile")
+    await log_event(session, user.id, UserEventKind.HELPER_VIEW, helper_id=user_id)
+    await session.commit()
     return detail
+
+
+@router.post(
+    "/helpers/{user_id}/contact",
+    response_model=ContactOut,
+    tags=["catalog"],
+)
+async def start_contact(
+    user_id: int, session: SessionDep, lang: LangDep, user: UserDep
+) -> ContactOut:
+    """Record that someone is about to write, and hand back the link.
+
+    The conversation itself happens in Telegram, where both people already are.
+    What we keep is that it started — which is the only honest basis for the
+    response times and deal counts shown on a card. Self-reported numbers would
+    be worth nothing.
+    """
+    if user_id == user.id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "that is your own profile")
+
+    helper = await session.scalar(
+        select(HelperProfile)
+        .where(HelperProfile.user_id == user_id)
+        .options(selectinload(HelperProfile.user))
+    )
+    if helper is None or helper.status != PublishStatus.PUBLISHED:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such published profile")
+    if not helper.user.tg_username:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "this person has no public username"
+        )
+
+    session.add(Contact(student_id=user.id, helper_id=user_id, intro_text=None))
+    await log_event(session, user.id, UserEventKind.CONTACT, helper_id=user_id)
+    await session.commit()
+
+    return ContactOut(telegram_url=f"https://t.me/{helper.user.tg_username}")
 
 
 # ── becoming a helper ───────────────────────────────────────────────────
@@ -640,8 +690,11 @@ async def upsert_helper(
     helper.place_note = payload.place_note
 
     if payload.publish:
+        was_published = helper.status == PublishStatus.PUBLISHED
         helper.status = PublishStatus.PUBLISHED
         helper.published_at = helper.published_at or datetime.now(UTC)
+        if not was_published:
+            await log_event(session, user.id, UserEventKind.PROFILE_PUBLISHED)
     else:
         # HIDDEN, not DRAFT, once it has been out: "hide me" has to actually
         # take the profile out of the catalog, and the distinction preserves
@@ -747,6 +800,13 @@ async def create_request(
         expires_at=expires_at,
     )
     session.add(request)
+    await log_event(
+        session,
+        user.id,
+        UserEventKind.REQUEST_CREATED,
+        subject_id=subject_id,
+        institution_id=institution_id,
+    )
     await session.commit()
     await session.refresh(request)
     return await _request_out(session, request, lang)

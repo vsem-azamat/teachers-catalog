@@ -1,8 +1,6 @@
 from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from konnekt.core.config import Settings, get_settings
@@ -10,6 +8,7 @@ from konnekt.core.security import InitDataError, TelegramIdentity, parse_init_da
 from konnekt.db.models import User
 from konnekt.db.models.enums import UiLang
 from konnekt.db.session import session_scope
+from konnekt.services.people import remember
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 SessionDep = Annotated[AsyncSession, Depends(session_scope)]
@@ -52,50 +51,22 @@ async def current_user(
     """Fetch the caller, creating the row on first sight.
 
     Telegram is the identity provider, so there is no sign-up: the first
-    authenticated request is the registration. Profile fields Telegram owns
-    (name, username, avatar) are refreshed on every visit, since they change
-    outside our reach and a stale username breaks the "write to them" link.
+    authenticated request is the registration. The same function the bot uses,
+    so that a person recorded through one door is the same row as through the
+    other.
     """
-    user = await session.scalar(select(User).where(User.tg_id == identity.tg_id))
-
-    if user is None:
-        # A mini app opens by firing /me, /home and /taxonomy at once, each on
-        # its own session, and all three see no user. INSERT ... ON CONFLICT
-        # makes the first one win and the rest read the winner's row instead of
-        # colliding on users.tg_id.
-        insert_stmt = (
-            pg_insert(User)
-            .values(
-                tg_id=identity.tg_id,
-                first_name=identity.first_name,
-                last_name=identity.last_name,
-                tg_username=identity.username,
-                photo_url=identity.photo_url,
-                ui_lang=_pick_ui_lang(identity.language_code, settings),
-            )
-            .on_conflict_do_nothing(index_elements=[User.tg_id])
-        )
-        await session.execute(insert_stmt)
-        await session.commit()
-        user = await session.scalar(select(User).where(User.tg_id == identity.tg_id))
-        if user is None:  # pragma: no cover - only if the row vanished mid-flight
-            raise HTTPException(
-                status.HTTP_503_SERVICE_UNAVAILABLE, "could not register the account"
-            )
-        return user
-
-    changed = False
-    for field, value in (
-        ("first_name", identity.first_name),
-        ("last_name", identity.last_name),
-        ("tg_username", identity.username),
-        ("photo_url", identity.photo_url),
-    ):
-        if value is not None and getattr(user, field) != value:
-            setattr(user, field, value)
-            changed = True
-    if changed:
-        await session.commit()
+    user = await remember(
+        session,
+        tg_id=identity.tg_id,
+        first_name=identity.first_name,
+        last_name=identity.last_name,
+        username=identity.username,
+        language_code=identity.language_code,
+        photo_url=identity.photo_url,
+        supported_langs=settings.supported_ui_langs,
+        source=identity.start_param,
+    )
+    await session.commit()
 
     if user.is_blocked:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "account is blocked")
@@ -103,18 +74,6 @@ async def current_user(
 
 
 UserDep = Annotated[User, Depends(current_user)]
-
-
-def _pick_ui_lang(language_code: str | None, settings: Settings) -> UiLang:
-    """Map Telegram's IETF tag onto a language we actually ship.
-
-    Telegram may send a region (`en-US`), so only the primary subtag matters.
-    """
-    if language_code:
-        primary = language_code.split("-", 1)[0].lower()
-        if primary in settings.supported_ui_langs:
-            return UiLang(primary)
-    return UiLang(settings.default_ui_lang)
 
 
 async def current_lang(user: UserDep) -> UiLang:

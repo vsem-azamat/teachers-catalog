@@ -331,3 +331,7 @@ export interface HelperUpsert {
   offers?: OfferInput[];
   publish?: boolean;
 }
+
+export interface ContactStart {
+  telegram_url: string;
+}

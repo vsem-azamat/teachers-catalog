@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
 
     if settings.bot_token:
         bot = build_bot(settings)
-        dispatcher = build_dispatcher()
+        dispatcher = build_dispatcher(settings)
         # Injected into every handler, so handlers never reach for a global.
         dispatcher["settings"] = settings
         app.state.bot, app.state.dispatcher = bot, dispatcher

@@ -158,6 +158,12 @@ class HelperDetailOut(BaseModel):
     telegram_url: str | None = None
 
 
+class ContactOut(BaseModel):
+    """Where to continue the conversation."""
+
+    telegram_url: str
+
+
 # ── search ──────────────────────────────────────────────────────────────
 
 

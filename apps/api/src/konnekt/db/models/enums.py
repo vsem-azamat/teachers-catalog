@@ -168,3 +168,22 @@ class ModeratedEntity(StrEnum):
     REQUEST = "request"
     ITEM = "item"
     MATERIAL = "material"
+
+
+class UserEventKind(StrEnum):
+    """What someone did.
+
+    Deliberately coarse. A log nobody can query is a log nobody reads, and the
+    detail belongs in `payload` where it costs nothing to add a field later.
+    """
+
+    BOT_START = "bot_start"
+    BOT_MESSAGE = "bot_message"
+    BOT_BLOCKED = "bot_blocked"
+    BOT_UNBLOCKED = "bot_unblocked"
+    APP_OPEN = "app_open"
+    SEARCH = "search"
+    HELPER_VIEW = "helper_view"
+    CONTACT = "contact"
+    REQUEST_CREATED = "request_created"
+    PROFILE_PUBLISHED = "profile_published"

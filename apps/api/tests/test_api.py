@@ -698,3 +698,72 @@ async def test_search_reports_what_it_is_filtering_on(client, session):
     assert kinds["subject"] == "Математический анализ"
     assert kinds["institution"] == "ČVUT"
     assert kinds["budget"] == "700"
+
+
+async def test_opening_the_app_is_recorded(client, session):
+    from sqlalchemy import select
+
+    from konnekt.db.models import UserEvent
+    from konnekt.db.models.enums import UserEventKind
+
+    await client.get("/api/v1/home", headers=auth_header(90601))
+    kinds = (await session.scalars(select(UserEvent.kind))).all()
+    assert UserEventKind.APP_OPEN in kinds
+
+
+async def test_starting_a_conversation_is_recorded_and_returns_the_link(
+    client, session, helper_factory
+):
+    """The chat happens in Telegram; what we keep is that it started.
+
+    Response times and deal counts on a card are only worth showing if they
+    come from something observed rather than claimed.
+    """
+    from sqlalchemy import select
+
+    from konnekt.db.models import Contact, UserEvent
+    from konnekt.db.models.enums import UserEventKind
+
+    helper = await helper_factory(tg_id=91301, first_name="Marek")
+    helper.tg_username = "marek_teaches"
+    await session.flush()
+
+    response = await client.post(
+        f"/api/v1/helpers/{helper.id}/contact", headers=auth_header(90602)
+    )
+    assert response.status_code == 200
+    assert response.json()["telegram_url"] == "https://t.me/marek_teaches"
+
+    assert (
+        await session.scalar(select(Contact).where(Contact.helper_id == helper.id))
+        is not None
+    )
+    kinds = (await session.scalars(select(UserEvent.kind))).all()
+    assert UserEventKind.CONTACT in kinds
+
+
+async def test_a_helper_without_a_username_cannot_be_written_to(
+    client, session, helper_factory
+):
+    helper = await helper_factory(tg_id=91302, first_name="Tichý")
+    helper.tg_username = None
+    await session.flush()
+
+    response = await client.post(
+        f"/api/v1/helpers/{helper.id}/contact", headers=auth_header(90603)
+    )
+    assert response.status_code == 409
+
+
+async def test_you_cannot_contact_yourself(client, session, helper_factory):
+    from sqlalchemy import select
+
+    from konnekt.db.models import User
+
+    await client.get("/api/v1/me", headers=auth_header(90604))
+    me = await session.scalar(select(User).where(User.tg_id == 90604))
+
+    response = await client.post(
+        f"/api/v1/helpers/{me.id}/contact", headers=auth_header(90604)
+    )
+    assert response.status_code == 400

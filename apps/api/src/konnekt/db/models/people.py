@@ -66,6 +66,29 @@ class User(IdMixin, TimestampMixin, Base):
         ForeignKey("institutions.id", ondelete="SET NULL"), index=True
     )
 
+    # Telegram Premium. Cheap to record and the only spending signal we get.
+    is_premium: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+
+    # ── reachability ────────────────────────────────────────────────────
+    # A bot may only write to someone who started it. Recording when that
+    # happened is what separates "we have their id" from "we may message them".
+    bot_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Flipped off when Telegram answers 403. Sending to a user who blocked the
+    # bot is not an error to retry, it is an answer.
+    bot_can_message: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
+    # Set when someone asks to stop hearing from us. Separate from
+    # bot_can_message: one is their choice, the other is Telegram's report.
+    unsubscribed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    # start_param from the deep link that brought them: t.me/bot?start=<source>.
+    # First one wins — the question is where someone came from, not where they
+    # most recently came from.
+    source: Mapped[str | None] = mapped_column(String(64), index=True)
+
     is_blocked: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
     )
@@ -77,6 +100,14 @@ class User(IdMixin, TimestampMixin, Base):
 
     __table_args__ = (
         Index("ix_users_spoken_langs", "spoken_langs", postgresql_using="gin"),
+        # The audience query for any announcement: started the bot, has not
+        # blocked it, has not opted out.
+        Index(
+            "ix_users_reachable",
+            "bot_can_message",
+            "unsubscribed_at",
+            "bot_started_at",
+        ),
     )
 
 

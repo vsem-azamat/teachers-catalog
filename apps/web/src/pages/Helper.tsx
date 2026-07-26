@@ -1,5 +1,5 @@
 import { Trans, useLingui } from '@lingui/react/macro';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { openTelegramLink } from '@tma.js/sdk-react';
 import { useParams } from 'react-router';
 
@@ -42,6 +42,19 @@ export default function HelperPage() {
 
   const price = data?.offers.find((offer) => offer.price.amount != null)?.price;
 
+  const contact = useMutation({
+    mutationFn: () => api.startContact(Number(id)),
+    onSuccess: (result) => {
+      hapticSuccess();
+      openTelegramLink(withIntro(result.telegram_url, data));
+    },
+    onError: () => {
+      // The link is worth opening even if we failed to record the attempt —
+      // losing a statistic is better than losing the introduction.
+      if (data?.telegram_url) openTelegramLink(withIntro(data.telegram_url, data));
+    },
+  });
+
   useMainButton(
     data?.telegram_url
       ? {
@@ -49,11 +62,9 @@ export default function HelperPage() {
             ? t`Написать · ${formatMoney(price.amount)} Kč`
             : t`Написать`,
           isVisible: true,
-          isEnabled: true,
-          onClick: () => {
-            hapticSuccess();
-            openTelegramLink(withIntro(data));
-          },
+          isEnabled: !contact.isPending,
+          isLoaderVisible: contact.isPending,
+          onClick: () => contact.mutate(),
         }
       : null,
   );
@@ -242,11 +253,11 @@ export default function HelperPage() {
  * what to say. Telegram's deep link carries prefilled text, so the chat opens
  * with the message already in it.
  */
-function withIntro(data: HelperDetail): string {
-  const subjects = String(data.intro_context.subjects ?? '');
+function withIntro(url: string, data: HelperDetail | undefined): string {
+  const subjects = String(data?.intro_context.subjects ?? '');
   const lines = [
     'Привет! Нашёл тебя в Konnekt.',
     subjects ? `Нужна помощь: ${subjects}.` : 'Нужна помощь с учёбой.',
   ];
-  return `${data.telegram_url}?text=${encodeURIComponent(lines.join('\n'))}`;
+  return `${url}?text=${encodeURIComponent(lines.join('\n'))}`;
 }

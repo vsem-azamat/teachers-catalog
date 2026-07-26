@@ -1,6 +1,7 @@
 import { retrieveRawInitData } from '@tma.js/sdk-react';
 
 import type {
+  ContactStart,
   HelperDetail,
   HelperUpsert,
   HelpRequest,
@@ -202,6 +203,10 @@ export const api = {
 
   getHelper: (userId: number, signal?: AbortSignal) =>
     request<HelperDetail>(`/helpers/${userId}`, { signal }),
+
+  /** Record that a conversation is starting, and get where to continue it. */
+  startContact: (userId: number) =>
+    request<ContactStart>(`/helpers/${userId}/contact`, { method: 'POST' }),
 
   getPlacements: (
     params: { slot: string; service_type?: string; subject_id?: number },
