@@ -115,7 +115,15 @@ def create_app() -> FastAPI:
         # context={"bot": bot} is required — without it the message shortcuts
         # (message.answer and friends) have no bot to call.
         update = Update.model_validate(await request.json(), context={"bot": bot})
-        await dispatcher.feed_update(bot, update)
+        try:
+            await dispatcher.feed_update(bot, update)
+        except Exception:
+            # 200 even so. Telegram reads any other status as "not delivered"
+            # and redelivers the same update, so a handler that throws on one
+            # message would have the webhook hammered with it until Telegram
+            # gives up on the bot entirely. The update *was* received; the
+            # failure is ours to see in the log, not Telegram's to retry.
+            log.exception("handler failed for update %s", update.update_id)
         return Response(status_code=status.HTTP_200_OK)
 
     return app

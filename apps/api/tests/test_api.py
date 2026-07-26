@@ -562,3 +562,65 @@ async def test_paging_bounds_are_enforced(client):
     assert (
         await client.get("/api/v1/search", params={"limit": 0}, headers=headers)
     ).status_code == 422
+
+
+async def test_a_failing_handler_still_answers_the_webhook(monkeypatch):
+    """Telegram redelivers anything that is not a 200.
+
+    A handler that throws on one message would otherwise have the same update
+    pushed back at the webhook until Telegram gives up on the bot. The update
+    was received either way; the failure belongs in our log.
+    """
+    from httpx import ASGITransport, AsyncClient
+
+    from konnekt.core.config import get_settings
+    from konnekt.main import create_app
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "webhook_secret", "probe-secret", raising=False)
+
+    class ExplodingDispatcher:
+        async def feed_update(self, *_args, **_kwargs):
+            raise RuntimeError("handler blew up")
+
+    app = create_app()
+    app.state.bot = object()
+    app.state.dispatcher = ExplodingDispatcher()
+
+    update = {
+        "update_id": 1,
+        "message": {
+            "message_id": 1,
+            "date": 1_700_000_000,
+            "chat": {"id": 1, "type": "private"},
+            "text": "/start",
+        },
+    }
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as http:
+        response = await http.post(
+            settings.webhook_path,
+            json=update,
+            headers={"X-Telegram-Bot-Api-Secret-Token": "probe-secret"},
+        )
+    assert response.status_code == 200
+
+
+async def test_the_webhook_refuses_to_serve_without_a_secret(monkeypatch):
+    """Fail closed: an open webhook lets anyone speak as the bot."""
+    from httpx import ASGITransport, AsyncClient
+
+    from konnekt.core.config import get_settings
+    from konnekt.main import create_app
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "webhook_secret", "", raising=False)
+
+    app = create_app()
+    app.state.bot = object()
+    app.state.dispatcher = object()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as http:
+        response = await http.post(settings.webhook_path, json={"update_id": 1})
+    assert response.status_code == 503
