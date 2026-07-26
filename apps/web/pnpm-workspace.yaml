@@ -1,0 +1,6 @@
+# pnpm 11 reads settings from here rather than from package.json.
+
+overrides:
+  # A transitive dependency with a quadratic-blowup parser bug (GHSA, high).
+  # Nothing here depends on js-yaml directly, so the version has to be forced.
+  js-yaml: '>=4.3.0'
