@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, time, timedelta
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
@@ -19,6 +19,8 @@ from konnekt.api.schemas import (
     ParseRequest,
     Phrase,
     PlacementOut,
+    RequestCreate,
+    RequestOut,
     SearchFilters,
     SearchOut,
     ServiceTypeOut,
@@ -26,14 +28,17 @@ from konnekt.api.schemas import (
 )
 from konnekt.db.models import (
     HelperProfile,
+    HelpRequest,
     Institution,
     Language,
     Offer,
+    RequestResponse,
     SearchQuery,
     ServiceType,
     Subject,
+    User,
 )
-from konnekt.db.models.enums import PublishStatus
+from konnekt.db.models.enums import ContentLang, PublishStatus, RequestStatus
 from konnekt.services import catalog, parser, placements
 from konnekt.services.catalog import _localised, avatar_for
 
@@ -448,6 +453,150 @@ async def helper_detail(
     if detail is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "no such published profile")
     return detail
+
+
+# ── requests: the catalog in reverse ────────────────────────────────────
+
+
+@router.post(
+    "/requests",
+    response_model=RequestOut,
+    status_code=status.HTTP_201_CREATED,
+    tags=["requests"],
+)
+async def create_request(
+    payload: RequestCreate, session: SessionDep, lang: LangDep, user: UserDep
+) -> RequestOut:
+    """Post "I need help with X" and let helpers answer.
+
+    Anything the caller did not fill in is read out of the text, so the form
+    can be a single field. A request without a deadline expires in thirty
+    days; with one, the day after — an exam on the 14th is worthless on the
+    15th, and a stale board is worse than an empty one.
+    """
+    parsed = await parser.parse(session, payload.text, lang.value)
+
+    subject_id = payload.subject_id or (parsed.subject.id if parsed.subject else None)
+    institution_id = payload.institution_id or (
+        parsed.institution.id if parsed.institution else None
+    )
+    service_type_id = payload.service_type_id
+    if service_type_id is None and parsed.service_type:
+        service_type_id = await session.scalar(
+            select(ServiceType.id).where(ServiceType.code == parsed.service_type)
+        )
+    deadline = payload.deadline_on or parsed.deadline
+
+    expires_at = (
+        datetime.combine(deadline, time.max, tzinfo=UTC)
+        if deadline
+        else datetime.now(UTC) + timedelta(days=30)
+    )
+
+    request = HelpRequest(
+        author_id=user.id,
+        raw_text=payload.text,
+        lang=ContentLang(lang.value),
+        subject_id=subject_id,
+        institution_id=institution_id,
+        service_type_id=service_type_id,
+        deadline_on=deadline,
+        budget_max=payload.budget_max or parsed.budget_max,
+        langs=payload.langs or list(user.spoken_langs),
+        status=RequestStatus.OPEN,
+        expires_at=expires_at,
+    )
+    session.add(request)
+    await session.commit()
+    await session.refresh(request)
+    return await _request_out(session, request, lang)
+
+
+@router.get("/requests", response_model=list[RequestOut], tags=["requests"])
+async def my_requests(
+    session: SessionDep, lang: LangDep, user: UserDep
+) -> list[RequestOut]:
+    rows = (
+        await session.scalars(
+            select(HelpRequest)
+            .where(HelpRequest.author_id == user.id)
+            # id as a tiebreaker: created_at comes from now(), which is the
+            # transaction's clock, so two rows written together share it.
+            .order_by(HelpRequest.created_at.desc(), HelpRequest.id.desc())
+            .limit(50)
+        )
+    ).all()
+    return [await _request_out(session, row, lang) for row in rows]
+
+
+@router.post(
+    "/requests/{request_id}/close",
+    response_model=RequestOut,
+    tags=["requests"],
+)
+async def close_request(
+    request_id: int, session: SessionDep, lang: LangDep, user: UserDep
+) -> RequestOut:
+    request = await session.get(HelpRequest, request_id)
+    if request is None or request.author_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such request")
+    request.status = RequestStatus.CLOSED
+    await session.commit()
+    return await _request_out(session, request, lang)
+
+
+async def _request_out(session, request: HelpRequest, lang) -> RequestOut:
+    subject = institution = service = None
+    if request.subject_id:
+        subject = await session.scalar(
+            select(Subject)
+            .where(Subject.id == request.subject_id)
+            .options(selectinload(Subject.names))
+        )
+    if request.institution_id:
+        institution = await session.scalar(
+            select(Institution)
+            .where(Institution.id == request.institution_id)
+            .options(selectinload(Institution.names))
+        )
+    if request.service_type_id:
+        service = await session.scalar(
+            select(ServiceType)
+            .where(ServiceType.id == request.service_type_id)
+            .options(selectinload(ServiceType.names))
+        )
+
+    responders = (
+        await session.scalars(
+            select(User)
+            .join(RequestResponse, RequestResponse.helper_id == User.id)
+            .where(RequestResponse.request_id == request.id)
+            .limit(4)
+        )
+    ).all()
+    total = await session.scalar(
+        select(func.count(RequestResponse.id)).where(
+            RequestResponse.request_id == request.id
+        )
+    )
+
+    return RequestOut(
+        id=request.id,
+        text=request.raw_text,
+        subject=_localised(subject.names, lang) if subject else None,
+        institution=(
+            _localised(institution.names, lang, "short_name")
+            or _localised(institution.names, lang)
+            if institution
+            else None
+        ),
+        service_type=_localised(service.names, lang) if service else None,
+        deadline_on=request.deadline_on,
+        status=request.status.value,
+        responses_count=total or 0,
+        responders=[avatar_for(u) for u in responders],
+        created_at=request.created_at,
+    )
 
 
 # ── partner placements ──────────────────────────────────────────────────

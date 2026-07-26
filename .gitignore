@@ -186,3 +186,6 @@ apps/web/src/locales/**/messages.ts
 # ── Python ──────────────────────────────────────────────────────────────
 .venv/
 .ruff_cache/
+
+# Downloaded dev tooling (cloudflared); not part of the project
+.tools/

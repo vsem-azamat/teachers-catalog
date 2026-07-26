@@ -185,3 +185,63 @@ async def test_helper_page_404s_for_a_draft(client, session):
 
     response = await client.get(f"/api/v1/helpers/{user.id}", headers=auth_header(90112))
     assert response.status_code == 404
+
+
+async def test_creating_a_request_reads_the_text(client):
+    """The form is one field; everything else comes out of the sentence."""
+    response = await client.post(
+        "/api/v1/requests",
+        json={"text": "нужен матан на ČVUT, экзамен 14 февраля, до 700 kč"},
+        headers=auth_header(90201),
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert body["subject"] == "Математический анализ"
+    assert body["institution"] == "ČVUT"
+    assert body["deadline_on"].endswith("-02-14")
+    assert body["status"] == "open"
+    assert body["responses_count"] == 0
+
+
+async def test_requests_are_listed_newest_first(client):
+    headers = auth_header(90202)
+    await client.post("/api/v1/requests", json={"text": "линал на ČVUT"}, headers=headers)
+    await client.post("/api/v1/requests", json={"text": "чешский B2"}, headers=headers)
+
+    body = (await client.get("/api/v1/requests", headers=headers)).json()
+    assert len(body) == 2
+    assert body[0]["text"] == "чешский B2"
+
+
+async def test_a_request_without_a_deadline_still_expires(client, session):
+    from sqlalchemy import select
+
+    from konnekt.db.models import HelpRequest
+
+    created = (
+        await client.post(
+            "/api/v1/requests",
+            json={"text": "помогите с физикой"},
+            headers=auth_header(90203),
+        )
+    ).json()
+    row = await session.scalar(select(HelpRequest).where(HelpRequest.id == created["id"]))
+    assert row.expires_at is not None, "a request with no end date would hang forever"
+
+
+async def test_only_the_author_can_close_a_request(client):
+    created = (
+        await client.post(
+            "/api/v1/requests", json={"text": "матан"}, headers=auth_header(90204)
+        )
+    ).json()
+    other = await client.post(
+        f"/api/v1/requests/{created['id']}/close", headers=auth_header(90205)
+    )
+    assert other.status_code == 404
+
+    mine = await client.post(
+        f"/api/v1/requests/{created['id']}/close", headers=auth_header(90204)
+    )
+    assert mine.status_code == 200
+    assert mine.json()["status"] == "closed"
