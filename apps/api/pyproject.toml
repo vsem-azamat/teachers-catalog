@@ -19,6 +19,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "pytest>=8.3",
     "pytest-asyncio>=0.25",
     "ruff>=0.9",
@@ -46,6 +47,18 @@ select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 # one of them and have nothing to say about correctness here.
 ignore = ["RUF001", "RUF002", "RUF003"]
 
+[tool.ruff.lint.flake8-bugbear]
+# Calling Query/Depends/Header in a default is how FastAPI declares parameters;
+# B008 exists for mutable defaults and does not apply to them.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Header",
+    "fastapi.Path",
+    "fastapi.Query",
+]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
+filterwarnings = ["error::DeprecationWarning"]

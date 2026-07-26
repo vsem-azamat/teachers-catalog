@@ -1,0 +1,503 @@
+from datetime import UTC, datetime, timedelta
+
+from fastapi import APIRouter, HTTPException, Query, status
+from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
+
+from konnekt.api.deps import LangDep, SessionDep, SettingsDep, UserDep
+from konnekt.api.schemas import (
+    Chip,
+    Clarify,
+    ClarifyOption,
+    HelperDetailOut,
+    HomeOut,
+    InstitutionOut,
+    LanguageOut,
+    MeOut,
+    MeUpdate,
+    ParseOut,
+    ParseRequest,
+    Phrase,
+    PlacementOut,
+    SearchFilters,
+    SearchOut,
+    ServiceTypeOut,
+    SubjectOut,
+)
+from konnekt.db.models import (
+    HelperProfile,
+    Institution,
+    Language,
+    Offer,
+    SearchQuery,
+    ServiceType,
+    Subject,
+)
+from konnekt.db.models.enums import PublishStatus
+from konnekt.services import catalog, parser, placements
+from konnekt.services.catalog import _localised, avatar_for
+
+router = APIRouter(prefix="/api/v1")
+
+
+# ── who am I ────────────────────────────────────────────────────────────
+
+
+@router.get("/me", response_model=MeOut, tags=["me"])
+async def read_me(user: UserDep, session: SessionDep, lang: LangDep) -> MeOut:
+    helper = await session.get(HelperProfile, user.id)
+    institution = None
+    if user.institution_id:
+        row = await session.scalar(
+            select(Institution)
+            .where(Institution.id == user.institution_id)
+            .options(selectinload(Institution.names))
+        )
+        if row:
+            institution = _institution_out(row, lang)
+
+    return MeOut(
+        id=user.id,
+        tg_id=user.tg_id,
+        name=" ".join(filter(None, (user.first_name, user.last_name))),
+        username=user.tg_username,
+        avatar=avatar_for(user),
+        ui_lang=user.ui_lang,
+        spoken_langs=list(user.spoken_langs),
+        city=user.city,
+        institution=institution,
+        is_helper=helper is not None,
+        helper_status=helper.status.value if helper else None,
+    )
+
+
+@router.patch("/me", response_model=MeOut, tags=["me"])
+async def update_me(
+    payload: MeUpdate, user: UserDep, session: SessionDep, lang: LangDep
+) -> MeOut:
+    if payload.ui_lang is not None:
+        user.ui_lang = payload.ui_lang
+    if payload.spoken_langs is not None:
+        user.spoken_langs = payload.spoken_langs
+    if payload.city is not None:
+        user.city = payload.city or None
+    if payload.institution_id is not None:
+        user.institution_id = payload.institution_id or None
+    await session.commit()
+    return await read_me(user, session, payload.ui_lang or lang)
+
+
+# ── home ────────────────────────────────────────────────────────────────
+
+
+@router.get("/home", response_model=HomeOut, tags=["catalog"])
+async def home(session: SessionDep, lang: LangDep, user: UserDep) -> HomeOut:
+    people, things = await catalog.home_sections(session, lang)
+    return HomeOut(people=people, things=things)
+
+
+# ── reference data ──────────────────────────────────────────────────────
+
+
+@router.get(
+    "/taxonomy/service-types", response_model=list[ServiceTypeOut], tags=["taxonomy"]
+)
+async def service_types(
+    session: SessionDep, lang: LangDep, user: UserDep
+) -> list[ServiceTypeOut]:
+    rows = (
+        await session.scalars(
+            select(ServiceType)
+            .where(ServiceType.is_active.is_(True))
+            .order_by(ServiceType.sort)
+            .options(selectinload(ServiceType.names))
+        )
+    ).all()
+    return [
+        ServiceTypeOut(
+            id=r.id,
+            code=r.code,
+            name=_localised(r.names, lang) or r.code,
+            hint=_localised(r.names, lang, "hint"),
+            requires_subject=r.requires_subject,
+            requires_institution=r.requires_institution,
+        )
+        for r in rows
+    ]
+
+
+@router.get("/taxonomy/subjects", response_model=list[SubjectOut], tags=["taxonomy"])
+async def subjects(
+    session: SessionDep,
+    lang: LangDep,
+    user: UserDep,
+    parent_id: int | None = None,
+    q: str | None = Query(default=None, max_length=200),
+    limit: int = Query(default=100, le=300),
+) -> list[SubjectOut]:
+    """Browse the tree, or search it.
+
+    With `q` the answer comes from fuzzy matching, so "matan" and "матан" both
+    work. Without it, one level of the tree is returned.
+    """
+    if q:
+        from konnekt.services.lookup import find_subjects
+
+        matches = await find_subjects(session, q, lang, limit=limit, threshold=0.4)
+        ids = [m.id for m in matches]
+        if not ids:
+            return []
+        rows = {
+            s.id: s
+            for s in (
+                await session.scalars(
+                    select(Subject)
+                    .where(Subject.id.in_(ids))
+                    .options(selectinload(Subject.names))
+                )
+            ).all()
+        }
+        counts = await _offer_counts(session, ids)
+        return [
+            SubjectOut(
+                id=m.id,
+                slug=rows[m.id].slug,
+                name=m.label,
+                parent_id=rows[m.id].parent_id,
+                external_code=rows[m.id].external_code,
+                offers_count=counts.get(m.id, 0),
+            )
+            for m in matches
+            if m.id in rows
+        ]
+
+    stmt = (
+        select(Subject)
+        .where(Subject.is_active.is_(True), Subject.parent_id == parent_id)
+        .order_by(Subject.sort, Subject.id)
+        .options(selectinload(Subject.names))
+        .limit(limit)
+    )
+    rows = (await session.scalars(stmt)).all()
+    child_counts = dict(
+        (
+            await session.execute(
+                select(Subject.parent_id, func.count(Subject.id))
+                .where(Subject.parent_id.in_([r.id for r in rows] or [0]))
+                .group_by(Subject.parent_id)
+            )
+        ).all()
+    )
+    counts = await _offer_counts(session, [r.id for r in rows])
+    return [
+        SubjectOut(
+            id=r.id,
+            slug=r.slug,
+            name=_localised(r.names, lang) or r.slug,
+            parent_id=r.parent_id,
+            has_children=child_counts.get(r.id, 0) > 0,
+            external_code=r.external_code,
+            offers_count=counts.get(r.id, 0),
+        )
+        for r in rows
+    ]
+
+
+async def _offer_counts(session, subject_ids: list[int]) -> dict[int, int]:
+    if not subject_ids:
+        return {}
+    rows = await session.execute(
+        select(Offer.subject_id, func.count(Offer.id))
+        .join(HelperProfile, HelperProfile.user_id == Offer.helper_id)
+        .where(
+            Offer.subject_id.in_(subject_ids),
+            Offer.is_active.is_(True),
+            HelperProfile.status == PublishStatus.PUBLISHED,
+        )
+        .group_by(Offer.subject_id)
+    )
+    return dict(rows.all())
+
+
+@router.get(
+    "/taxonomy/institutions", response_model=list[InstitutionOut], tags=["taxonomy"]
+)
+async def institutions(
+    session: SessionDep, lang: LangDep, user: UserDep
+) -> list[InstitutionOut]:
+    """The whole list, universities with their faculties nested.
+
+    A couple of hundred rows — cheaper to send once than to paginate, and the
+    client can then filter without another round trip.
+    """
+    rows = (
+        await session.scalars(
+            select(Institution)
+            .where(Institution.is_active.is_(True))
+            .order_by(Institution.sort, Institution.id)
+            .options(selectinload(Institution.names))
+        )
+    ).all()
+
+    by_parent: dict[int | None, list[Institution]] = {}
+    for row in rows:
+        by_parent.setdefault(row.parent_id, []).append(row)
+
+    return [
+        _institution_out(row, lang, by_parent.get(row.id, []))
+        for row in by_parent.get(None, [])
+    ]
+
+
+def _institution_out(row: Institution, lang, children=()) -> InstitutionOut:
+    return InstitutionOut(
+        id=row.id,
+        code=row.code,
+        name=_localised(row.names, lang) or row.code,
+        short_name=_localised(row.names, lang, "short_name"),
+        city=row.city,
+        parent_id=row.parent_id,
+        faculties=[_institution_out(child, lang) for child in children],
+    )
+
+
+@router.get("/taxonomy/languages", response_model=list[LanguageOut], tags=["taxonomy"])
+async def languages(
+    session: SessionDep, lang: LangDep, user: UserDep
+) -> list[LanguageOut]:
+    rows = (
+        await session.scalars(
+            select(Language)
+            .where(Language.is_active.is_(True))
+            .order_by(Language.sort)
+            .options(selectinload(Language.names))
+        )
+    ).all()
+    return [
+        LanguageOut(code=r.code, name=_localised(r.names, lang) or r.code) for r in rows
+    ]
+
+
+# ── search ──────────────────────────────────────────────────────────────
+
+
+@router.post("/search/parse", response_model=ParseOut, tags=["search"])
+async def parse_query(
+    payload: ParseRequest, session: SessionDep, lang: LangDep, user: UserDep
+) -> ParseOut:
+    """Read a sentence and show back what we made of it.
+
+    Every call is logged with its parse and result count. Queries that match
+    nothing are the ranked list of what the catalog is missing, and the raw
+    text next to the parse is what a better parser would be trained on.
+    """
+    parsed = await parser.parse(session, payload.text, lang.value)
+
+    chips: list[Chip] = []
+    if parsed.subject:
+        chips.append(
+            Chip(
+                kind="subject",
+                label=parsed.subject.label,
+                value=parsed.subject.id,
+                confidence=round(parsed.subject.score, 2),
+            )
+        )
+    if parsed.institution:
+        chips.append(
+            Chip(
+                kind="institution",
+                label=parsed.institution.label,
+                value=parsed.institution.id,
+                confidence=round(parsed.institution.score, 2),
+            )
+        )
+    service_type_id = None
+    if parsed.service_type:
+        service = await session.scalar(
+            select(ServiceType)
+            .where(ServiceType.code == parsed.service_type)
+            .options(selectinload(ServiceType.names))
+        )
+        if service:
+            service_type_id = service.id
+            chips.append(
+                Chip(
+                    kind="service_type",
+                    label=_localised(service.names, lang) or service.code,
+                    value=service.id,
+                )
+            )
+    if parsed.deadline:
+        chips.append(
+            Chip(
+                kind="deadline",
+                label=parsed.deadline.isoformat(),
+                value=parsed.deadline.isoformat(),
+            )
+        )
+    if parsed.budget_max:
+        chips.append(
+            Chip(
+                kind="budget",
+                label=str(int(parsed.budget_max)),
+                value=int(parsed.budget_max),
+            )
+        )
+
+    total, _ = await catalog.search(
+        session,
+        lang,
+        viewer=user,
+        subject_id=parsed.subject.id if parsed.subject else None,
+        institution_id=parsed.institution.id if parsed.institution else None,
+        service_type_id=service_type_id,
+        limit=1,
+    )
+
+    session.add(
+        SearchQuery(
+            user_id=user.id,
+            raw_text=payload.text,
+            parsed={
+                "subject_id": parsed.subject.id if parsed.subject else None,
+                "institution_id": (parsed.institution.id if parsed.institution else None),
+                "service_type": parsed.service_type,
+                "deadline": parsed.deadline.isoformat() if parsed.deadline else None,
+                "budget_max": parsed.budget_max,
+            },
+            results_count=total,
+            parser="rules.v1",
+        )
+    )
+    await session.commit()
+
+    return ParseOut(
+        chips=chips,
+        clarify=_clarify_for(parsed),
+        matches=total,
+        note=Phrase(code="parse.nothing_recognised") if parsed.unmatched else None,
+    )
+
+
+def _clarify_for(parsed: parser.ParsedQuery) -> Clarify | None:
+    """Ask at most one question, and only when it narrows the result.
+
+    If the text already says which kind of help is wanted, there is nothing to
+    ask; if it says nothing at all, a question about exam timing would be
+    guessing at the wrong thing.
+    """
+    if parsed.service_type or parsed.unmatched:
+        return None
+    return Clarify(
+        code="clarify.when",
+        options=[
+            ClarifyOption(code="exam_prep", tone=0),
+            ClarifyOption(code="exam_live_help", tone=1),
+            ClarifyOption(code="both", tone=5),
+        ],
+    )
+
+
+@router.get("/search", response_model=SearchOut, tags=["search"])
+async def search_offers(
+    session: SessionDep,
+    lang: LangDep,
+    user: UserDep,
+    subject_id: int | None = None,
+    institution_id: int | None = None,
+    service_type_id: int | None = None,
+    max_price: float | None = None,
+    langs: list[str] = Query(default_factory=list),
+    sort: str = Query(default="relevance", pattern="^(relevance|price|available)$"),
+    limit: int = Query(default=20, le=50),
+    offset: int = 0,
+) -> SearchOut:
+    total, results = await catalog.search(
+        session,
+        lang,
+        viewer=user,
+        subject_id=subject_id,
+        institution_id=institution_id,
+        service_type_id=service_type_id,
+        max_price=max_price,
+        langs=langs,
+        sort=sort,  # type: ignore[arg-type]
+        limit=limit,
+        offset=offset,
+    )
+    return SearchOut(
+        total=total,
+        filters=SearchFilters(
+            subject_id=subject_id,
+            institution_id=institution_id,
+            service_type_id=service_type_id,
+            max_price=max_price,
+            langs=langs,
+        ),
+        chips=[],
+        results=results,
+    )
+
+
+@router.get("/helpers/{user_id}", response_model=HelperDetailOut, tags=["catalog"])
+async def helper_detail(
+    user_id: int, session: SessionDep, lang: LangDep, user: UserDep
+) -> HelperDetailOut:
+    detail = await catalog.helper_detail(session, user_id, lang)
+    if detail is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such published profile")
+    return detail
+
+
+# ── partner placements ──────────────────────────────────────────────────
+
+
+@router.get("/placements", response_model=list[PlacementOut], tags=["partners"])
+async def placements_for_slot(
+    session: SessionDep,
+    lang: LangDep,
+    user: UserDep,
+    settings: SettingsDep,
+    slot: str,
+    service_type: str | None = None,
+    subject_id: int | None = None,
+) -> list[PlacementOut]:
+    return await placements.for_slot(
+        session,
+        lang=lang,
+        slot=slot,
+        context={
+            "service_type": service_type,
+            "subject_id": subject_id,
+            "ui_lang": user.ui_lang.value,
+            "month": datetime.now(UTC).month,
+        },
+    )
+
+
+@router.post(
+    "/placements/{placement_id}/click",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["partners"],
+)
+async def register_click(placement_id: int, session: SessionDep, user: UserDep) -> None:
+    await placements.record(session, placement_id, user.id, kind="click")
+
+
+# ── health ──────────────────────────────────────────────────────────────
+
+_STARTED_AT = datetime.now(UTC)
+
+health_router = APIRouter(tags=["ops"])
+
+
+@health_router.get("/healthz")
+async def healthz(session: SessionDep) -> dict[str, str | int]:
+    await session.execute(select(1))
+    uptime = datetime.now(UTC) - _STARTED_AT
+    return {
+        "status": "ok",
+        "database": "ok",
+        "uptime_seconds": int(uptime / timedelta(seconds=1)),
+    }

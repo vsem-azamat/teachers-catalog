@@ -1,0 +1,472 @@
+"""Assembling the screens: home, search results, one person's page."""
+
+from datetime import UTC, datetime
+from typing import Literal
+
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from konnekt.api.schemas import (
+    Avatar,
+    HelperCardOut,
+    HelperDetailOut,
+    HomeSection,
+    OfferOut,
+    Phrase,
+    Price,
+    Stat,
+)
+from konnekt.db.models import (
+    HelperProfile,
+    Institution,
+    Offer,
+    ServiceType,
+    Subject,
+    User,
+    UserEducation,
+)
+from konnekt.db.models.enums import PublishStatus, UiLang
+
+SortKey = Literal["relevance", "price", "available"]
+
+# Tile colours on the client, in a fixed order. The server picks an index so
+# the same person keeps the same colour on every screen.
+TONE_COUNT = 6
+
+
+def avatar_for(user: User) -> Avatar:
+    initials = (user.first_name or "?")[:1].upper()
+    if user.last_name:
+        initials += user.last_name[:1].upper()
+    return Avatar(
+        initials=initials,
+        tone=user.tg_id % TONE_COUNT,
+        photo_url=user.photo_url,
+    )
+
+
+def _localised(rows, lang: UiLang, attr: str = "name") -> str | None:
+    """Pick a translation, falling back to any that exists.
+
+    A missing Ukrainian name should show the Czech one, not an empty row.
+    """
+    for row in rows:
+        if row.lang == lang:
+            value = getattr(row, attr, None)
+            if value:
+                return value
+    for row in rows:
+        value = getattr(row, attr, None)
+        if value:
+            return value
+    return None
+
+
+async def home_sections(
+    session: AsyncSession, lang: UiLang
+) -> tuple[list[HomeSection], list[HomeSection]]:
+    counts = dict(
+        (
+            await session.execute(
+                select(Offer.service_type_id, func.count(Offer.id))
+                .join(HelperProfile, HelperProfile.user_id == Offer.helper_id)
+                .where(
+                    Offer.is_active.is_(True),
+                    HelperProfile.status == PublishStatus.PUBLISHED,
+                )
+                .group_by(Offer.service_type_id)
+            )
+        ).all()
+    )
+
+    service_types = (
+        await session.scalars(
+            select(ServiceType)
+            .where(ServiceType.is_active.is_(True))
+            .order_by(ServiceType.sort)
+            .options(selectinload(ServiceType.names))
+        )
+    ).all()
+
+    people: list[HomeSection] = []
+    for index, st in enumerate(service_types):
+        people.append(
+            HomeSection(
+                kind="service_type",
+                code=st.code,
+                name=_localised(st.names, lang) or st.code,
+                hint=_localised(st.names, lang, "hint"),
+                tone=index % TONE_COUNT,
+                count=counts.get(st.id, 0),
+                avatars=await _sample_avatars(session, st.id),
+            )
+        )
+
+    # Things are not seeded yet; the section stays empty rather than absent so
+    # the client layout does not change shape once it fills.
+    return people, []
+
+
+async def _sample_avatars(
+    session: AsyncSession, service_type_id: int, limit: int = 3
+) -> list[Avatar]:
+    users = (
+        await session.scalars(
+            select(User)
+            .join(HelperProfile, HelperProfile.user_id == User.id)
+            .join(Offer, Offer.helper_id == HelperProfile.user_id)
+            .where(
+                Offer.service_type_id == service_type_id,
+                Offer.is_active.is_(True),
+                HelperProfile.status == PublishStatus.PUBLISHED,
+            )
+            .order_by(HelperProfile.deals_count.desc())
+            .limit(limit)
+        )
+    ).unique()
+    return [avatar_for(u) for u in users]
+
+
+def _offer_query(
+    *,
+    subject_id: int | None,
+    institution_id: int | None,
+    service_type_id: int | None,
+    max_price: float | None,
+    langs: list[str],
+):
+    stmt = (
+        select(Offer)
+        .join(HelperProfile, HelperProfile.user_id == Offer.helper_id)
+        .where(
+            Offer.is_active.is_(True),
+            HelperProfile.status == PublishStatus.PUBLISHED,
+        )
+    )
+    if subject_id:
+        stmt = stmt.where(Offer.subject_id == subject_id)
+    if service_type_id:
+        stmt = stmt.where(Offer.service_type_id == service_type_id)
+    if institution_id:
+        # An offer with no institution is not excluded: a calculus tutor who
+        # did not tie themselves to one school can still help at ČVUT. They
+        # just rank lower, and the card says why.
+        stmt = stmt.where(
+            (Offer.institution_id == institution_id) | Offer.institution_id.is_(None)
+        )
+    if max_price is not None:
+        stmt = stmt.where(
+            (Offer.price_amount <= max_price) | Offer.price_amount.is_(None)
+        )
+    if langs:
+        stmt = stmt.where(Offer.langs.overlap(langs))
+    return stmt
+
+
+async def search(
+    session: AsyncSession,
+    lang: UiLang,
+    *,
+    viewer: User,
+    subject_id: int | None = None,
+    institution_id: int | None = None,
+    service_type_id: int | None = None,
+    max_price: float | None = None,
+    langs: list[str] | None = None,
+    sort: SortKey = "relevance",
+    limit: int = 20,
+    offset: int = 0,
+) -> tuple[int, list[HelperCardOut]]:
+    langs = langs or []
+    base = _offer_query(
+        subject_id=subject_id,
+        institution_id=institution_id,
+        service_type_id=service_type_id,
+        max_price=max_price,
+        langs=langs,
+    )
+
+    total = await session.scalar(select(func.count()).select_from(base.subquery())) or 0
+
+    stmt = base.options(
+        selectinload(Offer.helper).selectinload(HelperProfile.user),
+        selectinload(Offer.helper).selectinload(HelperProfile.availability),
+    )
+    if sort == "price":
+        stmt = stmt.order_by(Offer.price_amount.asc().nulls_last())
+    else:
+        stmt = stmt.order_by(
+            (Offer.institution_id == institution_id).desc()
+            if institution_id
+            else Offer.id.asc()
+        )
+
+    offers = (await session.scalars(stmt.limit(limit).offset(offset))).unique().all()
+
+    viewer_institutions = set(
+        (
+            await session.scalars(
+                select(UserEducation.institution_id).where(
+                    UserEducation.user_id == viewer.id
+                )
+            )
+        ).all()
+    )
+
+    cheapest = min(
+        (o.price_amount for o in offers if o.price_amount is not None), default=None
+    )
+
+    cards = [
+        _to_card(
+            offer,
+            lang,
+            requested_institution_id=institution_id,
+            viewer_institutions=viewer_institutions,
+            cheapest=cheapest,
+        )
+        for offer in offers
+    ]
+
+    if sort == "available":
+        cards.sort(key=lambda c: c.availability is None)
+    return total, cards
+
+
+def _to_card(
+    offer: Offer,
+    lang: UiLang,
+    *,
+    requested_institution_id: int | None,
+    viewer_institutions: set[int],
+    cheapest: float | None,
+) -> HelperCardOut:
+    helper = offer.helper
+    user = helper.user
+
+    return HelperCardOut(
+        user_id=user.id,
+        name=_display_name(user),
+        avatar=avatar_for(user),
+        affiliation=helper.headline,
+        price=Price(
+            amount=float(offer.price_amount) if offer.price_amount is not None else None,
+            currency=offer.price_currency,
+            unit=offer.price_unit,
+        ),
+        reason=_reason(
+            offer,
+            requested_institution_id=requested_institution_id,
+            viewer_institutions=viewer_institutions,
+            cheapest=cheapest,
+        ),
+        availability=_availability(helper),
+        rating=float(helper.rating) if helper.rating is not None else None,
+        deals_count=helper.deals_count,
+        langs=list(offer.langs),
+    )
+
+
+def _display_name(user: User) -> str:
+    """First name plus an initial — the convention in the mockups.
+
+    Full surnames are neither needed to choose someone nor ours to publish.
+    """
+    if user.last_name:
+        return f"{user.first_name} {user.last_name[:1]}."
+    return user.first_name
+
+
+def _reason(
+    offer: Offer,
+    *,
+    requested_institution_id: int | None,
+    viewer_institutions: set[int],
+    cheapest: float | None,
+) -> Phrase | None:
+    """Why this person is in the list.
+
+    Sometimes the honest answer is "they are cheap and have no experience with
+    your exam". Saying that is what makes the other rows believable.
+    """
+    helper = offer.helper
+
+    if requested_institution_id and offer.institution_id == requested_institution_id:
+        if helper.deals_count >= 5:
+            return Phrase(
+                code="reason.same_exam_experience",
+                params={"deals": helper.deals_count},
+            )
+        return Phrase(code="reason.same_institution")
+
+    if requested_institution_id and offer.institution_id is None:
+        if offer.price_amount is not None and offer.price_amount == cheapest:
+            return Phrase(code="reason.cheapest_but_unproven")
+        return Phrase(code="reason.subject_only")
+
+    if offer.institution_id and offer.institution_id in viewer_institutions:
+        return Phrase(code="reason.your_faculty")
+
+    if helper.deals_count >= 5:
+        return Phrase(code="reason.experience", params={"deals": helper.deals_count})
+    return None
+
+
+def _availability(helper: HelperProfile) -> Phrase | None:
+    now = datetime.now(UTC)
+    upcoming = sorted(
+        (slot for slot in helper.availability if slot.period.upper > now),
+        key=lambda s: s.period.lower,
+    )
+    if upcoming:
+        return Phrase(
+            code="availability.free_on",
+            params={"date": upcoming[0].period.lower.date().isoformat()},
+        )
+    if helper.response_minutes_avg:
+        return Phrase(
+            code="availability.responds_in",
+            params={"minutes": helper.response_minutes_avg},
+        )
+    return None
+
+
+async def helper_detail(
+    session: AsyncSession, user_id: int, lang: UiLang
+) -> HelperDetailOut | None:
+    helper = await session.scalar(
+        select(HelperProfile)
+        .where(HelperProfile.user_id == user_id)
+        .options(
+            selectinload(HelperProfile.user),
+            selectinload(HelperProfile.availability),
+            selectinload(HelperProfile.offers).selectinload(Offer.helper),
+        )
+    )
+    if helper is None or helper.status != PublishStatus.PUBLISHED:
+        return None
+
+    user = helper.user
+    offers = await _offers_out(session, helper, lang)
+
+    stats: list[Stat] = []
+    if helper.deals_count:
+        stats.append(Stat(code="stat.deals", value=str(helper.deals_count)))
+    if helper.rating is not None:
+        stats.append(Stat(code="stat.rating", value=f"{float(helper.rating):.1f}"))
+    if helper.published_at:
+        years = (datetime.now(UTC) - helper.published_at).days // 365
+        stats.append(
+            Stat(code="stat.years" if years else "stat.since", value=str(years or 1))
+        )
+
+    now = datetime.now(UTC)
+    free = sorted(s.period.lower for s in helper.availability if s.period.upper > now)[:4]
+
+    return HelperDetailOut(
+        user_id=user.id,
+        name=_display_name(user),
+        avatar=avatar_for(user),
+        affiliation=helper.headline,
+        about=helper.about,
+        headline=helper.headline,
+        stats=stats,
+        offers=offers,
+        langs=sorted({lang_code for o in helper.offers for lang_code in o.langs}),
+        work_format=helper.work_format,
+        place_note=helper.place_note,
+        free_slots=free,
+        intro_context={
+            "name": user.first_name,
+            "subjects": ", ".join(sorted({o.subject for o in offers if o.subject})),
+        },
+        telegram_url=(f"https://t.me/{user.tg_username}" if user.tg_username else None),
+    )
+
+
+async def _offers_out(
+    session: AsyncSession, helper: HelperProfile, lang: UiLang
+) -> list[OfferOut]:
+    if not helper.offers:
+        return []
+
+    subject_ids = {o.subject_id for o in helper.offers if o.subject_id}
+    institution_ids = {o.institution_id for o in helper.offers if o.institution_id}
+    service_ids = {o.service_type_id for o in helper.offers}
+
+    subjects = {
+        s.id: s
+        for s in (
+            await session.scalars(
+                select(Subject)
+                .where(Subject.id.in_(subject_ids or {0}))
+                .options(selectinload(Subject.names))
+            )
+        ).all()
+    }
+    institutions = {
+        i.id: i
+        for i in (
+            await session.scalars(
+                select(Institution)
+                .where(Institution.id.in_(institution_ids or {0}))
+                .options(selectinload(Institution.names))
+            )
+        ).all()
+    }
+    services = {
+        s.id: s
+        for s in (
+            await session.scalars(
+                select(ServiceType)
+                .where(ServiceType.id.in_(service_ids or {0}))
+                .options(selectinload(ServiceType.names))
+            )
+        ).all()
+    }
+
+    out: list[OfferOut] = []
+    for offer in helper.offers:
+        if not offer.is_active:
+            continue
+        service = services.get(offer.service_type_id)
+        subject = subjects.get(offer.subject_id) if offer.subject_id else None
+        institution = (
+            institutions.get(offer.institution_id) if offer.institution_id else None
+        )
+        out.append(
+            OfferOut(
+                id=offer.id,
+                service_type=service.code if service else "",
+                service_type_name=(_localised(service.names, lang) if service else "")
+                or "",
+                subject=_localised(subject.names, lang) if subject else None,
+                institution=(
+                    _localised(institution.names, lang, "short_name")
+                    or _localised(institution.names, lang)
+                    if institution
+                    else None
+                ),
+                price=Price(
+                    amount=(
+                        float(offer.price_amount)
+                        if offer.price_amount is not None
+                        else None
+                    ),
+                    currency=offer.price_currency,
+                    unit=offer.price_unit,
+                ),
+                langs=list(offer.langs),
+                work_format=offer.work_format,
+            )
+        )
+    return out
+
+
+__all__ = [
+    "avatar_for",
+    "helper_detail",
+    "home_sections",
+    "search",
+]
