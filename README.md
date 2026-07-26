@@ -66,21 +66,75 @@ make tunnel               # prints an https://….trycloudflare.com URL
 Put that URL in `PUBLIC_BASE_URL`, restart the API so it re-registers the
 webhook, and set the same URL as the mini app in @BotFather.
 
+## Outside Telegram
+
+The catalog only works inside Telegram — that is where the accounts, the
+conversations and the notifications are — so opening the domain in a browser
+gets a landing page instead of a broken app. It is one screen, does not
+scroll, and has one button.
+
+That button points at `/api/v1/open`, the only unauthenticated route in the
+API, which redirects to the bot. The handle therefore lives in one place, the
+token the server already runs with, rather than being copied into the frontend
+and into the build. Add `?landing` to any URL to see the page from inside
+development.
+
+The palette is the app's own, not Telegram's, and the person picks it:
+system, light or dark, from the profile screen. The choice is resolved by an
+inline script in `index.html` before the first paint, because a module that
+runs after one is a module that runs after the flash.
+
 ## Deploying
 
 CI builds images, pushes them to GHCR and deploys over SSH to a shared VPS,
 behind Cloudflare and a shared Caddy. The runbook, the one-time setup and the
 two ways to break production are in [docs/deploy.md](docs/deploy.md).
 
-## Testing
+## Checks
 
 ```sh
-make test
+make check                # everything CI runs
+make test                 # just the API suite
 ```
 
 Tests run against a real Postgres, each inside a transaction that is rolled
 back. The interesting logic here is SQL — trigram matching, word-boundary
 synonym matching, exclusion constraints — and none of it survives being mocked.
+
+The tooling is [uv](https://docs.astral.sh/uv/) and
+[ruff](https://docs.astral.sh/ruff/) plus [ty](https://docs.astral.sh/ty/) on
+the API, [Biome](https://biomejs.dev/), TypeScript and
+[Vite](https://vite.dev/) on the mini app, and `lingui compile --strict` so an
+untranslated string fails the build rather than falling back to Russian.
+
+`ty` is in preview, so its version is pinned in the lockfile like everything
+else: a checker that changes its mind on an unrelated push is a checker people
+learn to ignore. It earned its place immediately — `availability_slots.period`
+was typed as `object`, which meant every read of `.lower` and `.upper` was
+unverifiable, and once it was a real `Range[datetime]` the bounds turned out to
+be optional in the type and non-optional only by a database constraint.
+
+### The docs contract
+
+A separate CI job runs [stdd](https://github.com/vsem-azamat/stdd), which
+guards two things this repository cares about because most of the code in it
+is written with an agent.
+
+The first is that `docs/` and this file describe the present. An agent greps
+the tree, finds text that reads authoritative, and builds against it — so a
+paragraph narrating an earlier state of the code is not history in there, it
+is a trap. `stdd check` flags that phrasing and refuses committed plan and
+spec artifacts anywhere. Rationale belongs in the commit message and the pull
+request, where it is dated by construction.
+
+The second is that a pull request says which docs it updated. `stdd check-pr`
+reads the live body — not the webhook payload, which freezes at trigger time —
+and verifies the paths it claims against the actual diff. Draft the line with
+`npx @stdd/cli evidence --base origin/main`.
+
+Only that contract is adopted. stdd also offers a recorded loop and an
+orchestration layer with plans, slices and delegated review; this is one
+person and one agent, and neither has a problem those solve yet.
 
 ## The four languages
 
@@ -96,6 +150,11 @@ Language is also a *matching* attribute, not only a display setting. A profile
 written in Russian stays Russian, and a Ukrainian first-year cannot work with a
 Czech-only tutor. `users.spoken_langs` and `offers.langs` are indexed arrays, so
 that filter is one query.
+
+The list people pick from is those four and no more: a question with four
+answers gets answered and one with nine gets skipped, and every code beyond
+these four is one nobody here has ever been matched on. Codes taken off the
+list are deactivated rather than deleted, because profiles already hold them.
 
 ## What is not here yet
 

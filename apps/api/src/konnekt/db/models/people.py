@@ -23,7 +23,13 @@ from sqlalchemy import (
     Text,
     text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSTZRANGE, ExcludeConstraint
+from sqlalchemy.dialects.postgresql import (
+    ARRAY,
+    JSONB,
+    TSTZRANGE,
+    ExcludeConstraint,
+    Range,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from konnekt.db.base import Base, IdMixin, TimestampMixin
@@ -196,7 +202,10 @@ class AvailabilitySlot(IdMixin, Base):
     helper_id: Mapped[int] = mapped_column(
         ForeignKey("helper_profiles.user_id", ondelete="CASCADE"), nullable=False
     )
-    period: Mapped[object] = mapped_column(TSTZRANGE, nullable=False)
+    # Range, not object: the bounds are read all over the availability code as
+    # `.lower` and `.upper`, and an opaque annotation turned every one of them
+    # into an attribute on `object` that no checker could vouch for.
+    period: Mapped[Range[datetime]] = mapped_column(TSTZRANGE, nullable=False)
     note: Mapped[str | None] = mapped_column(String(240))
 
     helper: Mapped[HelperProfile] = relationship(back_populates="availability")

@@ -1,0 +1,31 @@
+{
+	"forbiddenArtifacts": [
+		"docs/**/plans/**",
+		"**/*.agent-plan.md",
+		"**/*.agent-spec.md"
+	],
+	"canonicalDocs": [
+		"docs/**/*.md",
+		"README.md"
+	],
+	"temporalPhrases": [
+		"previously",
+		"no longer",
+		"used to be",
+		"before this change"
+	],
+	"readiness": {
+		"required": []
+	},
+	"contentRules": [],
+	"capabilities": {
+		"subagents": true,
+		"crossCli": false,
+		"worktrees": false
+	},
+	"review": {
+		"via": "subagent",
+		"maxRounds": 0
+	},
+	"baseRef": "origin/main"
+}

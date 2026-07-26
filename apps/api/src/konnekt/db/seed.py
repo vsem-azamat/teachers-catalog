@@ -14,7 +14,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from konnekt.db.models import (
@@ -133,7 +133,13 @@ SERVICE_TYPES: list[dict[str, Any]] = [
     },
 ]
 
-# Languages people work in — wider than the four the interface speaks.
+# Languages people work in — the same four the interface speaks.
+#
+# It was wider, and that was a mistake: a question with nine answers is a
+# question people skip, and the tail of it (Kazakh, Uzbek, Vietnamese, Slovak,
+# German) never matched a single pair. Codes are deactivated rather than
+# deleted, because `users.spoken_langs` and `offers.langs` already hold them
+# and a code that vanishes would silently stop matching.
 WORKING_LANGUAGES: list[tuple[str, dict[str, str]]] = [
     ("ru", {"ru": "Русский", "cs": "Ruština", "en": "Russian", "uk": "Російська"}),
     (
@@ -149,19 +155,6 @@ WORKING_LANGUAGES: list[tuple[str, dict[str, str]]] = [
     (
         "en",
         {"ru": "Английский", "cs": "Angličtina", "en": "English", "uk": "Англійська"},
-    ),
-    ("sk", {"ru": "Словацкий", "cs": "Slovenština", "en": "Slovak", "uk": "Словацька"}),
-    ("de", {"ru": "Немецкий", "cs": "Němčina", "en": "German", "uk": "Німецька"}),
-    ("kk", {"ru": "Казахский", "cs": "Kazaština", "en": "Kazakh", "uk": "Казахська"}),
-    ("uz", {"ru": "Узбекский", "cs": "Uzbečtina", "en": "Uzbek", "uk": "Узбецька"}),
-    (
-        "vi",
-        {
-            "ru": "Вьетнамский",
-            "cs": "Vietnamština",
-            "en": "Vietnamese",
-            "uk": "В'єтнамська",
-        },
     ),
 ]
 
@@ -207,6 +200,14 @@ async def seed_languages(session: AsyncSession) -> int:
                 {"language_code": code, "lang": UiLang(lang)},
                 {"name": name},
             )
+
+    # Retire anything the list no longer holds. The row stays, so a profile
+    # that already claims Slovak keeps its data and can be read back; it simply
+    # stops being offered as a choice.
+    kept = [code for code, _ in WORKING_LANGUAGES]
+    await session.execute(
+        update(Language).where(Language.code.notin_(kept)).values(is_active=False)
+    )
     await session.commit()
     return len(WORKING_LANGUAGES)
 

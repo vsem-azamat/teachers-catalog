@@ -57,6 +57,13 @@ jobs:
           uv run ruff check src tests
           uv run ruff format --check src tests
 
+      - name: Type-check
+        # ty is in preview and will grow new diagnostics between releases, so
+        # the version is pinned in the lockfile like everything else. A
+        # checker that changes its mind on an unrelated push is a checker
+        # people learn to ignore.
+        run: uv run ty check src tests
+
       - name: Migrate
         run: uv run alembic upgrade head
 

@@ -36,9 +36,11 @@ html {
 
 body {
   /* stable-height, not height: the plain one follows the drag gesture and
-     makes anything pinned to the bottom jitter. Falls back to 100vh until the
-     SDK has mounted the viewport. */
-  min-height: var(--tg-viewport-stable-height, 100vh);
+     makes anything pinned to the bottom jitter. Falls back to 100dvh until the
+     SDK has mounted the viewport — dvh and not vh, because in a plain mobile
+     browser vh counts the space behind the toolbar, and a page built to fill
+     one screen would then be exactly one toolbar too tall to fit. */
+  min-height: var(--tg-viewport-stable-height, 100dvh);
 
   /* System font only. A webfont means a network round trip before first paint,
      and inside Telegram this should look like part of the app. */

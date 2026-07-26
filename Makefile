@@ -99,6 +99,7 @@ test:  ## Run the API test suite (needs the database up)
 .PHONY: lint
 lint:  ## Lint and type-check both apps
 	cd $(API) && uv run ruff check src tests && uv run ruff format --check src tests
+	cd $(API) && uv run ty check src tests
 	cd $(WEB) && pnpm lint && pnpm exec tsc --noEmit
 
 .PHONY: format

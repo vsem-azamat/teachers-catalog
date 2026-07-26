@@ -1,6 +1,9 @@
+import logging
+import time as clock
 from datetime import UTC, datetime, time, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy import delete, false, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import selectinload
@@ -21,6 +24,8 @@ from konnekt.api.schemas import (
     LanguageOut,
     MeOut,
     MeUpdate,
+    MyHelperOut,
+    MyOfferOut,
     ParseOut,
     ParseRequest,
     Phrase,
@@ -72,6 +77,8 @@ from konnekt.services.catalog import _localised, avatar_for
 from konnekt.services.notify import quote
 from konnekt.services.people import log_event
 
+log = logging.getLogger("konnekt")
+
 router = APIRouter(prefix="/api/v1")
 
 
@@ -87,6 +94,56 @@ async def _require(session, model, value: int | None, field: str) -> None:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT, f"unknown {field}: {value}"
         )
+
+
+# ── the way in, for a browser ───────────────────────────────────────────
+
+
+# How long to stop asking Telegram after it has refused to answer. This route
+# is unauthenticated, so without a pause a burst of traffic against a revoked
+# token becomes one getMe per request — and the 429 that earns is charged to
+# the bot, which is also how real messages go out.
+BOT_LOOKUP_COOLDOWN = 30.0
+
+
+async def _bot_username(app) -> str | None:
+    """The bot's public handle, asked for once and remembered."""
+    cached = getattr(app.state, "bot_username", None)
+    if cached:
+        return cached
+    bot = getattr(app.state, "bot", None)
+    if bot is None:
+        return None
+    quiet_until = getattr(app.state, "bot_lookup_quiet_until", 0.0)
+    now = clock.monotonic()
+    if now < quiet_until:
+        return None
+    try:
+        me = await bot.get_me()
+    except Exception:
+        app.state.bot_lookup_quiet_until = now + BOT_LOOKUP_COOLDOWN
+        log.warning("could not read the bot's own username", exc_info=True)
+        return None
+    app.state.bot_username = me.username
+    return me.username
+
+
+@router.get("/open", include_in_schema=False, tags=["public"])
+async def open_in_telegram(request: Request) -> RedirectResponse:
+    """Send a browser to the bot.
+
+    Unauthenticated on purpose: this is what the landing page's button points
+    at, and the landing is what someone sees who has never opened Telegram
+    here. It redirects rather than returning the handle so the handle exists
+    in exactly one place — the token the API is already running with. Change
+    the bot and nothing in the frontend or the build needs to know.
+    """
+    username = await _bot_username(request.app)
+    if username is None:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "no bot is configured")
+    # 302 rather than 301: a permanent redirect would be cached by the browser
+    # for ever, and the target is a handle that can change.
+    return RedirectResponse(f"https://t.me/{username}", status_code=302)
 
 
 # ── who am I ────────────────────────────────────────────────────────────
@@ -235,15 +292,16 @@ async def subjects(
         .limit(limit)
     )
     rows = (await session.scalars(stmt)).all()
-    child_counts = dict(
-        (
+    child_counts = {
+        parent_id: count
+        for parent_id, count in (
             await session.execute(
                 select(Subject.parent_id, func.count(Subject.id))
                 .where(Subject.parent_id.in_([r.id for r in rows] or [0]))
                 .group_by(Subject.parent_id)
             )
         ).all()
-    )
+    }
     counts = await _offer_counts(session, [r.id for r in rows])
     return [
         SubjectOut(
@@ -468,7 +526,10 @@ async def search_offers(
     service_type_id: int | None = None,
     max_price: float | None = None,
     langs: list[str] = Query(default_factory=list),
-    sort: str = Query(default="relevance", pattern="^(relevance|price|available)$"),
+    # The literal rather than a string with a pattern: it is the same
+    # constraint, it reaches OpenAPI as an enum, and it is the type the
+    # catalog's own signature already asks for.
+    sort: catalog.SortKey = Query(default="relevance"),
     limit: int = Query(default=20, ge=1, le=50),
     offset: int = Query(default=0, ge=0),
 ) -> SearchOut:
@@ -481,7 +542,7 @@ async def search_offers(
         service_type_id=service_type_id,
         max_price=max_price,
         langs=langs,
-        sort=sort,  # type: ignore[arg-type]
+        sort=sort,
         limit=limit,
         offset=offset,
     )
@@ -676,15 +737,105 @@ async def read_intro(
     )
 
 
+@router.get("/helper", response_model=MyHelperOut, tags=["helper"])
+async def my_helper(session: SessionDep, lang: LangDep, user: UserDep) -> MyHelperOut:
+    """Read back the caller's own profile, whatever state it is in.
+
+    Answers with an empty shell rather than 404 when there is no profile yet:
+    the screen behind this is a form, and a form that has to branch on a
+    missing-resource error to decide whether to render is a form with two
+    code paths where one will do.
+    """
+    helper = await session.get(HelperProfile, user.id)
+    if helper is None:
+        return MyHelperOut(exists=False)
+
+    offers = (
+        await session.scalars(
+            select(Offer)
+            .where(Offer.helper_id == user.id, Offer.is_active.is_(True))
+            .order_by(Offer.id)
+        )
+    ).all()
+
+    # Names for every axis in one round trip each, rather than per offer.
+    service_names = await _names_by_id(
+        session, ServiceType, [o.service_type_id for o in offers], lang
+    )
+    subject_names = await _names_by_id(
+        session, Subject, [o.subject_id for o in offers], lang
+    )
+    institution_names = await _names_by_id(
+        session, Institution, [o.institution_id for o in offers], lang
+    )
+    service_codes = {
+        service_type_id: code
+        for service_type_id, code in (
+            await session.execute(
+                select(ServiceType.id, ServiceType.code).where(
+                    ServiceType.id.in_({o.service_type_id for o in offers} or {0})
+                )
+            )
+        ).all()
+    }
+
+    return MyHelperOut(
+        exists=True,
+        status=helper.status.value,
+        headline=helper.headline,
+        about=helper.about,
+        work_format=helper.work_format,
+        city=helper.city,
+        place_note=helper.place_note,
+        offers=[
+            MyOfferOut(
+                service_type_id=offer.service_type_id,
+                service_type=service_codes.get(offer.service_type_id, ""),
+                service_type_name=service_names.get(offer.service_type_id, ""),
+                subject_id=offer.subject_id,
+                subject_name=subject_names.get(offer.subject_id),
+                institution_id=offer.institution_id,
+                institution_name=institution_names.get(offer.institution_id),
+                price_amount=float(offer.price_amount)
+                if offer.price_amount is not None
+                else None,
+                price_unit=offer.price_unit,
+                langs=list(offer.langs),
+            )
+            for offer in offers
+        ],
+    )
+
+
+async def _names_by_id(session, model, ids, lang) -> dict[int, str]:
+    """Translated names for a set of taxonomy rows, keyed by id."""
+    wanted = {value for value in ids if value is not None}
+    if not wanted:
+        return {}
+    rows = (
+        await session.scalars(
+            select(model).where(model.id.in_(wanted)).options(selectinload(model.names))
+        )
+    ).all()
+    return {row.id: _localised(row.names, lang) or "" for row in rows}
+
+
 @router.put("/helper", response_model=MeOut, tags=["helper"])
 async def upsert_helper(
     payload: HelperUpsert, session: SessionDep, lang: LangDep, user: UserDep
 ) -> MeOut:
     """Create or replace the caller's helper profile and its offers.
 
-    Offers are replaced wholesale rather than diffed: the client always sends
-    the full set it is showing, and a partial update would leave rows behind
-    that the person believes they deleted.
+    The set of offers is authoritative — whatever the client did not send is
+    deleted, because a partial update would leave rows behind that the person
+    believes they removed. The *rows*, though, are matched on their axes and
+    updated in place. Deleting and reinserting was simpler and cost every past
+    `contacts` row its `offer_id`, which is `ON DELETE SET NULL`: harmless when
+    publishing happened once in a lifetime, and not harmless now that the
+    cabinet invites someone to fix a price in ten seconds.
+
+    Fields the payload does not carry are left alone. A profile is edited by
+    more than one screen, and each of them sends what it knows about.
     """
     helper = await session.get(HelperProfile, user.id)
     if helper is None:
@@ -695,13 +846,22 @@ async def upsert_helper(
     if helper.status == PublishStatus.BANNED:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "this profile is blocked")
 
-    helper.headline = payload.headline
-    helper.about = payload.about
+    # `model_fields_set` distinguishes "omitted" from "explicitly null", which
+    # a plain assignment cannot: the cabinet sends no headline, and an
+    # unconditional write there wiped the line under the person's name on
+    # every card in the catalog the first time they changed a price.
+    given = payload.model_fields_set
+    if "headline" in given:
+        helper.headline = payload.headline
+    if "about" in given:
+        helper.about = payload.about
+    if "city" in given:
+        helper.city = payload.city
+    if "place_note" in given:
+        helper.place_note = payload.place_note
     helper.raw_intro = payload.raw_intro or helper.raw_intro
     helper.about_lang = ContentLang(lang.value)
     helper.work_format = payload.work_format
-    helper.city = payload.city
-    helper.place_note = payload.place_note
 
     if payload.publish:
         was_published = helper.status == PublishStatus.PUBLISHED
@@ -721,7 +881,13 @@ async def upsert_helper(
     valid_service_ids = set(
         (await session.scalars(select(ServiceType.id).where(ServiceType.is_active))).all()
     )
-    await session.execute(delete(Offer).where(Offer.helper_id == user.id))
+    existing = {
+        (row.service_type_id, row.subject_id, row.institution_id): row
+        for row in (
+            await session.scalars(select(Offer).where(Offer.helper_id == user.id))
+        ).all()
+    }
+
     seen_axes: set[tuple[int, int | None, int | None]] = set()
     for spec in payload.offers:
         if spec.service_type_id not in valid_service_ids:
@@ -742,18 +908,25 @@ async def upsert_helper(
                 f"institution {axes[2]}",
             )
         seen_axes.add(axes)
-        session.add(
-            Offer(
+
+        offer = existing.get(axes)
+        if offer is None:
+            offer = Offer(
                 helper_id=user.id,
                 service_type_id=spec.service_type_id,
                 subject_id=spec.subject_id,
                 institution_id=spec.institution_id,
-                price_amount=spec.price_amount,
-                price_unit=spec.price_unit,
-                langs=spec.langs or list(user.spoken_langs),
-                work_format=payload.work_format,
             )
-        )
+            session.add(offer)
+        offer.price_amount = spec.price_amount
+        offer.price_unit = spec.price_unit
+        offer.langs = spec.langs or list(user.spoken_langs)
+        offer.work_format = payload.work_format
+        offer.is_active = True
+
+    dropped = [row.id for axes, row in existing.items() if axes not in seen_axes]
+    if dropped:
+        await session.execute(delete(Offer).where(Offer.id.in_(dropped)))
     await session.commit()
     return await read_me(user, session, lang)
 

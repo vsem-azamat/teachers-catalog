@@ -74,8 +74,9 @@ async def home_sections(
     algebra is one person to show, and "9" under a category that has four
     tutors would be a lie the moment anyone counted the faces.
     """
-    counts = dict(
-        (
+    counts = {
+        service_type_id: count
+        for service_type_id, count in (
             await session.execute(
                 select(
                     Offer.service_type_id,
@@ -89,7 +90,7 @@ async def home_sections(
                 .group_by(Offer.service_type_id)
             )
         ).all()
-    )
+    }
 
     service_types = (
         await session.scalars(
@@ -430,16 +431,37 @@ def _reason(
     return None
 
 
+def _window(slot: AvailabilitySlot) -> tuple[datetime, datetime]:
+    """The two ends of a slot, as two datetimes.
+
+    A `tstzrange` may be unbounded, so both ends are typed as optional — but
+    `availability_slots` carries a `period_is_bounded` check constraint that
+    refuses such a row. This is where that database guarantee is turned back
+    into something the code above can rely on, in one place rather than as a
+    None check at every use.
+    """
+    lower, upper = slot.period.lower, slot.period.upper
+    if lower is None or upper is None:  # pragma: no cover — the constraint forbids it
+        raise ValueError(f"availability slot {slot.id} is unbounded")
+    return lower, upper
+
+
+def _upcoming(helper: HelperProfile, now: datetime) -> list[datetime]:
+    """When this person is next free, earliest first."""
+    starts = []
+    for slot in helper.availability:
+        lower, upper = _window(slot)
+        if upper > now:
+            starts.append(lower)
+    return sorted(starts)
+
+
 def _availability(helper: HelperProfile) -> Phrase | None:
-    now = datetime.now(UTC)
-    upcoming = sorted(
-        (slot for slot in helper.availability if slot.period.upper > now),
-        key=lambda s: s.period.lower,
-    )
+    upcoming = _upcoming(helper, datetime.now(UTC))
     if upcoming:
         return Phrase(
             code="availability.free_on",
-            params={"date": upcoming[0].period.lower.date().isoformat()},
+            params={"date": upcoming[0].date().isoformat()},
         )
     if helper.response_minutes_avg:
         return Phrase(
@@ -478,8 +500,7 @@ async def helper_detail(
             Stat(code="stat.years" if years else "stat.since", value=str(years or 1))
         )
 
-    now = datetime.now(UTC)
-    free = sorted(s.period.lower for s in helper.availability if s.period.upper > now)[:4]
+    free = _upcoming(helper, datetime.now(UTC))[:4]
 
     return HelperDetailOut(
         user_id=user.id,

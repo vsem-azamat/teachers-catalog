@@ -53,6 +53,9 @@ async def run_middleware(session, update: Update) -> None:
             return _Ctx()
 
     middleware = RememberUserMiddleware(get_settings(), sessionmaker=_Maker())
+    # An Update may carry any one of a dozen kinds of event; these all carry a
+    # message, and saying so is what makes the next line readable.
+    assert update.message is not None
     data = {
         "event_from_user": update.message.from_user,
         "event_update": update,

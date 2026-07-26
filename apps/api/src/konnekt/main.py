@@ -101,12 +101,13 @@ async def lifespan(app: FastAPI):
         task.cancel()
         with suppress(asyncio.CancelledError):
             await task
-    if app.state.bot is not None:
-        await app.state.dispatcher.emit_shutdown(
-            bot=app.state.bot, dispatcher=app.state.dispatcher
-        )
+    # Read once into locals: the two are set together above, and testing them
+    # together is what says so to anything reading this later.
+    bot, dispatcher = app.state.bot, app.state.dispatcher
+    if bot is not None and dispatcher is not None:
+        await dispatcher.emit_shutdown(bot=bot, dispatcher=dispatcher)
         # Without this the aiohttp session behind the bot leaks on reload.
-        await app.state.bot.session.close()
+        await bot.session.close()
     await dispose_engine()
 
 

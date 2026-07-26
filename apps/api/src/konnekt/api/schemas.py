@@ -324,6 +324,44 @@ class HelperUpsert(BaseModel):
     publish: bool = False
 
 
+class MyOfferOut(BaseModel):
+    """One row of the caller's own offers, ready to be edited and sent back.
+
+    Both the id and the name of every axis: the id is what `HelperUpsert`
+    wants, the name is what the person reads. `OfferOut` carries only the
+    names, which is right for a card and useless for a form.
+    """
+
+    service_type_id: int
+    service_type: str
+    service_type_name: str
+    subject_id: int | None = None
+    subject_name: str | None = None
+    institution_id: int | None = None
+    institution_name: str | None = None
+    price_amount: float | None = None
+    price_unit: PriceUnit = PriceUnit.HOUR
+    langs: list[str] = Field(default_factory=list)
+
+
+class MyHelperOut(BaseModel):
+    """The caller's own profile, draft or hidden included.
+
+    `/helpers/{id}` deliberately refuses anything unpublished, which is
+    correct for the catalog and leaves someone with a draft unable to read
+    back what they wrote. This is the other door.
+    """
+
+    exists: bool
+    status: str | None = None
+    headline: str | None = None
+    about: str | None = None
+    work_format: WorkFormat = WorkFormat.BOTH
+    city: str | None = None
+    place_note: str | None = None
+    offers: list[MyOfferOut] = Field(default_factory=list)
+
+
 # ── requests ────────────────────────────────────────────────────────────
 
 

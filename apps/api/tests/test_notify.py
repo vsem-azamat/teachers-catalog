@@ -5,7 +5,10 @@ everything that decides *what* gets sent — and that is where the bugs are,
 because the bot speaks HTML and the text comes from strangers.
 """
 
+from typing import cast
+
 import pytest
+from fastapi import BackgroundTasks, Request
 
 from konnekt.bot.texts import (
     NEW_RESPONSE,
@@ -105,29 +108,41 @@ async def test_telling_nobody_is_not_an_error() -> None:
 
 
 class _Bag:
-    """An attribute bag, which is all `app.state` is."""
+    """An attribute bag, which is all `app.state` is.
+
+    The two attributes are declared rather than only assigned, so that reading
+    them is something a type checker can follow.
+    """
+
+    state: "_Bag"
+    app: "_Bag"
 
 
-def _http(**state):
+def _http(**state) -> Request:
     """Just enough of a FastAPI request for the reachability guard.
 
     Deliberately without a `bot` unless one is passed: that is how the API
     runs locally, and every caller has to work that way.
+
+    Cast rather than constructed: `_queue_notification` reaches for exactly
+    two attributes, and building a real `Request` would mean inventing an ASGI
+    scope that says nothing about what is under test.
     """
     request, app = _Bag(), _Bag()
     app.state = _Bag()
     for key, value in state.items():
         setattr(app.state, key, value)
     request.app = app
-    return request
+    return cast(Request, request)
 
 
-class _Recorder:
-    def __init__(self) -> None:
-        self.tasks: list[tuple] = []
+class _Recorder(BackgroundTasks):
+    """A real `BackgroundTasks` that is simply never run.
 
-    def add_task(self, *args, **kwargs) -> None:
-        self.tasks.append((args, kwargs))
+    Subclassed rather than duck-typed: `add_task` is FastAPI's own, so what
+    lands in `self.tasks` is what would have landed there in production, and
+    the assertions below read the same fields the framework would.
+    """
 
 
 def _person(**overrides):
@@ -197,4 +212,4 @@ def test_a_reachable_person_with_a_bot_is_written_to() -> None:
         text="привет",
     )
     assert len(recorder.tasks) == 1
-    assert recorder.tasks[0][1]["tg_id"] == 42
+    assert recorder.tasks[0].kwargs["tg_id"] == 42

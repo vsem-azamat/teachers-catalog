@@ -63,6 +63,11 @@ indexes, so "show me people who speak a language I speak" is one indexed overlap
 test. A Ukrainian first-year cannot work with a Czech-only tutor, and the catalog
 should know that before showing the card.
 
+The `languages` table offers the same four and no more. Codes taken off the
+list are marked `is_active = false` rather than deleted: the arrays above hold
+plain text and reference nothing, so a deleted row leaves a profile claiming a
+language with no name to show for it.
+
 > The legacy bot used non-standard codes `cz` and `ua`. The import maps them to
 > `cs` and `uk`.
 

@@ -1,18 +1,23 @@
 /*
  * The visual language, in one place.
  *
- * The app commits to its own light identity rather than following Telegram's
- * theme. That is a decision, not an oversight: a catalog of people needs to
- * feel like a place, and a interface that repaints itself to match whatever
- * the surrounding client is doing has no face at all. What we do respect is
- * the chrome — `main.tsx` hands Telegram these same colours for the header and
- * the bottom bar, so nothing around the page clashes with it.
+ * Two palettes, and the page says which one it is wearing through
+ * `data-theme` on the root element. That attribute is written before the
+ * first paint by the inline script in index.html, so there is no flash and no
+ * `prefers-color-scheme` rule here: the choice has three states — system,
+ * light, dark — and a media query can only express one of them. `lib/theme.ts`
+ * owns the resolution; this file only has to answer "light or dark".
+ *
+ * The dark palette is not an inversion. Inverting warm paper gives cold soot;
+ * these are the same tones at a lower luminance, chosen one by one.
  *
  * Six tile tones, always referenced by index. The server picks the index, so
  * the same person and the same category keep the same colour on every screen.
  */
 
 :root {
+  color-scheme: light;
+
   /* ── ground ─────────────────────────────────────────────────────────── */
   --bg: #fffefc;
   --surface: #f7f6f3;
@@ -68,42 +73,37 @@
   --top-clearance: var(--tg-viewport-content-safe-area-inset-top, 0px);
 }
 
-/*
- * The design is light by choice, but a viewer in a dark Telegram gets a page
- * that is not blinding. Same structure, same tones, lower luminance — not an
- * inversion, which would turn the warm paper into cold soot.
- */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #171614;
-    --surface: #211f1c;
-    --surface-pressed: #2a2724;
-    --hairline: #2e2b27;
+:root[data-theme='dark'] {
+  color-scheme: dark;
 
-    --ink: #f4f2ee;
-    --ink-soft: #cfcac1;
-    --muted: #8e8a83;
-    --muted-soft: #6c6862;
+  --bg: #171614;
+  --surface: #211f1c;
+  --surface-pressed: #2a2724;
+  --hairline: #2e2b27;
 
-    --accent: #f4f2ee;
-    --accent-ink: #171614;
-    --good: #7fc79c;
-    --good-soft: #23372c;
-    --warn: #d9a075;
+  --ink: #f4f2ee;
+  --ink-soft: #cfcac1;
+  --muted: #8e8a83;
+  --muted-soft: #6c6862;
 
-    --tone-0-bg: #23372c;
-    --tone-0-fg: #8fd0aa;
-    --tone-1-bg: #3a2a20;
-    --tone-1-fg: #e0a97f;
-    --tone-2-bg: #2a2742;
-    --tone-2-fg: #a9a2e8;
-    --tone-3-bg: #1f2f3f;
-    --tone-3-fg: #8fbde4;
-    --tone-4-bg: #382530;
-    --tone-4-fg: #e096b1;
-    --tone-5-bg: #302e26;
-    --tone-5-fg: #c3bd93;
-  }
+  --accent: #f4f2ee;
+  --accent-ink: #171614;
+  --good: #7fc79c;
+  --good-soft: #23372c;
+  --warn: #d9a075;
+
+  --tone-0-bg: #23372c;
+  --tone-0-fg: #8fd0aa;
+  --tone-1-bg: #3a2a20;
+  --tone-1-fg: #e0a97f;
+  --tone-2-bg: #2a2742;
+  --tone-2-fg: #a9a2e8;
+  --tone-3-bg: #1f2f3f;
+  --tone-3-fg: #8fbde4;
+  --tone-4-bg: #382530;
+  --tone-4-fg: #e096b1;
+  --tone-5-bg: #302e26;
+  --tone-5-fg: #c3bd93;
 }
 
 body {
