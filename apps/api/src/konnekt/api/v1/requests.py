@@ -117,7 +117,10 @@ async def create_request(
         subject_id=subject_id,
         institution_id=institution_id,
     )
-    await session.commit()
+    # flush, not commit: the row has to exist for `refresh` to read the
+    # defaults the database fills in, but the transaction belongs to the
+    # request and ends when the request does.
+    await session.flush()
     await session.refresh(request)
     return await _request_out(session, request, lang)
 
@@ -370,7 +373,6 @@ async def respond_to_request(
         request_id=request.id,
         subject_id=request.subject_id,
     )
-    await session.commit()
 
     author = await session.get(User, request.author_id)
     [rendered] = await _responses_out(session, [inserted], lang)
@@ -426,7 +428,6 @@ async def request_responses(
     for row in rows:
         if row.status is ResponseStatus.SENT:
             row.status = ResponseStatus.READ
-    await session.commit()
 
     return out
 
@@ -479,7 +480,6 @@ async def accept_response(
         request_id=request.id,
         helper_id=response.helper_id,
     )
-    await session.commit()
 
     helper_user = await session.get(User, response.helper_id)
     if helper_user is not None:
@@ -523,7 +523,6 @@ async def decline_response(
         raise HTTPException(status.HTTP_409_CONFLICT, "you already chose this person")
 
     response.status = ResponseStatus.DECLINED
-    await session.commit()
     [out] = await _responses_out(session, [response], lang)
     return out
 
@@ -662,7 +661,6 @@ async def close_request(
     if request is None or request.author_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "no such request")
     request.status = RequestStatus.CLOSED
-    await session.commit()
     return await _request_out(session, request, lang)
 
 

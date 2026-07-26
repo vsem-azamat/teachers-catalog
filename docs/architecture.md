@@ -63,6 +63,51 @@ Screens are assembled server-side — the client renders what it is given rather
 than joining data itself — so a schema often mirrors a screen, and that is
 intended.
 
+## One transaction per request
+
+**Services never commit. The request commits.**
+
+`db/session.py::session_scope` is the unit of work: it commits when the
+handler returns and rolls back when the handler raises. So a request either
+happened or it did not, and no endpoint has to remember which of its writes
+came before the failure.
+
+The rule is worth more than the tidiness. Answering a request wrote the
+response row, committed, and only then rendered the notification to its
+author — so a rendering error left an answer in the database that the author
+was never told about, and the helper saw a 500 and assumed nothing had
+happened. That state is now unreachable by construction rather than by
+everybody remembering to put the commit last.
+
+The scope is asked for with `scope="function"`. FastAPI tears a
+request-scoped `yield` dependency down *after* the response has been sent and
+after its background tasks have run, which would answer 201 to a request whose
+commit then failed, and would notify somebody about a row that never landed.
+The function stack closes earlier — after the handler has returned and its
+response model has been validated, and before the response is sent — so a
+serialisation error rolls back too.
+
+Everything that commits outside it:
+
+- `api/deps.py::current_user` commits the person's own row before the handler
+  runs, so that first sight of someone — and the `source` that says where they
+  came from — survives whatever the handler goes on to do.
+- `services/notify.py` opens its own session: it runs in a background task,
+  after the response, and therefore after this transaction has closed.
+- The bot has no request to hang a transaction on, so `bot/middleware.py` and
+  the `/stop` handler open and commit their own sessions. The middleware
+  commits the person's record before the handler runs, for the same reason
+  `current_user` does: neither a slow handler nor a throwing one should decide
+  whether we remember that this person exists. So a bot update is two
+  transactions, deliberately, and not one.
+- `db/seed.py` and `db/demo.py` are scripts, not requests. They commit because
+  nothing else will.
+
+Tests share one session per test, rolled back at the end, and the override in
+`tests/conftest.py` commits and rolls back exactly where `session_scope`
+does. A test fixture that is more forgiving than production is a fixture that
+hides the bugs this rule exists to prevent.
+
 ## Where the code does not follow this yet
 
 Written down because an agent greps this tree and builds against what it
@@ -72,10 +117,6 @@ finds, and a rule with silent exceptions is worse than no rule.
   largest are `cabinet.upsert_helper` — the publish state machine and the
   offer diff — and `requests.request_feed`, which holds the matching and
   ranking algorithm.
-- **There is no transaction rule.** Commits happen in route bodies, in two
-  services, and once inside dependency resolution. The intended rule is
-  *services never commit; the request commits*, and `db/session.py` is not yet
-  a unit of work that could enforce it.
 - **`services/` imports `api/schemas`,** which points the domain layer at the
   HTTP layer. Moving `schemas.py` to the package root fixes it.
 - **`services/catalog._localised` is imported across the package boundary** by

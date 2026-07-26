@@ -11,7 +11,7 @@ from konnekt.db.session import session_scope
 from konnekt.services.people import remember
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
-SessionDep = Annotated[AsyncSession, Depends(session_scope)]
+SessionDep = Annotated[AsyncSession, Depends(session_scope, scope="function")]
 
 
 def _extract_init_data(authorization: str | None) -> str:
@@ -66,6 +66,12 @@ async def current_user(
         supported_langs=settings.supported_ui_langs,
         source=identity.start_param,
     )
+    # The one write that outlives a failed request, deliberately. Telegram is
+    # the identity provider and the first authenticated request is the
+    # registration, so first sight of a person — and the `source` that says
+    # where they came from — should survive whatever the handler goes on to do
+    # with them. It also releases the lock on the users unique index, which the
+    # mini app's several parallel opening requests would otherwise queue on.
     await session.commit()
 
     if user.is_blocked:

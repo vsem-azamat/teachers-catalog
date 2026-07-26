@@ -291,5 +291,4 @@ async def upsert_helper(
     dropped = [row.id for axes, row in existing.items() if axes not in seen_axes]
     if dropped:
         await session.execute(delete(Offer).where(Offer.id.in_(dropped)))
-    await session.commit()
     return await read_me(user, session, lang)

@@ -127,7 +127,6 @@ async def parse_query(
             parser="rules.v1",
         )
     )
-    await session.commit()
 
     return ParseOut(
         chips=chips,

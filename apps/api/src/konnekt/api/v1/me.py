@@ -63,5 +63,4 @@ async def update_me(
             session, Institution, payload.institution_id or None, "institution_id"
         )
         user.institution_id = payload.institution_id or None
-    await session.commit()
     return await read_me(user, session, payload.ui_lang or lang)

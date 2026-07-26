@@ -103,8 +103,6 @@ async def for_slot(
                 kind=PlacementEventKind.IMPRESSION,
             )
         )
-    if out:
-        await session.commit()
     return out
 
 
@@ -125,4 +123,3 @@ async def record(
             kind=PlacementEventKind(kind),
         )
     )
-    await session.commit()
