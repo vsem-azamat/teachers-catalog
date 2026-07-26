@@ -11,7 +11,10 @@ RUN corepack enable
 
 # Dependencies first, from the lockfile, so editing a component does not
 # reinstall node_modules.
-COPY package.json pnpm-lock.yaml ./
+# pnpm-workspace.yaml too: pnpm 11 keeps overrides there, and installing with
+# a frozen lockfile that records overrides the config does not declare is a
+# hard error.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
 
