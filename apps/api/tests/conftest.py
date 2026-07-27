@@ -13,6 +13,11 @@ import os
 # aiogram's HMAC. Signature handling has its own tests.
 os.environ["ALLOW_UNSIGNED_INIT_DATA"] = "true"
 os.environ["BOT_TOKEN"] = ""
+# Pinned for the same reason, one step further on: `get_settings` walks up to
+# the repository's own `.env`, so without this a notification carries a
+# web_app button on a machine that has PUBLIC_BASE_URL set and no button in CI.
+# A suite that exercises different code on different machines is not a suite.
+os.environ["PUBLIC_BASE_URL"] = "https://tests.example"
 
 from collections.abc import AsyncIterator
 
@@ -66,13 +71,22 @@ async def session(engine) -> AsyncIterator[AsyncSession]:
         await transaction.rollback()
 
 
-@pytest_asyncio.fixture
-async def client(session: AsyncSession) -> AsyncIterator[AsyncClient]:
-    """An HTTP client whose requests share the test's rolled-back session."""
+def app_for(session: AsyncSession, *, bot: object | None = None):
+    """The application, wired to this test's session.
+
+    One place, because a test that builds its own app also builds its own idea
+    of what a request commits — and the point of the override is that it
+    commits and rolls back exactly where `session_scope` does. A fixture that
+    is more forgiving than production hides the bugs that rule exists to
+    prevent.
+
+    `bot` goes on `app.state` the way the lifespan puts it there, for the tests
+    that need the app to have one. Absent by default: the lifespan does not run
+    under `ASGITransport`, so "no bot" is what a test sees unless it says
+    otherwise, and that is also how the API runs locally.
+    """
     from konnekt.db.session import session_scope, unit_of_work
     from konnekt.main import create_app
-
-    app = create_app()
 
     # The same rule the real scope applies, not a copy of it. The whole test
     # still disappears: this session is joined to an outer transaction as a
@@ -81,9 +95,17 @@ async def client(session: AsyncSession) -> AsyncIterator[AsyncClient]:
         async with unit_of_work(session):
             yield session
 
+    app = create_app()
     app.dependency_overrides[session_scope] = scope
+    if bot is not None:
+        app.state.bot = bot
+    return app
 
-    transport = ASGITransport(app=app)
+
+@pytest_asyncio.fixture
+async def client(session: AsyncSession) -> AsyncIterator[AsyncClient]:
+    """An HTTP client whose requests share the test's rolled-back session."""
+    transport = ASGITransport(app=app_for(session))
     async with AsyncClient(transport=transport, base_url="http://test") as http:
         yield http
 

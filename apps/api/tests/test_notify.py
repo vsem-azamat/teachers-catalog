@@ -8,7 +8,7 @@ because the bot speaks HTML and the text comes from strangers.
 from typing import cast
 
 import pytest
-from fastapi import BackgroundTasks, Request
+from aiogram import Bot
 
 from konnekt.bot.texts import (
     NEW_RESPONSE,
@@ -19,7 +19,7 @@ from konnekt.bot.texts import (
     pick,
 )
 from konnekt.db.models.enums import UiLang
-from konnekt.services.notify import _keyboard, quote, tell
+from konnekt.services.notify import Notifier, Recipient, _keyboard, quote, tell
 
 
 def test_quote_escapes_html() -> None:
@@ -107,42 +107,19 @@ async def test_telling_nobody_is_not_an_error() -> None:
     assert await tell(None, tg_id=1, text="привет", lang=UiLang.RU, app_url=None) is False
 
 
-class _Bag:
-    """An attribute bag, which is all `app.state` is.
+class _Bot:
+    """Just enough of aiogram's `Bot` to say whether a send happened.
 
-    The two attributes are declared rather than only assigned, so that reading
-    them is something a type checker can follow.
+    A fake rather than a mock: the assertion below is about what reached
+    Telegram, and a recorded call is the closest this can get to that without
+    a token.
     """
 
-    state: "_Bag"
-    app: "_Bag"
+    def __init__(self) -> None:
+        self.sent: list[dict] = []
 
-
-def _http(**state) -> Request:
-    """Just enough of a FastAPI request for the reachability guard.
-
-    Deliberately without a `bot` unless one is passed: that is how the API
-    runs locally, and every caller has to work that way.
-
-    Cast rather than constructed: `_queue_notification` reaches for exactly
-    two attributes, and building a real `Request` would mean inventing an ASGI
-    scope that says nothing about what is under test.
-    """
-    request, app = _Bag(), _Bag()
-    app.state = _Bag()
-    for key, value in state.items():
-        setattr(app.state, key, value)
-    request.app = app
-    return cast(Request, request)
-
-
-class _Recorder(BackgroundTasks):
-    """A real `BackgroundTasks` that is simply never run.
-
-    Subclassed rather than duck-typed: `add_task` is FastAPI's own, so what
-    lands in `self.tasks` is what would have landed there in production, and
-    the assertions below read the same fields the framework would.
-    """
+    async def send_message(self, **kwargs) -> None:
+        self.sent.append(kwargs)
 
 
 def _person(**overrides):
@@ -160,7 +137,8 @@ def _person(**overrides):
     return User(**{**defaults, **overrides})
 
 
-def test_nobody_is_written_to_who_never_started_the_bot() -> None:
+@pytest.mark.asyncio
+async def test_nobody_is_written_to_who_never_started_the_bot() -> None:
     """`bot_can_message` defaults to true for everyone, including them.
 
     Someone who opened the mini app from a direct link and never messaged the
@@ -168,48 +146,43 @@ def test_nobody_is_written_to_who_never_started_the_bot() -> None:
     block — losing the notification *and* recording them as having blocked a
     bot they never met.
     """
-    from konnekt.api.v1.requests import _queue_notification
+    bot = _Bot()
+    notifier = Notifier(cast(Bot, bot))
 
-    recorder = _Recorder()
-    _queue_notification(
-        recorder, _http(), recipient=_person(bot_started_at=None), text="привет"
+    assert (
+        await notifier.tell(Recipient.of(_person(bot_started_at=None)), "привет") is False
     )
-    assert recorder.tasks == []
+    assert bot.sent == []
 
 
-def test_nobody_is_written_to_who_blocked_the_bot() -> None:
-    from konnekt.api.v1.requests import _queue_notification
+@pytest.mark.asyncio
+async def test_nobody_is_written_to_who_blocked_the_bot() -> None:
+    bot = _Bot()
+    notifier = Notifier(cast(Bot, bot))
 
-    recorder = _Recorder()
-    _queue_notification(
-        recorder, _http(), recipient=_person(bot_can_message=False), text="привет"
+    assert (
+        await notifier.tell(Recipient.of(_person(bot_can_message=False)), "привет")
+        is False
     )
-    assert recorder.tasks == []
+    assert bot.sent == []
 
 
-def test_no_task_is_queued_when_there_is_no_bot() -> None:
+@pytest.mark.asyncio
+async def test_a_notifier_without_a_bot_delivers_nothing_and_says_so() -> None:
     """The API runs without a token locally; the action must still succeed."""
-    from konnekt.api.v1.requests import _queue_notification
-
-    recorder = _Recorder()
-    _queue_notification(recorder, _http(), recipient=_person(), text="привет")
-    assert recorder.tasks == []
+    assert await Notifier(None).tell(Recipient.of(_person()), "привет") is False
 
 
-def test_a_reachable_person_with_a_bot_is_written_to() -> None:
+@pytest.mark.asyncio
+async def test_a_reachable_person_is_written_to() -> None:
     """The positive control.
 
-    Without it the three tests above pass for the wrong reason — there is no
-    bot in any of them, so they would still pass with the guard deleted.
+    Without it the three above pass for the wrong reason — nothing is sent in
+    any of them, so they would all still pass with the guard deleted and the
+    bot removed.
     """
-    from konnekt.api.v1.requests import _queue_notification
+    bot = _Bot()
 
-    recorder = _Recorder()
-    _queue_notification(
-        recorder,
-        _http(bot=object(), settings=None),
-        recipient=_person(),
-        text="привет",
-    )
-    assert len(recorder.tasks) == 1
-    assert recorder.tasks[0].kwargs["tg_id"] == 42
+    assert await Notifier(cast(Bot, bot)).tell(Recipient.of(_person()), "привет") is True
+    assert bot.sent[0]["chat_id"] == 42
+    assert bot.sent[0]["text"] == "привет"

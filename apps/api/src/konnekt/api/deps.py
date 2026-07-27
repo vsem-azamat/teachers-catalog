@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from konnekt.core.config import Settings, get_settings
@@ -8,6 +8,7 @@ from konnekt.core.security import InitDataError, TelegramIdentity, parse_init_da
 from konnekt.db.models import User
 from konnekt.db.models.enums import UiLang
 from konnekt.db.session import session_scope
+from konnekt.services.notify import Notifier
 from konnekt.services.people import remember
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
@@ -87,3 +88,24 @@ async def current_lang(user: UserDep) -> UiLang:
 
 
 LangDep = Annotated[UiLang, Depends(current_lang)]
+
+
+async def current_notifier(http: Request, settings: SettingsDep) -> Notifier:
+    """Assemble a notifier from what the process was started with.
+
+    The bot is put on `app.state` by the lifespan, which is also the reason for
+    the default: a test builds the app without running it, and so does a
+    session that never got a token. Both are "no bot", which a `Notifier`
+    already answers for — but only if the reach happens somewhere that can
+    decide it once, rather than in each route that happens to send a message.
+
+    Per request, and cheap: two attribute reads and a cached `Settings`. It
+    reads state fixed at startup but is not itself a singleton, and the only
+    other places that reach for `app.state` are named in docs/architecture.md.
+    """
+    return Notifier(
+        getattr(http.app.state, "bot", None), settings.public_base_url or None
+    )
+
+
+NotifierDep = Annotated[Notifier, Depends(current_notifier)]

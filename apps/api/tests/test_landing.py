@@ -14,6 +14,8 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .conftest import app_for
+
 pytestmark = pytest.mark.asyncio
 
 
@@ -37,18 +39,9 @@ class BrokenBot:
 @pytest_asyncio.fixture
 async def app_with(session: AsyncSession):
     """An app with a bot of the caller's choosing on its state."""
-    from konnekt.db.session import session_scope, unit_of_work
-    from konnekt.main import create_app
-
-    async def scope():
-        async with unit_of_work(session):
-            yield session
 
     async def build(bot) -> FastAPI:
-        app = create_app()
-        app.dependency_overrides[session_scope] = scope
-        app.state.bot = bot
-        return app
+        return app_for(session, bot=bot)
 
     return build
 
