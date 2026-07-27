@@ -15,6 +15,7 @@
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "typecheck": "tsc -b",
+    "check:scroll": "node scripts/check-scroll.mjs",
     "i18n:extract": "lingui extract",
     "i18n:compile": "lingui compile",
     "api:generate": "openapi-ts"

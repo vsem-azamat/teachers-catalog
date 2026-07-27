@@ -148,8 +148,9 @@ Two consequences worth knowing before touching layout:
 
 - **A screen that fits must not overflow.** Padding, trailing spacers and
   empty states all count toward the screenful; a page showing "nothing here"
-  that still scrolls is a layout bug, not a rounding error. The check is
-  `scrollHeight - clientHeight` on `#root` at a phone viewport.
+  that still scrolls is a layout bug, not a rounding error. `pnpm check:scroll`
+  in `apps/web` is that check — it adds up the travel on both boxes across the
+  screens that hold a screenful at most, and needs the dev server running.
 - **Anything pinned to an edge is `position: fixed`** — the tab bar, the
   sheet, the scrim. A scroll container is not a containing block for fixed
   elements, so they stay against the viewport rather than against the app box.
