@@ -120,6 +120,25 @@ async def log_event(
     )
 
 
+async def unsubscribe(session: AsyncSession, tg_id: int) -> bool:
+    """Stop writing to this person unprompted. Returns whether anything changed.
+
+    A timestamp and nothing else. Not the person, not their profile, not their
+    requests or the answers to them: opting out of being written to is not
+    leaving, and the row is what makes somebody the same person if they come
+    back. An opt-out that destroyed it would be a worse answer than the
+    blocking it exists to prevent.
+
+    Answers `False` for somebody who already had, and for somebody with no row
+    at all — a /stop from an update we never saw the start of is not a failure.
+    """
+    user = await session.scalar(select(User).where(User.tg_id == tg_id))
+    if user is None or user.unsubscribed_at is not None:
+        return False
+    user.unsubscribed_at = datetime.now(UTC)
+    return True
+
+
 async def mark_unreachable(session: AsyncSession, tg_id: int, reason: str) -> None:
     """Telegram said we may not write to this person any more.
 
