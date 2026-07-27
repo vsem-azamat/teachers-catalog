@@ -66,7 +66,7 @@ words.
 **A name is a rule too.** Every reference table keeps its names in a side
 table, one row per language, and `services/naming.py` is the only place that
 reads them: which translation to show, what to fall back to when the asked
-language has none, and how to fetch a page's worth of them in one query. Four
+language has none, and how to fetch a page's worth of them in one query. Five
 modules need that, which is what makes it a rule rather than a helper belonging
 to whichever module wrote it first.
 

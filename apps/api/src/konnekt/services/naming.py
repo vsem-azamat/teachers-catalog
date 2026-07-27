@@ -3,7 +3,10 @@
 Every reference table — service types, subjects, institutions, languages —
 keeps its names in a side table with one row per language. Two questions come
 up on nearly every screen: what does this row read as, and what do these twenty
-ids read as. Both live here.
+ids read as. Both live here, with one asymmetry worth knowing before reaching
+for the second: `translated` and `short_form` work on any of the four, because
+all they read is `names`, while `rows_by_id` and `names_by_id` ask for an `id`
+and so cannot serve `Language`, which is keyed by its code.
 
 They live here because the alternative was `catalog._localised`, a private
 symbol imported by name across the package boundary at sixteen call sites,
@@ -73,6 +76,13 @@ async def rows_by_id(session: AsyncSession, model: Any, ids: Any) -> dict[int, A
     One query for a whole page rather than one per row. `None` is a legal id
     here — an offer without a subject, a request without an institution — and
     is dropped rather than asked about.
+
+    `Subject`, `Institution` and `ServiceType` only: this asks for `model.id`,
+    and `Language` is keyed by its code. `translated` and `short_form` above do
+    serve all four — they only read `names` — so the split is real and this is
+    the half of the module that does not cover it. `model` is untyped because a
+    declarative class is not a `type[Named]` to a checker; the cost is that
+    handing this the wrong table fails at runtime rather than at the call site.
     """
     wanted = {value for value in ids if value is not None}
     if not wanted:

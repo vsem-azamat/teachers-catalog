@@ -7,7 +7,11 @@ Ukrainian speaker seeing the Czech name of their faculty and seeing a blank
 row, and nothing above this level would notice which.
 """
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+
 import pytest
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from konnekt.db.models import Institution, InstitutionI18n, Subject, SubjectI18n
@@ -15,6 +19,32 @@ from konnekt.db.models.enums import UiLang
 from konnekt.services.naming import names_by_id, rows_by_id, short_form, translated
 
 pytestmark = pytest.mark.asyncio
+
+
+@contextmanager
+def statements(session: AsyncSession) -> Iterator[list[str]]:
+    """Every statement the session sends while the block runs.
+
+    Two of `rows_by_id`'s promises are about the query it does *not* send —
+    that `None` is dropped rather than asked about, and that an empty set of
+    ids costs nothing. Both are invisible in the return value: `IN (NULL)`
+    still matches the real ids, and a predicate that is always false still
+    answers `{}`. A test that only reads the result passes with either
+    promise deleted, which is what happened to the first two written here.
+    """
+    sent: list[str] = []
+    # The session is bound to a connection, not to the engine — see the
+    # `session` fixture, which nests every test in a transaction it rolls back.
+    engine = session.get_bind().engine
+
+    def record(conn, cursor, statement, parameters, context, executemany) -> None:
+        sent.append(statement)
+
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        yield sent
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
 
 
 def subject_named(**by_lang: str) -> Subject:
@@ -78,22 +108,37 @@ async def test_the_short_form_falls_back_to_the_full_name() -> None:
     assert short_form(row, UiLang.CS) == "Slezská univerzita v Opavě"
 
 
-async def test_rows_by_id_ignores_the_ids_that_are_none(session: AsyncSession) -> None:
-    """An offer without a subject is ordinary, not an error, and asking the
-    database about `None` is a query nobody meant to write."""
+async def test_rows_by_id_never_asks_about_none(session: AsyncSession) -> None:
+    """An offer without a subject is ordinary, not an error.
+
+    Asserted on the statement rather than the answer: `id IN (1, NULL)` returns
+    the same row as `id IN (1)`, so a version that passed the `None` straight
+    through would look correct here and send a parameter that means nothing.
+    """
     subject = subject_named(cs="Fyzika")
     session.add(subject)
     await session.flush()
 
-    found = await rows_by_id(session, Subject, [subject.id, None, None])
+    with statements(session) as sent:
+        found = await rows_by_id(session, Subject, [subject.id, None, None])
 
     assert list(found) == [subject.id]
+    # One bind parameter in the lookup, not three. `$` appears in a statement
+    # only where a parameter does. The number of statements is deliberately
+    # not asserted — the names come back in a second one because the
+    # relationship loads `selectin`, and that is not this function's promise.
+    assert sent[0].count("$") == 1
 
 
 async def test_rows_by_id_asks_nothing_when_there_is_nothing_to_ask(
     session: AsyncSession,
 ) -> None:
-    assert await rows_by_id(session, Subject, [None]) == {}
+    """Also on the statement: `IN ()` compiles to a predicate that is always
+    false and answers `{}` too, so the empty answer proves nothing."""
+    with statements(session) as sent:
+        assert await rows_by_id(session, Subject, [None]) == {}
+
+    assert sent == []
 
 
 async def test_names_by_id_renders_what_rows_by_id_finds(
