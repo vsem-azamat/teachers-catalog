@@ -279,9 +279,18 @@ jobs:
 
           docker login ghcr.io -u "$GHCR_ACTOR" --password-stdin < ".ghcr.$RUN_ID.tmp"
 
+          docker compose config --quiet
+          docker compose pull --quiet
+
           # The stack used to run under the compose project `konnekt`, and a
           # renamed project does not stop the old one — it races it for the
           # published port and loses, after the migrations have already run.
+          # It has to happen before the migration rather than beside the `up`:
+          # `compose run migrate` starts a postgres of its own, and two
+          # postgres processes over one pinned data directory is a lockfile
+          # collision at best. After the pull, though, so the old stack keeps
+          # serving through the slow part.
+          #
           # No -v: `down` never removes volumes without it, and the ones that
           # matter are pinned by name in the compose file anyway, so the
           # database and the certificates do not move. Delete this once no
@@ -290,9 +299,6 @@ jobs:
             echo "stopping the pre-rename stack"
             docker compose -p konnekt down --remove-orphans
           fi
-
-          docker compose config --quiet
-          docker compose pull --quiet
 
           # Migrations run to completion before anything serves traffic. As a
           # separate step rather than a compose dependency, so a failure stops
