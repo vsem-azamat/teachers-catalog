@@ -5,11 +5,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from konnekt.api.deps import LangDep, SessionDep, UserDep
-from konnekt.api.schemas import (
-    ContactOut,
-    HelperDetailOut,
-    HomeOut,
-)
 from konnekt.db.models import (
     Contact,
     HelperProfile,
@@ -17,6 +12,11 @@ from konnekt.db.models import (
 from konnekt.db.models.enums import (
     PublishStatus,
     UserEventKind,
+)
+from konnekt.schemas import (
+    ContactOut,
+    HelperDetailOut,
+    HomeOut,
 )
 from konnekt.services import catalog
 from konnekt.services.people import log_event

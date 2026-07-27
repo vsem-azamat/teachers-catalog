@@ -9,15 +9,6 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from konnekt.api.deps import LangDep, SessionDep, UserDep
-from konnekt.api.schemas import (
-    FeedRequestOut,
-    Phrase,
-    Price,
-    RequestCreate,
-    RequestOut,
-    ResponseCreate,
-    ResponseOut,
-)
 from konnekt.bot.texts import (
     FOR_PRICE,
     NEW_RESPONSE,
@@ -37,6 +28,15 @@ from konnekt.db.models import (
 )
 from konnekt.db.models.enums import (
     PriceUnit,
+)
+from konnekt.schemas import (
+    FeedRequestOut,
+    Phrase,
+    Price,
+    RequestCreate,
+    RequestOut,
+    ResponseCreate,
+    ResponseOut,
 )
 from konnekt.services import notify
 from konnekt.services import requests as requests_service

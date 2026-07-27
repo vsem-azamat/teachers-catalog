@@ -11,7 +11,6 @@ from datetime import UTC, datetime
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from konnekt.api.schemas import HelperUpsert
 from konnekt.db.models import (
     HelperProfile,
     Institution,
@@ -26,6 +25,7 @@ from konnekt.db.models.enums import (
     UiLang,
     UserEventKind,
 )
+from konnekt.schemas import HelperUpsert
 from konnekt.services.errors import Forbidden, Invalid
 from konnekt.services.people import log_event
 from konnekt.services.refs import require_row

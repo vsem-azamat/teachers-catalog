@@ -185,7 +185,7 @@ choice the user makes by hand is stored in `localStorage` and outranks it.
 ### API types
 
 `src/lib/types.ts` is written by hand and must be kept in step with
-`apps/api/src/konnekt/api/schemas.py`. To replace it with generated types, run
+`apps/api/src/konnekt/schemas.py`. To replace it with generated types, run
 the API and then:
 
 ```sh

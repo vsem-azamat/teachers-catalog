@@ -2,7 +2,7 @@
 
 Every module here owns a slice of the URL space and nothing else: it parses the
 request, leans on `konnekt.services` for the rules, and renders a schema from
-`konnekt.api.schemas`. The prefix is declared once, here, so a module cannot
+`konnekt.schemas`. The prefix is declared once, here, so a module cannot
 disagree with its neighbours about where it lives.
 
 `health` is deliberately absent from this router — `/healthz` is not part of

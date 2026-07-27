@@ -5,14 +5,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from konnekt.api.deps import LangDep, SessionDep, UserDep
-from konnekt.api.schemas import (
-    MeOut,
-    MeUpdate,
-)
 from konnekt.api.v1.taxonomy import institution_out
 from konnekt.db.models import (
     HelperProfile,
     Institution,
+)
+from konnekt.schemas import (
+    MeOut,
+    MeUpdate,
 )
 from konnekt.services.catalog import avatar_for
 from konnekt.services.refs import require_row
