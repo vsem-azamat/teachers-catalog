@@ -6,14 +6,17 @@ finds out that it is empty is the one who tried it.
 """
 
 import re
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from konnekt import bot as konnekt_bot
 from konnekt.bot import GREETING, UNSUBSCRIBED
-from konnekt.db.models import User
+from konnekt.db.models import HelperProfile, HelpRequest, RequestResponse, User
 from konnekt.db.models.enums import UiLang
 from konnekt.services.people import unsubscribe
 
@@ -83,19 +86,21 @@ async def test_unsubscribing_somebody_unknown_is_not_an_error(
     assert await unsubscribe(session, 91999) is False
 
 
-async def test_unsubscribing_keeps_everything_else(session: AsyncSession) -> None:
+async def test_unsubscribing_keeps_every_column(session: AsyncSession) -> None:
     """The whole point. Opting out of being written to is not leaving, and the
-    row is what makes somebody the same person if they come back."""
+    row is what makes somebody the same person if they come back.
+
+    Every column the mapper knows about, asked for by name rather than listed
+    here: a column added next year is one nobody would think to add to a list,
+    and the first thing anybody would do with a new column is forget it.
+    """
     user = await _person(session)
-    before = {
-        "first_name": user.first_name,
-        "last_name": user.last_name,
-        "tg_username": user.tg_username,
-        "ui_lang": user.ui_lang,
-        "source": user.source,
-        "bot_started_at": user.bot_started_at,
-        "is_blocked": user.is_blocked,
-    }
+    columns = [
+        column.key
+        for column in User.__mapper__.columns
+        if column.key != "unsubscribed_at"
+    ]
+    before = {name: getattr(user, name) for name in columns}
 
     await unsubscribe(session, user.tg_id)
     await session.flush()
@@ -108,5 +113,102 @@ async def test_unsubscribing_keeps_everything_else(session: AsyncSession) -> Non
 
     kept = await session.scalar(select(User).where(User.tg_id == user.tg_id))
     assert kept is not None
-    assert {key: getattr(kept, key) for key in before} == before
+    assert {name: getattr(kept, name) for name in columns} == before
     assert kept.unsubscribed_at is not None
+
+
+async def test_unsubscribing_keeps_what_belongs_to_them(
+    session: AsyncSession,
+) -> None:
+    """Their profile, their requests, and the answers to them.
+
+    `User.helper` cascades `delete-orphan`, so a `session.delete` here would
+    take the profile with it and this is the assertion that would say so.
+    """
+    user = await _person(session, tg_id=91002)
+    session.add(HelperProfile(user_id=user.id, headline="Матан и линал"))
+    request = HelpRequest(author_id=user.id, raw_text="нужен матан")
+    session.add(request)
+    await session.flush()
+    session.add(RequestResponse(request_id=request.id, helper_id=user.id, message="могу"))
+    await session.flush()
+
+    await unsubscribe(session, user.tg_id)
+    await session.flush()
+
+    assert await session.get(HelperProfile, user.id) is not None
+    assert (
+        await session.scalar(
+            select(func.count())
+            .select_from(HelpRequest)
+            .where(HelpRequest.author_id == user.id)
+        )
+        == 1
+    )
+    assert (
+        await session.scalar(
+            select(func.count())
+            .select_from(RequestResponse)
+            .where(RequestResponse.helper_id == user.id)
+        )
+        == 1
+    )
+
+
+class _Message:
+    """Just enough of an aiogram `Message` for the handler.
+
+    A recorder rather than a mock: what is asserted is the text that would have
+    reached Telegram, which is the only thing the handler produces.
+    """
+
+    def __init__(self, tg_id: int | None) -> None:
+        self.from_user = SimpleNamespace(id=tg_id) if tg_id is not None else None
+        self.answers: list[str] = []
+
+    async def answer(self, text: str, **_: object) -> None:
+        self.answers.append(text)
+
+
+def _lend(session: AsyncSession):
+    """Hand the handler this test's session instead of a new one.
+
+    The handler opens its own — it has no request to hang a transaction on, and
+    docs/architecture.md says so — which is exactly what makes it invisible to
+    the rest of the suite. Lending the session is what lets the assertion below
+    read what the handler wrote.
+    """
+
+    @asynccontextmanager
+    async def scope():
+        yield session
+
+    return lambda: scope()
+
+
+async def test_the_stop_handler_unsubscribes_and_says_so(
+    session: AsyncSession, monkeypatch
+) -> None:
+    """The wiring. Every other test here would still pass if `on_stop` stopped
+    calling the rule, stopped committing, or answered something else."""
+    monkeypatch.setattr(konnekt_bot, "get_sessionmaker", lambda: _lend(session))
+    user = await _person(session, tg_id=91003)
+    message = _Message(user.tg_id)
+
+    await konnekt_bot.on_stop(message)
+
+    assert user.unsubscribed_at is not None
+    assert message.answers == [UNSUBSCRIBED]
+
+
+async def test_an_update_without_a_sender_is_ignored(
+    session: AsyncSession, monkeypatch
+) -> None:
+    """Channel posts have no `from_user`. Nothing to unsubscribe and nobody to
+    answer, which is a return rather than an exception."""
+    monkeypatch.setattr(konnekt_bot, "get_sessionmaker", lambda: _lend(session))
+    message = _Message(None)
+
+    await konnekt_bot.on_stop(message)
+
+    assert message.answers == []

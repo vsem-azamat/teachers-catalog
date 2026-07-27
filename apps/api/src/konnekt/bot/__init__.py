@@ -35,9 +35,14 @@ GREETING = (
     "нострификация и работы."
 )
 
+# "Больше писать не буду" was the first half of this sentence and it was not
+# true either. `notify.Recipient.of` does not consult `unsubscribed_at` on
+# purpose — an answer to your own request is not us writing to you unprompted —
+# so those messages keep arriving, and somebody told otherwise finds out when
+# one does.
 UNSUBSCRIBED = (
-    "Больше писать не буду. Каталогом можно пользоваться как обычно — "
-    "кнопка «Каталог» внизу."
+    "Рассылок не будет. Ответы на твои заявки продолжат приходить — "
+    "их ты просил сам. Каталог работает как обычно."
 )
 
 
