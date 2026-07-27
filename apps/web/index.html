@@ -34,7 +34,13 @@
       (() => {
         let mode = null;
         try {
-          mode = localStorage.getItem('konnekt.theme');
+          // The second key is what this was called before the rename. It is
+          // read here as well as in theme.ts because the migration there runs
+          // after the first paint, which is one dark-to-light flash too late.
+          mode = localStorage.getItem('students-cz.theme');
+          if (mode !== 'light' && mode !== 'dark') {
+            mode = localStorage.getItem('konnekt.theme');
+          }
         } catch {
           // Private mode, or storage disabled. Fall through to the system.
         }

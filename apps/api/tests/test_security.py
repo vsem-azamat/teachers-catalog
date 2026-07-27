@@ -13,8 +13,8 @@ from urllib.parse import urlencode
 
 import pytest
 
-from konnekt.core.config import Settings
-from konnekt.core.security import InitDataError, parse_init_data
+from students_cz.core.config import Settings
+from students_cz.core.security import InitDataError, parse_init_data
 
 BOT_TOKEN = "123456:TEST-TOKEN-not-a-real-one"
 

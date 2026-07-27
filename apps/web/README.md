@@ -1,4 +1,4 @@
-# Konnekt — Mini App
+# Students CZ — Mini App
 
 The Telegram Mini App front end for the student help catalog. Talks to the
 FastAPI service in [`apps/api`](../api).
@@ -35,7 +35,7 @@ The API is expected at `http://127.0.0.1:8000`; `/api` and `/healthz` are
 proxied there, so calls from the browser stay same-origin. Start it separately:
 
 ```sh
-cd ../api && uv run uvicorn konnekt.main:app --reload
+cd ../api && uv run uvicorn students_cz.main:app --reload
 ```
 
 ### HTTPS is not optional
@@ -185,7 +185,7 @@ choice the user makes by hand is stored in `localStorage` and outranks it.
 ### API types
 
 `src/lib/types.ts` is written by hand and must be kept in step with
-`apps/api/src/konnekt/schemas.py`. To replace it with generated types, run
+`apps/api/src/students_cz/schemas.py`. To replace it with generated types, run
 the API and then:
 
 ```sh

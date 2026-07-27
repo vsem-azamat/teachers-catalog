@@ -12,11 +12,11 @@ import pytest
 from aiogram.types import Chat, Message, Update
 from aiogram.types import User as TgUser
 
-from konnekt.bot.middleware import RememberUserMiddleware
-from konnekt.core.config import get_settings
-from konnekt.db.models import User, UserEvent
-from konnekt.db.models.enums import UserEventKind
-from konnekt.services.people import mark_unreachable, reachable, remember
+from students_cz.bot.middleware import RememberUserMiddleware
+from students_cz.core.config import get_settings
+from students_cz.db.models import User, UserEvent
+from students_cz.db.models.enums import UserEventKind
+from students_cz.services.people import mark_unreachable, reachable, remember
 
 pytestmark = pytest.mark.asyncio
 

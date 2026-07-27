@@ -9,9 +9,10 @@ anyway: insurance, a language course that carries a visa, a bank statement, a
 sworn translation. Those are partner placements — always labelled, and shown on
 the screen for the task the person is already doing rather than as a banner.
 
-The Python package, the Docker images and the database are all called
-`konnekt`. That is the name of the code, not of the product: renaming what
-nobody sees costs a day of broken imports and buys nothing.
+The Python package is `students_cz`, the images are `students-cz-api` and
+`students-cz-web`, and the compose project is `students-cz` — the product's
+name, spelled the way each of those places allows. What is still called
+something else, and why, is in `docs/architecture.md`.
 
 ## How it is put together
 

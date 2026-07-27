@@ -10,7 +10,7 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from konnekt.db.models import (
+from students_cz.db.models import (
     Contact,
     HelperProfile,
     HelpRequest,
@@ -20,14 +20,14 @@ from konnekt.db.models import (
     Subject,
     User,
 )
-from konnekt.db.models.enums import (
+from students_cz.db.models.enums import (
     PublishStatus,
     RequestStatus,
     ResponseStatus,
     UiLang,
 )
-from konnekt.services import errors
-from konnekt.services import requests as requests_service
+from students_cz.services import errors
+from students_cz.services import requests as requests_service
 
 pytestmark = pytest.mark.asyncio
 

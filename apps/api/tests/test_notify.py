@@ -10,7 +10,7 @@ from typing import cast
 import pytest
 from aiogram import Bot
 
-from konnekt.bot.texts import (
+from students_cz.bot.texts import (
     NEW_RESPONSE,
     OPEN_APP,
     RESPONSE_ACCEPTED,
@@ -18,8 +18,8 @@ from konnekt.bot.texts import (
     WRITE_TO,
     pick,
 )
-from konnekt.db.models.enums import UiLang
-from konnekt.services.notify import Notifier, Recipient, _keyboard, quote, tell
+from students_cz.db.models.enums import UiLang
+from students_cz.services.notify import Notifier, Recipient, _keyboard, quote, tell
 
 
 def test_quote_escapes_html() -> None:
@@ -125,7 +125,7 @@ class _Bot:
 def _person(**overrides):
     from datetime import UTC, datetime
 
-    from konnekt.db.models import User
+    from students_cz.db.models import User
 
     defaults = {
         "tg_id": 42,

@@ -173,7 +173,7 @@ function detailOf(payload: unknown): string | undefined {
 //
 // Written by hand for now. `pnpm api:generate` will eventually produce these
 // from the OpenAPI document; until then keep the signatures in step with
-// apps/api/src/konnekt/api/v1/routes.py.
+// apps/api/src/students_cz/api/v1/.
 
 export const api = {
   /** The whole home screen in one response. */

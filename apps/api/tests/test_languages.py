@@ -12,8 +12,8 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from konnekt.db.models import Language
-from konnekt.db.seed import WORKING_LANGUAGES, seed_languages
+from students_cz.db.models import Language
+from students_cz.db.seed import WORKING_LANGUAGES, seed_languages
 
 from .conftest import auth_header
 

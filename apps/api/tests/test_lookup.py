@@ -2,7 +2,7 @@
 
 import pytest
 
-from konnekt.services.lookup import find_subjects, normalise
+from students_cz.services.lookup import find_subjects, normalise
 
 pytestmark = pytest.mark.asyncio  # every async test here; the one sync test opts out
 
@@ -25,7 +25,7 @@ pytestmark = pytest.mark.asyncio  # every async test here; the one sync test opt
 async def test_finds_the_right_subject(session, query, expect_slug):
     from sqlalchemy import select
 
-    from konnekt.db.models import Subject
+    from students_cz.db.models import Subject
 
     matches = await find_subjects(session, query, "ru", limit=3)
     assert matches, f"{query!r} matched nothing"
@@ -47,7 +47,7 @@ async def test_synonyms_respect_word_boundaries(session):
     """
     from sqlalchemy import select
 
-    from konnekt.db.models import Subject
+    from students_cz.db.models import Subject
 
     matches = await find_subjects(session, "cestina b2 pro nostrifikaci", "cs", limit=3)
     assert matches
@@ -107,8 +107,8 @@ async def test_finds_institutions_in_either_script(session, query, expect_code):
     """Russian speakers write Czech acronyms in Cyrillic: "чвут", "вше"."""
     from sqlalchemy import select
 
-    from konnekt.db.models import Institution
-    from konnekt.services.lookup import find_institutions
+    from students_cz.db.models import Institution
+    from students_cz.services.lookup import find_institutions
 
     matches = await find_institutions(session, query, "ru", limit=3)
     assert matches, f"{query!r} matched no institution"
@@ -123,7 +123,7 @@ async def test_finds_institutions_in_either_script(session, query, expect_code):
 @pytest.mark.filterwarnings("ignore::pytest.PytestWarning")
 def test_transliteration_is_czech_flavoured():
     """ч becomes "c" as in Č, not "ch" as in an English transcription."""
-    from konnekt.services.lookup import transliterate
+    from students_cz.services.lookup import transliterate
 
     assert transliterate("ЧВУТ") == "cvut"
     assert transliterate("вше") == "vse"

@@ -36,8 +36,8 @@ class SilentBot:
 
 @pytest_asyncio.fixture
 async def app_with(session: AsyncSession):
-    from konnekt.db.session import session_scope, unit_of_work
-    from konnekt.main import create_app
+    from students_cz.db.session import session_scope, unit_of_work
+    from students_cz.main import create_app
 
     async def scope():
         async with unit_of_work(session):
@@ -117,7 +117,7 @@ async def test_a_service_with_no_bot_says_so(app_with) -> None:
 
 async def test_the_cache_window_is_short_enough_to_notice() -> None:
     """Long enough to spare Telegram, short enough that a deploy sees it."""
-    from konnekt.api.v1 import health
+    from students_cz.api.v1 import health
 
     assert 15 <= health.WEBHOOK_CHECK_TTL <= 120
 
@@ -126,16 +126,16 @@ async def test_the_application_logger_actually_writes_somewhere() -> None:
     """The half of the incident that made it undiagnosable.
 
     Uvicorn configures its own loggers and nothing else, so without this the
-    `konnekt` logger falls back to Python's last-resort handler, which emits
+    `students_cz` logger falls back to Python's last-resort handler, which emits
     WARNING and above. Every `log.info` went nowhere — including the line that
     says the webhook was registered and where.
     """
     import logging
 
-    from konnekt.main import configure_logging
+    from students_cz.main import configure_logging
 
     configure_logging("INFO")
-    logger = logging.getLogger("konnekt")
+    logger = logging.getLogger("students_cz")
 
     assert logger.level == logging.INFO
     assert any(isinstance(h, logging.StreamHandler) for h in logger.handlers)
@@ -165,12 +165,12 @@ async def test_configuring_logging_twice_does_not_double_the_handlers() -> None:
     """`create_app()` runs once per process and once per test."""
     import logging
 
-    from konnekt.main import configure_logging
+    from students_cz.main import configure_logging
 
     configure_logging("INFO")
-    before = len(logging.getLogger("konnekt").handlers)
+    before = len(logging.getLogger("students_cz").handlers)
     configure_logging("INFO")
-    assert len(logging.getLogger("konnekt").handlers) == before
+    assert len(logging.getLogger("students_cz").handlers) == before
 
 
 class HangingBot:
@@ -189,7 +189,7 @@ async def test_a_telegram_that_hangs_is_given_up_on_with_a_reason(
     so a state built from the exception alone reads "unknown: " and explains
     nothing at the moment somebody needs it explained.
     """
-    from konnekt.api.v1 import health
+    from students_cz.api.v1 import health
 
     monkeypatch.setattr(health, "WEBHOOK_CHECK_TIMEOUT", 0.05)
 
@@ -208,7 +208,7 @@ async def test_a_failure_is_retried_sooner_than_a_success_is_rechecked(
     app_with, monkeypatch, settings
 ) -> None:
     """An outage must not pin the answer for a full minute."""
-    from konnekt.api.v1 import health
+    from students_cz.api.v1 import health
 
     assert health.WEBHOOK_FAILURE_TTL < health.WEBHOOK_CHECK_TTL
 
@@ -243,8 +243,8 @@ async def test_a_burst_of_probes_asks_telegram_once(settings) -> None:
     would otherwise share the test's single AsyncSession, which is not safe to
     use concurrently — a limitation of the fixture, not of the endpoint.
     """
-    from konnekt.api.v1.health import webhook_state
-    from konnekt.main import create_app
+    from students_cz.api.v1.health import webhook_state
+    from students_cz.main import create_app
 
     expected = f"{settings.public_base_url.rstrip('/')}{settings.webhook_path}"
 
@@ -294,7 +294,7 @@ async def test_a_slow_probe_does_not_overwrite_a_newer_answer(app_with) -> None:
     """
     import time as clock
 
-    from konnekt.api.v1.health import webhook_state
+    from students_cz.api.v1.health import webhook_state
 
     class Slow:
         async def get_webhook_info(self):

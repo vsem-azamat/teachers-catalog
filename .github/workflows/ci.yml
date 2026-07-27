@@ -24,13 +24,13 @@ jobs:
         # pg_trgm, unaccent and btree_gist, and the tests exercise all three.
         image: pgvector/pgvector:pg18
         env:
-          POSTGRES_USER: konnekt
-          POSTGRES_PASSWORD: konnekt
-          POSTGRES_DB: konnekt
+          POSTGRES_USER: students_cz
+          POSTGRES_PASSWORD: students_cz
+          POSTGRES_DB: students_cz
         ports:
           - 5433:5432
         options: >-
-          --health-cmd "pg_isready -U konnekt -d konnekt"
+          --health-cmd "pg_isready -U students_cz -d students_cz"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 15
@@ -76,8 +76,8 @@ jobs:
         # The tests match against real subjects and institutions, because the
         # matching *is* the logic — "матан" has to reach calculus.
         run: |
-          uv run python -m konnekt.db.seed
-          uv run python -m konnekt.db.demo
+          uv run python -m students_cz.db.seed
+          uv run python -m students_cz.db.demo
 
       - name: Test
         run: uv run pytest -q
@@ -88,7 +88,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: deploy/konnekt
+        working-directory: deploy/students-cz
 
     steps:
       - uses: actions/checkout@v4

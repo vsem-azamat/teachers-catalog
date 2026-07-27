@@ -27,15 +27,15 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from konnekt.core.config import Settings, get_settings
-from konnekt.db.models import (
+from students_cz.core.config import Settings, get_settings
+from students_cz.db.models import (
     HelperProfile,
     Offer,
     ServiceType,
     Subject,
     User,
 )
-from konnekt.db.models.enums import PublishStatus, UiLang
+from students_cz.db.models.enums import PublishStatus, UiLang
 
 
 @pytest.fixture(scope="session")
@@ -85,8 +85,8 @@ def app_for(session: AsyncSession, *, bot: object | None = None):
     under `ASGITransport`, so "no bot" is what a test sees unless it says
     otherwise, and that is also how the API runs locally.
     """
-    from konnekt.db.session import session_scope, unit_of_work
-    from konnekt.main import create_app
+    from students_cz.db.session import session_scope, unit_of_work
+    from students_cz.main import create_app
 
     # The same rule the real scope applies, not a copy of it. The whole test
     # still disappears: this session is joined to an outer transaction as a

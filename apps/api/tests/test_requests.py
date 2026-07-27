@@ -12,14 +12,14 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from konnekt.db.models import (
+from students_cz.db.models import (
     Contact,
     HelperProfile,
     HelpRequest,
     RequestResponse,
     User,
 )
-from konnekt.db.models.enums import PublishStatus, RequestStatus
+from students_cz.db.models.enums import PublishStatus, RequestStatus
 
 from .conftest import app_for, auth_header
 
@@ -477,7 +477,7 @@ async def test_a_failure_after_the_write_leaves_nothing_behind(
     afterwards, so a failure in between used to leave an answer nobody was
     told about — the helper saw a 500 and assumed it had not gone through.
     """
-    from konnekt.api.v1 import requests as requests_api
+    from students_cz.api.v1 import requests as requests_api
 
     await helper_factory(tg_id=HELPER)
     created = await post_request(client, "матан")
