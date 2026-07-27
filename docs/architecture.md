@@ -15,6 +15,23 @@ bot handler and an endpoint both have to get right belongs in `services/`, and
 `services/people.remember` is the pattern: both doors call it, so a person who
 writes to the bot and a person who opens the app are recorded the same way.
 
+**What we say is part of what we do.** A sentence telling somebody how to undo
+something, or who can see their request, or how fast an answer comes, is a
+claim about the code — and it is the kind that rots quietly, because nobody
+tests prose and the person who finds out is the one who tried it. The rule is
+that copy names only what exists: no command nothing implements, no section the
+catalog cannot show, no filter that does not filter. When a promise and the
+code disagree, cutting the promise is a fix, not a retreat.
+
+The rule is younger than the copy, and the copy has not all been brought to it
+yet — what is still owed is listed at the bottom of this document.
+
+**Opting out keeps everything.** `/stop` writes one timestamp and deletes
+nothing: not the person, not their profile, not their requests or the answers
+to them. The row is what makes them the same person if they come back, and an
+opt-out that destroyed it would be a worse answer than the blocking it exists
+to prevent.
+
 Nothing here is DDD. There are no aggregates, no repository per model, no
 command bus. This is a catalog with two dozen endpoints, one bot and one
 database; layering it further would cost more than it returns.
@@ -231,6 +248,18 @@ finds, and a rule with silent exceptions is worse than no rule.
   `browse.helper_detail` and `search.parse`. Named rather than counted — a
   number here is one nobody remembers to correct, and the last three attempts
   at one were all wrong.
+- **Five sentences in the mini app still claim things the code does not do.**
+  `Request.tsx` says a request is seen by helpers who teach that subject —
+  `requests.feed_for` filters on status, authorship and expiry only, and uses
+  the subject for *ranking*, so every helper sees every open request. The same
+  file promises an answer "usually within a day": nothing tells a helper a
+  request exists, and `response_minutes_avg` is written only by `db/demo.py`.
+  `Profile.tsx` says the spoken languages are used to filter the catalog —
+  `Results.tsx` never sends `langs`, so nothing does. `Ask.tsx` offers
+  filtering in the results list, which has a three-way sort and no filters.
+  `Landing.tsx` still lists materials, which is the section `home_sections`
+  cannot return. Each is a copy change, and each needs somebody to decide
+  whether to cut the sentence or build the thing.
 - **`public.py` still reaches into `app.state`** — for the bot, and for the
   per-process cache of its username. The cache is genuinely app-scoped, so
   this one needs somewhere for that state to live before it can become a

@@ -6,8 +6,6 @@ later. Adding conversational flows here would recreate the command-driven
 interface this rewrite exists to remove.
 """
 
-from datetime import UTC, datetime
-
 from aiogram import Bot, Dispatcher, Router
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -19,14 +17,33 @@ from aiogram.types import (
     Message,
     WebAppInfo,
 )
-from sqlalchemy import select
 
 from konnekt.bot.middleware import RememberUserMiddleware
 from konnekt.core.config import Settings
-from konnekt.db.models import User
 from konnekt.db.session import get_sessionmaker
+from konnekt.services.people import unsubscribe
 
 router = Router(name="konnekt")
+
+# Named rather than written inline, because these are claims about the code and
+# a claim wants somewhere a test can read it. See tests/test_bot.py: one says
+# what the catalog has, the other is careful not to offer a way back that does
+# not exist.
+GREETING = (
+    "<b>Students CZ</b> — кто поможет с учёбой в Чехии.\n\n"
+    "Репетиторы, подготовка к přijímačky, помощь на экзамене, "
+    "нострификация и работы."
+)
+
+# "Больше писать не буду" was the first half of this sentence and it was not
+# true either. `notify.Recipient.of` does not consult `unsubscribed_at` on
+# purpose — an answer to your own request is not us writing to you unprompted —
+# so those messages keep arriving, and somebody told otherwise finds out when
+# one does.
+UNSUBSCRIBED = (
+    "Рассылок не будет. Ответы на твои заявки продолжат приходить — "
+    "их ты просил сам. Каталог работает как обычно."
+)
 
 
 def build_bot(settings: Settings) -> Bot:
@@ -59,9 +76,7 @@ async def on_start(message: Message, settings: Settings) -> None:
     # a new person reads, and every sentence in it that is not about what the
     # catalog does is a sentence spent talking about ourselves.
     await message.answer(
-        "<b>Students CZ</b> — кто поможет с учёбой в Чехии.\n\n"
-        "Репетиторы, подготовка к přijímačky, помощь на экзамене, "
-        "нострификация, работы и материалы.",
+        GREETING,
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
                 [
@@ -103,14 +118,7 @@ async def on_stop(message: Message) -> None:
         return
 
     async with get_sessionmaker()() as session:
-        user = await session.scalar(
-            select(User).where(User.tg_id == message.from_user.id)
-        )
-        if user is not None and user.unsubscribed_at is None:
-            user.unsubscribed_at = datetime.now(UTC)
+        if await unsubscribe(session, message.from_user.id):
             await session.commit()
 
-    await message.answer(
-        "Больше писать не буду. Каталогом можно пользоваться как обычно — "
-        "кнопка «Каталог» внизу. Передумаешь — /start."
-    )
+    await message.answer(UNSUBSCRIBED)
