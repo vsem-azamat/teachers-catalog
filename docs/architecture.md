@@ -81,7 +81,10 @@ one answer to that question per thing, it belongs where the thing is built, and
 a dependency is also the only shape a test can substitute.
 
 `api/v1/health.py` is the exception and stays one: it reports on `app.state`
-itself, so reaching for it is the job rather than a shortcut.
+itself, so reaching for it is the job rather than a shortcut. So is the webhook
+route in `main.py`, which is defined inside `create_app` and hands the update
+to the dispatcher the lifespan put there — it is the seam between the two
+runtimes rather than a handler.
 
 **A schema** is a leaf. `konnekt/schemas.py` — the package root, not inside
 `api/` — describes what goes over the wire. A service may return one without
@@ -141,7 +144,12 @@ Everything that commits outside it:
   runs, so that first sight of someone — and the `source` that says where they
   came from — survives whatever the handler goes on to do.
 - `services/notify.py` opens its own session: it runs in a background task,
-  after the response, and therefore after this transaction has closed.
+  after the response, and therefore after this transaction has closed. Nothing
+  is handed an ORM row across that line — a background task gets a
+  `notify.Recipient`, a snapshot taken while the session was still open.
+  Passing the row itself works only for as long as nothing expires it, and the
+  thing that would notice is a `MissingGreenlet` inside a task whose exception
+  nobody is waiting for.
 - The bot has no request to hang a transaction on, so `bot/middleware.py` and
   the `/stop` handler open and commit their own sessions. The middleware
   commits the person's record before the handler runs, for the same reason

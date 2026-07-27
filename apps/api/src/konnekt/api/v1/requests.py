@@ -40,7 +40,7 @@ from konnekt.schemas import (
 from konnekt.services import requests as requests_service
 from konnekt.services.catalog import avatar_for
 from konnekt.services.naming import rows_by_id, short_form, translated
-from konnekt.services.notify import quote
+from konnekt.services.notify import Recipient, quote
 
 router = APIRouter()
 
@@ -172,7 +172,7 @@ async def respond_to_request(
         # and the action is already committed.
         background.add_task(
             notifier.tell,
-            author,
+            Recipient.of(author),
             pick(NEW_RESPONSE, author.ui_lang).format(
                 topic=quote(_topic_of(rendered_request=answered.request), 120),
                 helper=quote(rendered.name, 64),
@@ -230,7 +230,7 @@ async def accept_response(
     if accepted.notify and helper_user is not None:
         background.add_task(
             notifier.tell,
-            helper_user,
+            Recipient.of(helper_user),
             pick(RESPONSE_ACCEPTED, helper_user.ui_lang).format(
                 topic=quote(_topic_of(rendered_request=accepted.request), 120),
                 student=quote(user.first_name, 64),

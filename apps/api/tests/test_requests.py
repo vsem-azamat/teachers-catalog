@@ -511,9 +511,14 @@ class RecordingBot:
     """A bot that keeps what it was asked to send.
 
     Enough of aiogram's `Bot` for `notify.tell`, which calls exactly one
-    method on it. The point of the test below is the wiring between the route
+    method on it. The point of the tests below is the wiring between the route
     and the person, so what matters is that a message arrived and who it was
     addressed to.
+
+    Do not teach it to raise `TelegramForbiddenError`: `tell` answers that by
+    opening a session of its own and updating the row, and the row is inside
+    this test's uncommitted transaction — so it would wait on the lock until
+    the suite is killed rather than fail.
     """
 
     def __init__(self) -> None:
@@ -555,6 +560,13 @@ async def test_the_author_hears_about_an_answer(
     assert response.status_code == 201, response.text
     assert [message["chat_id"] for message in bot.sent] == [STUDENT]
     assert "могу помочь с этим" in bot.sent[0]["text"]
+    # The button is the one thing whose source this refactor moved: it used to
+    # come off `app.state.settings`, which the test client never has, so it was
+    # silently absent from every test. `PUBLIC_BASE_URL` is pinned in conftest
+    # for exactly this assertion.
+    [[button]] = bot.sent[0]["reply_markup"].inline_keyboard
+    assert button.web_app is not None
+    assert button.web_app.url == "https://tests.example"
 
 
 async def test_nobody_hears_about_it_who_never_started_the_bot(

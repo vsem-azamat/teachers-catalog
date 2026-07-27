@@ -13,6 +13,11 @@ import os
 # aiogram's HMAC. Signature handling has its own tests.
 os.environ["ALLOW_UNSIGNED_INIT_DATA"] = "true"
 os.environ["BOT_TOKEN"] = ""
+# Pinned for the same reason, one step further on: `get_settings` walks up to
+# the repository's own `.env`, so without this a notification carries a
+# web_app button on a machine that has PUBLIC_BASE_URL set and no button in CI.
+# A suite that exercises different code on different machines is not a suite.
+os.environ["PUBLIC_BASE_URL"] = "https://tests.example"
 
 from collections.abc import AsyncIterator
 

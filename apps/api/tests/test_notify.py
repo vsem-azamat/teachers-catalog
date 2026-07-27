@@ -19,7 +19,7 @@ from konnekt.bot.texts import (
     pick,
 )
 from konnekt.db.models.enums import UiLang
-from konnekt.services.notify import Notifier, _keyboard, quote, tell
+from konnekt.services.notify import Notifier, Recipient, _keyboard, quote, tell
 
 
 def test_quote_escapes_html() -> None:
@@ -149,7 +149,9 @@ async def test_nobody_is_written_to_who_never_started_the_bot() -> None:
     bot = _Bot()
     notifier = Notifier(cast(Bot, bot))
 
-    assert await notifier.tell(_person(bot_started_at=None), "привет") is False
+    assert (
+        await notifier.tell(Recipient.of(_person(bot_started_at=None)), "привет") is False
+    )
     assert bot.sent == []
 
 
@@ -158,14 +160,17 @@ async def test_nobody_is_written_to_who_blocked_the_bot() -> None:
     bot = _Bot()
     notifier = Notifier(cast(Bot, bot))
 
-    assert await notifier.tell(_person(bot_can_message=False), "привет") is False
+    assert (
+        await notifier.tell(Recipient.of(_person(bot_can_message=False)), "привет")
+        is False
+    )
     assert bot.sent == []
 
 
 @pytest.mark.asyncio
 async def test_a_notifier_without_a_bot_delivers_nothing_and_says_so() -> None:
     """The API runs without a token locally; the action must still succeed."""
-    assert await Notifier(None).tell(_person(), "привет") is False
+    assert await Notifier(None).tell(Recipient.of(_person()), "привет") is False
 
 
 @pytest.mark.asyncio
@@ -178,6 +183,6 @@ async def test_a_reachable_person_is_written_to() -> None:
     """
     bot = _Bot()
 
-    assert await Notifier(cast(Bot, bot)).tell(_person(), "привет") is True
+    assert await Notifier(cast(Bot, bot)).tell(Recipient.of(_person()), "привет") is True
     assert bot.sent[0]["chat_id"] == 42
     assert bot.sent[0]["text"] == "привет"
