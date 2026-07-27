@@ -493,6 +493,10 @@ msgstr "Missing"
 msgid "черновик — не видна в каталоге"
 msgstr "draft — not visible in the catalog"
 
+#: src/pages/NotFound.tsx
+msgid "Ссылка устарела или в ней опечатка."
+msgstr "The link is out of date, or has a typo in it."
+
 #: src/pages/Results.tsx
 msgid "Дешевле"
 msgstr "Cheaper"
@@ -608,6 +612,10 @@ msgstr "{0, plural, one {Prepared # person for this exam} other {Prepared # peop
 #: src/pages/MyHelper.tsx
 msgid "ČVUT FEL, 3 курс"
 msgstr "ČVUT FEL, third year"
+
+#: src/pages/NotFound.tsx
+msgid "Такой страницы нет"
+msgstr "There is no such page"
 
 #: src/components/Phrase.tsx
 msgid "С твоего факультета"

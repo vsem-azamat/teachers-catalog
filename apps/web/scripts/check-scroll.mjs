@@ -61,8 +61,8 @@ const VIEWPORTS = [
 const ROUTES = [
   { path: '/' },
   { path: '/ask' },
-  { path: '/results', into: { name: 'helper detail', click: '[class*="card"]' } },
-  { path: '/mine', into: { name: 'request detail', click: '[class*="card"]' } },
+  { path: '/results', into: { name: 'helper detail', click: 'button[class*="card"]' } },
+  { path: '/mine', into: { name: 'request detail', click: 'button[class*="card"]' } },
   { path: '/life' },
   { path: '/profile' },
   { path: '/become-helper' },
@@ -144,25 +144,65 @@ function look() {
    * of the elements that draws by nature.
    */
   function paints(el) {
+    // Asked first, and of the whole ancestor chain: an element with text in it
+    // is still invisible under a hidden or fully transparent parent, and text
+    // was the one test that used to answer before anything looked at style.
+    if (
+      !el.checkVisibility({
+        opacityProperty: true,
+        visibilityProperty: true,
+        contentVisibilityAuto: true,
+      })
+    ) {
+      return false;
+    }
     if (/^(svg|img|canvas|video|input|textarea|select|hr)$/i.test(el.tagName))
       return true;
     for (const node of el.childNodes) {
       if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) return true;
     }
+    for (const pseudo of ['::before', '::after']) {
+      const drawn = getComputedStyle(el, pseudo);
+      if (drawn.content !== 'none' && drawn.content !== 'normal') return true;
+    }
     const style = getComputedStyle(el);
-    if (style.visibility === 'hidden' || style.opacity === '0') return false;
     if (style.backgroundImage !== 'none') return true;
     if (!['transparent', 'rgba(0, 0, 0, 0)'].includes(style.backgroundColor)) return true;
     if (style.boxShadow !== 'none') return true;
+    if (Number.parseFloat(style.outlineWidth) > 0 && style.outlineStyle !== 'none') {
+      return true;
+    }
     return ['Top', 'Right', 'Bottom', 'Left'].some(
       (side) => Number.parseFloat(style[`border${side}Width`]) > 0,
     );
   }
 
+  /**
+   * Where this element's paint actually stops.
+   *
+   * `getBoundingClientRect` does not know about clipping, so a tall child of a
+   * short `overflow: hidden` box reports a bottom edge nobody can see. Left
+   * alone that reads as content below the floor, and one negative number is
+   * enough to hide every real spacer above it.
+   */
+  function visibleBottom(el, screen) {
+    let bottom = el.getBoundingClientRect().bottom;
+    for (
+      let node = el.parentElement;
+      node && node !== screen;
+      node = node.parentElement
+    ) {
+      if (getComputedStyle(node).overflowY !== 'visible') {
+        bottom = Math.min(bottom, node.getBoundingClientRect().bottom);
+      }
+    }
+    return bottom;
+  }
+
   const doc = document.documentElement;
   const root = document.getElementById('root');
   const screen = root?.firstElementChild;
-  if (!screen) return { rendered: false };
+  if (!screen) return { verdict: 'nothing rendered' };
 
   const style = getComputedStyle(screen);
   const floor =
@@ -175,15 +215,23 @@ function look() {
     const box = el.getBoundingClientRect();
     if (box.height <= 0 || box.width <= 0) continue;
     if (!paints(el)) continue;
-    lowest = Math.max(lowest, box.bottom);
+    lowest = Math.max(lowest, visibleBottom(el, screen));
+  }
+
+  // Not "clean": unmeasurable. A page whose root is not a `<Screen>` — which
+  // is how the 404 was written — has no content box to measure against, and
+  // calling that zero is how a mistyped route reports as spotless. It is the
+  // shape of the bug this check twice had to be rescued from, so it is loud.
+  if (lowest === Number.NEGATIVE_INFINITY) {
+    return { verdict: 'no screen: nothing in the page paints anything' };
   }
 
   return {
-    rendered: true,
+    verdict: 'measured',
     travel: doc.scrollHeight - doc.clientHeight + (root.scrollHeight - root.clientHeight),
     // Everything between the last visible thing and where the screen's own
     // designed clearance begins.
-    dead: lowest === Number.NEGATIVE_INFINITY ? 0 : floor - lowest,
+    dead: floor - lowest,
   };
 }
 
@@ -195,8 +243,8 @@ async function measure(page, name, label) {
   await page.waitForTimeout(100);
 
   const seen = await page.evaluate(look);
-  if (!seen.rendered) {
-    console.error(`\n${name} rendered nothing at ${label}.`);
+  if (seen.verdict !== 'measured') {
+    console.error(`\n${name} at ${label}: ${seen.verdict}.`);
     await browser.close();
     process.exit(2);
   }
@@ -255,8 +303,7 @@ for (const viewport of VIEWPORTS) {
         // An empty list is a seeding problem rather than a layout one, so it
         // does not fail the run — but it does mean a screen went unmeasured,
         // and an unmeasured screen reported as nothing at all is how a check
-        // like this quietly stops being one. Nothing seeds a help request
-        // today, so `request detail` skips on every machine.
+        // like this quietly stops being one.
         console.log(
           `  SKIP ${route.into.name.padEnd(20)} nothing in ${route.path} to open`,
         );

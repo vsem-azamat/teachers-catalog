@@ -181,12 +181,17 @@ which is also what keeps the number right on a phone with a home indicator. A
 container does not count as painting on behalf of its children, so a spacer
 nested inside a card list is as visible to it as one at the foot of the page.
 
-It needs the dev server, the API and signed init data, and it says so and stops
-rather than measuring error states — a blank page has nothing to scroll either,
-which is how a check like this quietly stops being one. Screens it could not
-reach are named in its output for the same reason. Nothing runs it
-automatically; it wants a browser and a database, which CI here does not give
-it.
+It needs the dev server, the API and signed init data, and it stops rather than
+measuring a home screen that came back without its categories, because that
+means the API is rejecting the init data and every screen behind it is an error
+state. A page it cannot recognise as a screen at all is a hard stop too, and a
+screen it could not reach is named in the summary: a check that reports an
+unmeasured screen as a clean one has stopped being a check.
+
+What it takes on trust is the screen's own `padding-bottom` — that is the
+number it subtracts, so a screen that reserves room for a tab bar it does not
+render will pass with a blank strip at its foot. Nothing runs it automatically;
+it wants a browser and a database, which CI here does not give it.
 
 ## Where the code does not follow this yet
 
