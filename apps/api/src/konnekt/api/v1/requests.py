@@ -4,11 +4,8 @@ The largest domain here, because a request has a life — posted, seen, answered
 accepted, closed — and every step of it notifies somebody.
 """
 
-from datetime import UTC, datetime, time, timedelta
-
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Query, Request, status
 from sqlalchemy import func, select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import selectinload
 
 from konnekt.api.deps import LangDep, SessionDep, UserDep
@@ -30,7 +27,6 @@ from konnekt.bot.texts import (
     pick,
 )
 from konnekt.db.models import (
-    Contact,
     HelperProfile,
     HelpRequest,
     Institution,
@@ -40,19 +36,12 @@ from konnekt.db.models import (
     User,
 )
 from konnekt.db.models.enums import (
-    ContentLang,
     PriceUnit,
-    PublishStatus,
-    RequestStatus,
-    ResponseStatus,
-    UserEventKind,
 )
-from konnekt.services import notify, parser
+from konnekt.services import notify
 from konnekt.services import requests as requests_service
 from konnekt.services.catalog import _localised, avatar_for
 from konnekt.services.notify import quote
-from konnekt.services.people import log_event
-from konnekt.services.refs import require_row
 
 router = APIRouter()
 
@@ -66,62 +55,19 @@ router = APIRouter()
 async def create_request(
     payload: RequestCreate, session: SessionDep, lang: LangDep, user: UserDep
 ) -> RequestOut:
-    """Post "I need help with X" and let helpers answer.
-
-    Anything the caller did not fill in is read out of the text, so the form
-    can be a single field. A request without a deadline expires in thirty
-    days; with one, the day after — an exam on the 14th is worthless on the
-    15th, and a stale board is worse than an empty one.
-    """
-    await require_row(session, Subject, payload.subject_id, "subject_id")
-    await require_row(session, Institution, payload.institution_id, "institution_id")
-    await require_row(session, ServiceType, payload.service_type_id, "service_type_id")
-
-    parsed = await parser.parse(session, payload.text, lang.value)
-
-    subject_id = payload.subject_id or (parsed.subject.id if parsed.subject else None)
-    institution_id = payload.institution_id or (
-        parsed.institution.id if parsed.institution else None
-    )
-    service_type_id = payload.service_type_id
-    if service_type_id is None and parsed.service_type:
-        service_type_id = await session.scalar(
-            select(ServiceType.id).where(ServiceType.code == parsed.service_type)
-        )
-    deadline = payload.deadline_on or parsed.deadline
-
-    expires_at = (
-        datetime.combine(deadline, time.max, tzinfo=UTC)
-        if deadline
-        else datetime.now(UTC) + timedelta(days=30)
-    )
-
-    request = HelpRequest(
-        author_id=user.id,
-        raw_text=payload.text,
-        lang=ContentLang(lang.value),
-        subject_id=subject_id,
-        institution_id=institution_id,
-        service_type_id=service_type_id,
-        deadline_on=deadline,
-        budget_max=payload.budget_max or parsed.budget_max,
-        langs=payload.langs or list(user.spoken_langs),
-        status=RequestStatus.OPEN,
-        expires_at=expires_at,
-    )
-    session.add(request)
-    await log_event(
+    """Post "I need help with X" and let helpers answer."""
+    request = await requests_service.create(
         session,
-        user.id,
-        UserEventKind.REQUEST_CREATED,
-        subject_id=subject_id,
-        institution_id=institution_id,
+        user=user,
+        text=payload.text,
+        lang=lang,
+        subject_id=payload.subject_id,
+        institution_id=payload.institution_id,
+        service_type_id=payload.service_type_id,
+        deadline_on=payload.deadline_on,
+        budget_max=payload.budget_max,
+        langs=payload.langs,
     )
-    # flush, not commit: the row has to exist for `refresh` to read the
-    # defaults the database fills in, but the transaction belongs to the
-    # request and ends when the request does.
-    await session.flush()
-    await session.refresh(request)
     return await _request_out(session, request, lang)
 
 
@@ -129,17 +75,10 @@ async def create_request(
 async def my_requests(
     session: SessionDep, lang: LangDep, user: UserDep
 ) -> list[RequestOut]:
-    rows = (
-        await session.scalars(
-            select(HelpRequest)
-            .where(HelpRequest.author_id == user.id)
-            # id as a tiebreaker: created_at comes from now(), which is the
-            # transaction's clock, so two rows written together share it.
-            .order_by(HelpRequest.created_at.desc(), HelpRequest.id.desc())
-            .limit(50)
-        )
-    ).all()
-    return await _requests_out(session, list(rows), lang)
+    """Your own, newest first."""
+    return await _requests_out(
+        session, await requests_service.mine(session, user=user), lang
+    )
 
 
 @router.get("/requests/feed", response_model=list[FeedRequestOut], tags=["requests"])
@@ -216,72 +155,25 @@ async def respond_to_request(
     lang: LangDep,
     user: UserDep,
 ) -> ResponseOut:
-    """Answer someone's request.
-
-    Published profiles only, unlike the feed: an answer is an invitation to
-    look at a profile, and a draft is not there to be looked at.
-    """
-    helper = await session.get(HelperProfile, user.id)
-    if helper is None or helper.status is not PublishStatus.PUBLISHED:
-        raise HTTPException(
-            status.HTTP_403_FORBIDDEN, "publish your profile before answering requests"
-        )
-    # The same rule `start_contact` enforces, for the same reason: we do not
-    # host the conversation, so a public username is the only way the author
-    # can answer back. Without it an accepted answer is a dead end — both
-    # sides told a deal happened and neither able to reach the other.
-    if not user.tg_username:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            "set a public @username in Telegram so people can write back",
-        )
-
-    request = await session.get(HelpRequest, request_id)
-    if request is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such request")
-    if request.author_id == user.id:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "this is your own request")
-    expired = request.expires_at is not None and request.expires_at <= datetime.now(UTC)
-    if request.status is not RequestStatus.OPEN or expired:
-        raise HTTPException(status.HTTP_409_CONFLICT, "this request is closed")
-
-    # ON CONFLICT rather than a select first: two taps on a slow connection
-    # are two concurrent inserts, and the unique constraint would surface the
-    # second as a 500 instead of "you already answered this".
-    inserted = await session.scalar(
-        pg_insert(RequestResponse)
-        .values(
-            request_id=request.id,
-            helper_id=user.id,
-            message=payload.message.strip(),
-            price_amount=payload.price_amount,
-            price_unit=payload.price_unit,
-        )
-        .on_conflict_do_nothing(constraint="uq_request_responses_pair")
-        .returning(RequestResponse)
-    )
-    if inserted is None:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT, "you have already answered this request"
-        )
-
-    await log_event(
+    """Answer someone's request."""
+    answered = await requests_service.respond(
         session,
-        user.id,
-        UserEventKind.REQUEST_RESPONDED,
-        request_id=request.id,
-        subject_id=request.subject_id,
+        user=user,
+        request_id=request_id,
+        message=payload.message,
+        price_amount=payload.price_amount,
+        price_unit=payload.price_unit,
     )
 
-    author = await session.get(User, request.author_id)
-    [rendered] = await _responses_out(session, [inserted], lang)
+    [rendered] = await _responses_out(session, [answered.response], lang)
+    author = answered.author
     if author is not None:
         _queue_notification(
             background,
             http,
             recipient=author,
             text=pick(NEW_RESPONSE, author.ui_lang).format(
-                topic=quote(_topic_of(rendered_request=request), 120),
+                topic=quote(_topic_of(rendered_request=answered.request), 120),
                 helper=quote(rendered.name, 64),
                 price=(
                     pick(FOR_PRICE, author.ui_lang).format(
@@ -290,7 +182,7 @@ async def respond_to_request(
                     if rendered.price and rendered.price.amount is not None
                     else ""
                 ),
-                message=quote(inserted.message),
+                message=quote(answered.response.message),
             ),
         )
     return rendered
@@ -305,29 +197,15 @@ async def request_responses(
     request_id: int, session: SessionDep, lang: LangDep, user: UserDep
 ) -> list[ResponseOut]:
     """Who answered. The author only — this is not a public bid list."""
-    request = await session.get(HelpRequest, request_id)
-    if request is None or request.author_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such request")
-
-    rows = (
-        await session.scalars(
-            select(RequestResponse)
-            .where(RequestResponse.request_id == request.id)
-            .order_by(RequestResponse.created_at.asc(), RequestResponse.id.asc())
-        )
-    ).all()
+    rows = await requests_service.responses_for_author(
+        session, user=user, request_id=request_id
+    )
 
     # Rendered *before* marking anything, so this response still carries the
     # statuses the author has not seen yet — otherwise the client never gets a
     # chance to badge the new ones, because they arrive already read.
-    out = await _responses_out(session, list(rows), lang)
-
-    # Only the ones still unread, so an accepted or declined answer is not
-    # quietly walked backwards to "read".
-    for row in rows:
-        if row.status is ResponseStatus.SENT:
-            row.status = ResponseStatus.READ
-
+    out = await _responses_out(session, rows, lang)
+    requests_service.mark_read(rows)
     return out
 
 
@@ -344,50 +222,17 @@ async def accept_response(
     lang: LangDep,
     user: UserDep,
 ) -> ResponseOut:
-    """Pick someone.
+    """Pick someone."""
+    accepted = await requests_service.accept(session, user=user, response_id=response_id)
 
-    Does not close the request: needing two people for two subjects is
-    ordinary, and closing on the first acceptance would make the common case
-    the destructive one.
-    """
-    response, request = await _own_response(session, response_id, user)
-
-    # Idempotent. A double tap, or a retry after a dropped response, would
-    # otherwise write a second `contacts` row — which is the basis for deal
-    # counts and response times — and send the helper a second "you were
-    # picked". `contacts` has no unique index to catch it, and should not:
-    # contacting the same person twice about two different requests is real.
-    if response.status is ResponseStatus.ACCEPTED:
-        [out] = await _responses_out(session, [response], lang)
-        return out
-
-    response.status = ResponseStatus.ACCEPTED
-
-    # The same row the catalog writes when someone taps "write" on a profile,
-    # so response times and deal counts count both routes to a conversation.
-    session.add(
-        Contact(
-            student_id=user.id,
-            helper_id=response.helper_id,
-            request_id=request.id,
-        )
-    )
-    await log_event(
-        session,
-        user.id,
-        UserEventKind.RESPONSE_ACCEPTED,
-        request_id=request.id,
-        helper_id=response.helper_id,
-    )
-
-    helper_user = await session.get(User, response.helper_id)
-    if helper_user is not None:
+    helper_user = accepted.helper
+    if accepted.notify and helper_user is not None:
         _queue_notification(
             background,
             http,
             recipient=helper_user,
             text=pick(RESPONSE_ACCEPTED, helper_user.ui_lang).format(
-                topic=quote(_topic_of(rendered_request=request), 120),
+                topic=quote(_topic_of(rendered_request=accepted.request), 120),
                 student=quote(user.first_name, 64),
                 contact=(
                     pick(WRITE_TO, helper_user.ui_lang).format(
@@ -399,7 +244,7 @@ async def accept_response(
             ),
         )
 
-    [out] = await _responses_out(session, [response], lang)
+    [out] = await _responses_out(session, [accepted.response], lang)
     return out
 
 
@@ -412,35 +257,9 @@ async def decline_response(
     response_id: int, session: SessionDep, lang: LangDep, user: UserDep
 ) -> ResponseOut:
     """Turn one down. Deliberately silent — nobody needs a rejection push."""
-    response, _ = await _own_response(session, response_id, user)
-
-    # An accepted answer cannot be walked back here. The helper has already
-    # been told they were picked and a `contacts` row exists; flipping the
-    # status would leave the author reading "you declined" while the other
-    # side reads "you were chosen", with a recorded deal between them.
-    if response.status is ResponseStatus.ACCEPTED:
-        raise HTTPException(status.HTTP_409_CONFLICT, "you already chose this person")
-
-    response.status = ResponseStatus.DECLINED
+    response = await requests_service.decline(session, user=user, response_id=response_id)
     [out] = await _responses_out(session, [response], lang)
     return out
-
-
-async def _own_response(
-    session, response_id: int, user: User
-) -> tuple[RequestResponse, HelpRequest]:
-    """Load a response the caller is entitled to act on.
-
-    404 rather than 403 for someone else's: whether a given id exists is not
-    something a stranger should be able to probe.
-    """
-    response = await session.get(RequestResponse, response_id)
-    if response is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such response")
-    request = await session.get(HelpRequest, response.request_id)
-    if request is None or request.author_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such response")
-    return response, request
 
 
 def _topic_of(*, rendered_request: HelpRequest) -> str:
@@ -556,10 +375,8 @@ async def _responses_out(
 async def close_request(
     request_id: int, session: SessionDep, lang: LangDep, user: UserDep
 ) -> RequestOut:
-    request = await session.get(HelpRequest, request_id)
-    if request is None or request.author_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such request")
-    request.status = RequestStatus.CLOSED
+    """Stop taking answers."""
+    request = await requests_service.close(session, user=user, request_id=request_id)
     return await _request_out(session, request, lang)
 
 

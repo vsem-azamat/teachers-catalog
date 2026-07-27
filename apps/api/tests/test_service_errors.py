@@ -30,3 +30,9 @@ def test_a_subclass_keeps_the_status_of_the_family_it_extends() -> None:
 def test_the_base_class_is_not_quietly_given_a_plausible_status() -> None:
     """Raising `ServiceError` itself is a programming error, and says so."""
     assert status_for(errors.ServiceError("raised by mistake")) == 500
+
+
+def test_the_two_input_errors_keep_the_statuses_the_api_already_answered() -> None:
+    """400 and 422 both existed before any of this moved into services."""
+    assert status_for(errors.BadRequest("this is your own request")) == 400
+    assert status_for(errors.Invalid("unknown subject_id: 9")) == 422

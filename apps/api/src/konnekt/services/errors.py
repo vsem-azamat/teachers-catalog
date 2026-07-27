@@ -1,17 +1,17 @@
 """What a service raises when the caller broke a rule.
 
-Four of them, stated without reference to HTTP. A service that raises
+Five of them, stated without reference to HTTP. A service that raises
 `HTTPException` has an opinion about a protocol, which is exactly what stops
 the bot from calling it — and the bot answering "422 Unprocessable Content" to
 somebody typing into a chat is not an answer.
 
 `main.py` maps each to a status code in one place. Anything else that calls a
-service catches the same four and says something in words.
+service catches them and says something in words.
 """
 
 
 class ServiceError(Exception):
-    """A rule the caller broke. Never raised directly — one of the four below."""
+    """A rule the caller broke. Never raised directly — one of the five below."""
 
 
 class NotFound(ServiceError):
@@ -27,4 +27,18 @@ class Conflict(ServiceError):
 
 
 class Invalid(ServiceError):
-    """The request contradicts itself or names something that is not there."""
+    """The request names something that is not there, or contradicts itself.
+
+    The default for anything wrong with what was sent: an unknown id, the same
+    offer twice, a field that cannot mean what it says. Answers 422.
+    """
+
+
+class BadRequest(ServiceError):
+    """Answers 400, and exists only because one endpoint already did.
+
+    Not a category — `Invalid` is the category. This is here so that
+    "you cannot answer your own request", which answered 400 long before any
+    of this moved into services, still answers 400. Reach for `Invalid`
+    unless you are preserving an existing 400.
+    """

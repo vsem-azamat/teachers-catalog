@@ -239,6 +239,7 @@ SERVICE_ERROR_STATUS: dict[type[errors.ServiceError], int] = {
     errors.Forbidden: status.HTTP_403_FORBIDDEN,
     errors.Conflict: status.HTTP_409_CONFLICT,
     errors.Invalid: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    errors.BadRequest: status.HTTP_400_BAD_REQUEST,
 }
 
 
