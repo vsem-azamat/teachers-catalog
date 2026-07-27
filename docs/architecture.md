@@ -136,6 +136,30 @@ Tests share one session per test, rolled back at the end, and the override in
 does. A test fixture that is more forgiving than production is a fixture that
 hides the bugs this rule exists to prevent.
 
+## The web shell scrolls in exactly one place
+
+The Mini App is a screen, not a document. `#root` is the app: it is one
+screenful tall, it holds every pixel the app draws, and it is the only element
+that scrolls. `html` and `body` are locked to that screenful, so the document
+itself has nothing to scroll and cannot offer a few pixels of travel on a
+screen whose content fits.
+
+Two consequences worth knowing before touching layout:
+
+- **A screen that fits must not overflow.** Padding, trailing spacers and
+  empty states all count toward the screenful; a page showing "nothing here"
+  that still scrolls is a layout bug, not a rounding error. The check is
+  `scrollHeight - clientHeight` on `#root` at a phone viewport.
+- **Anything pinned to an edge is `position: fixed`** — the tab bar, the
+  sheet, the scrim. A scroll container is not a containing block for fixed
+  elements, so they stay against the viewport rather than against the app box.
+
+Telegram's own vertical swipe is disabled at startup (`swipeBehavior`,
+Mini Apps 7.7). The gesture drags the whole app down towards dismissal, and on
+a screen with nothing to scroll a drag and a scroll are the same movement, so
+the app appears to scroll where there is nothing to see. The app is dismissed
+with Telegram's close button instead.
+
 ## Where the code does not follow this yet
 
 Written down because an agent greps this tree and builds against what it
