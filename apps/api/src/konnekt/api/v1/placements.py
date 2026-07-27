@@ -6,14 +6,14 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from konnekt.api.deps import LangDep, SessionDep, UserDep
-from konnekt.api.schemas import (
-    PlacementOut,
-)
 from konnekt.db.models import (
     Placement,
 )
 from konnekt.db.models.enums import (
     PlacementSlot,
+)
+from konnekt.schemas import (
+    PlacementOut,
 )
 from konnekt.services import placements
 

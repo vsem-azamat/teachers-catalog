@@ -9,16 +9,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from konnekt.api.deps import LangDep, SessionDep, UserDep
-from konnekt.api.schemas import (
-    Chip,
-    HelperUpsert,
-    IntroOut,
-    IntroRequest,
-    MeOut,
-    MyHelperOut,
-    MyOfferOut,
-    Price,
-)
 from konnekt.api.v1.me import read_me
 from konnekt.db.models import (
     HelperProfile,
@@ -30,6 +20,16 @@ from konnekt.db.models import (
 from konnekt.db.models.enums import (
     PriceUnit,
     WorkFormat,
+)
+from konnekt.schemas import (
+    Chip,
+    HelperUpsert,
+    IntroOut,
+    IntroRequest,
+    MeOut,
+    MyHelperOut,
+    MyOfferOut,
+    Price,
 )
 from konnekt.services import helpers, parser
 from konnekt.services.catalog import _localised

@@ -9,16 +9,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from konnekt.api.deps import LangDep, SessionDep, UserDep
-from konnekt.api.schemas import (
-    Chip,
-    Clarify,
-    ClarifyOption,
-    ParseOut,
-    ParseRequest,
-    Phrase,
-    SearchFilters,
-    SearchOut,
-)
 from konnekt.db.models import (
     Institution,
     SearchQuery,
@@ -27,6 +17,16 @@ from konnekt.db.models import (
 )
 from konnekt.db.models.enums import (
     UserEventKind,
+)
+from konnekt.schemas import (
+    Chip,
+    Clarify,
+    ClarifyOption,
+    ParseOut,
+    ParseRequest,
+    Phrase,
+    SearchFilters,
+    SearchOut,
 )
 from konnekt.services import catalog, parser
 from konnekt.services.catalog import _localised

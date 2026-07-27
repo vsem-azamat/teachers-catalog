@@ -9,12 +9,6 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from konnekt.api.deps import LangDep, SessionDep, UserDep
-from konnekt.api.schemas import (
-    InstitutionOut,
-    LanguageOut,
-    ServiceTypeOut,
-    SubjectOut,
-)
 from konnekt.db.models import (
     HelperProfile,
     Institution,
@@ -25,6 +19,12 @@ from konnekt.db.models import (
 )
 from konnekt.db.models.enums import (
     PublishStatus,
+)
+from konnekt.schemas import (
+    InstitutionOut,
+    LanguageOut,
+    ServiceTypeOut,
+    SubjectOut,
 )
 from konnekt.services.catalog import _localised
 

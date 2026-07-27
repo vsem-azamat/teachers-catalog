@@ -63,7 +63,10 @@ What it raises instead lives in `services/errors.py` — `NotFound`,
 subclass keeps its family's answer. The bot can catch them and answer in
 words.
 
-**A schema** is a leaf. `api/schemas.py` describes what goes over the wire.
+**A schema** is a leaf. `konnekt/schemas.py` — the package root, not inside
+`api/` — describes what goes over the wire. A service may return one without
+that pointing the domain layer at the HTTP layer, which is the whole reason it
+sits there.
 Screens are assembled server-side — the client renders what it is given rather
 than joining data itself — so a schema often mirrors a screen, and that is
 intended.
@@ -143,8 +146,6 @@ finds, and a rule with silent exceptions is worse than no rule.
   `browse.helper_detail` and `search.parse`. Named rather than counted — a
   number here is one nobody remembers to correct, and the last three attempts
   at one were all wrong.
-- **`services/` imports `api/schemas`,** which points the domain layer at the
-  HTTP layer. Moving `schemas.py` to the package root fixes it.
 - **`services/catalog._localised` is imported across the package boundary** by
   name, from a private symbol, at sixteen call sites, and three more
   "fetch localised names by id" helpers exist alongside it.
