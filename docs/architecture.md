@@ -70,6 +70,19 @@ language has none, and how to fetch a page's worth of them in one query. Five
 modules need that, which is what makes it a rule rather than a helper belonging
 to whichever module wrote it first.
 
+**What a handler needs arrives as a dependency.** A route does not reach into
+`app.state`. What the process was started with — the bot, the settings — is
+composed into something usable in `api/deps.py` and asked for by type:
+`SessionDep`, `UserDep`, `LangDep`, `NotifierDep`. The reason is not tidiness.
+`app.state` is populated by the lifespan, which does not run under the test
+client, so every route reaching for it had to decide what "it is not there"
+means — and each of them decided quietly, with a `getattr` default. There is
+one answer to that question per thing, it belongs where the thing is built, and
+a dependency is also the only shape a test can substitute.
+
+`api/v1/health.py` is the exception and stays one: it reports on `app.state`
+itself, so reaching for it is the job rather than a shortcut.
+
 **A schema** is a leaf. `konnekt/schemas.py` — the package root, not inside
 `api/` — describes what goes over the wire. A service may return one without
 that pointing the domain layer at the HTTP layer, which is the whole reason it
@@ -210,6 +223,10 @@ finds, and a rule with silent exceptions is worse than no rule.
   `browse.helper_detail` and `search.parse`. Named rather than counted — a
   number here is one nobody remembers to correct, and the last three attempts
   at one were all wrong.
+- **`public.py` still reaches into `app.state`** — for the bot, and for the
+  per-process cache of its username. The cache is genuinely app-scoped, so
+  this one needs somewhere for that state to live before it can become a
+  dependency; it is not simply an unconverted call site.
 
 Each of these is a separate change with its own tests. None of them is a
 reason to write new code the old way.
