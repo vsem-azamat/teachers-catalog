@@ -15,6 +15,19 @@ bot handler and an endpoint both have to get right belongs in `services/`, and
 `services/people.remember` is the pattern: both doors call it, so a person who
 writes to the bot and a person who opens the app are recorded the same way.
 
+**What the bot says is part of what it does.** A sentence telling somebody how
+to undo something is a claim about the code, and it is the kind that rots
+quietly: nobody tests prose, and the person who finds out is the one who tried
+it. So the copy names only what exists — no command that nothing implements, no
+section the catalog cannot show. When a promise and the code disagree, cutting
+the promise is a fix, not a retreat.
+
+**Opting out keeps everything.** `/stop` writes one timestamp and deletes
+nothing: not the person, not their profile, not their requests or the answers
+to them. The row is what makes them the same person if they come back, and an
+opt-out that destroyed it would be a worse answer than the blocking it exists
+to prevent.
+
 Nothing here is DDD. There are no aggregates, no repository per model, no
 command bus. This is a catalog with two dozen endpoints, one bot and one
 database; layering it further would cost more than it returns.
