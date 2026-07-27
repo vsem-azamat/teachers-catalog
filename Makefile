@@ -24,7 +24,7 @@ install:  ## Install both apps' dependencies
 .PHONY: db-up
 db-up:  ## Start Postgres and wait until it answers
 	docker compose up -d db
-	@until docker compose exec -T db pg_isready -q -U students-cz -d students-cz; \
+	@until docker compose exec -T db pg_isready -q -U students_cz -d students_cz; \
 	 do sleep 1; done
 	@echo "database ready"
 
@@ -39,7 +39,7 @@ db-reset:  ## Throw the database away and rebuild it from scratch
 
 .PHONY: db-shell
 db-shell:  ## psql prompt
-	docker compose exec db psql -U students-cz -d students-cz
+	docker compose exec db psql -U students_cz -d students_cz
 
 # ── data ────────────────────────────────────────────────────────────────
 

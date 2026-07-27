@@ -264,7 +264,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
     configure_logging(settings.log_level)
     app = FastAPI(
-        title="Konnekt",
+        title="Students CZ",
         description="Student help catalog for the Czech Republic",
         version="0.1.0",
         lifespan=lifespan,

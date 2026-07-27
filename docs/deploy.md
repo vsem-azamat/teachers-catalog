@@ -70,6 +70,13 @@ file asks for the current names, so a tag from before it will pull nothing.
 Anything from the first deployment after the rename onwards rolls back
 normally.
 
+The same applies to the deployment's own restore-on-failure, and it applies on
+the one deployment most likely to need it. If the first post-rename deploy
+fails, that step puts back the previous `.env` — carrying an `IMAGE_TAG` that
+only ever existed under the old image names — and brings the stack up against
+a compose file asking for the new ones. It pulls nothing and the site stays
+down. Recovering means deploying forward, not back.
+
 ## The names that stay
 
 The compose project is `students-cz`; the volumes it uses are not. They are
@@ -133,7 +140,7 @@ ssh-keyscan -t ed25519 <host>          # for DEPLOY_KNOWN_HOSTS
 | `PUBLIC_PORT` | A loopback port not used by another project on the host. |
 | `EDGE_CADDY_SERVICE` | Service name of the edge Caddy in its compose file. |
 | `EDGE_CADDY_CONFIG_PATH` | Path to the Caddyfile *inside* that container. |
-| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Required. The production compose gives them no default on purpose — an unset one would silently create a second, empty cluster. |
+| `POSTGRES_DB`, `POSTGRES_USER` | Required, and checked before anything ships. No default on purpose: they name a role and a database that already exist inside a volume, and a wrong guess does not create them — the entrypoint skips `initdb` on a cluster that is not empty. The password is a secret, above. |
 | `INIT_DATA_MAX_AGE_SECONDS` | Optional; defaults to 86400. |
 | `LOG_LEVEL` | Optional; defaults to `INFO`. One of DEBUG, INFO, WARNING, ERROR, CRITICAL. |
 | `BACKUP_HOUR_UTC`, `BACKUP_RETENTION_DAYS` | Optional; default 3 and 14. |

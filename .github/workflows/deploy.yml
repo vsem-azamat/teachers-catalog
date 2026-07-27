@@ -106,12 +106,15 @@ jobs:
           PUBLIC_PORT: ${{ vars.PUBLIC_PORT }}
           EDGE_CADDY_SERVICE: ${{ vars.EDGE_CADDY_SERVICE }}
           EDGE_CADDY_CONFIG_PATH: ${{ vars.EDGE_CADDY_CONFIG_PATH }}
+          POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
         run: |
           set -euo pipefail
           missing=()
           for v in DEPLOY_HOST DEPLOY_USER DEPLOY_DIR DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS \
                    EDGE_CADDY_DIR EDGE_CADDY_COMPOSE_FILE EDGE_CADDYFILE \
                    BOT_TOKEN WEBHOOK_SECRET POSTGRES_PASSWORD \
+                   POSTGRES_DB POSTGRES_USER \
                    PUBLIC_HOST PUBLIC_PORT EDGE_CADDY_SERVICE EDGE_CADDY_CONFIG_PATH; do
             [ -n "${!v:-}" ] || missing+=("$v")
           done
@@ -152,8 +155,13 @@ jobs:
         env:
           GHCR_OWNER: ${{ needs.build.outputs.owner }}
           IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
-          POSTGRES_DB: ${{ vars.POSTGRES_DB || 'students-cz' }}
-          POSTGRES_USER: ${{ vars.POSTGRES_USER || 'students-cz' }}
+          # No default, deliberately. These name a role and a database that
+          # already exist inside a volume this repository cannot see, and a
+          # default that guessed wrong would not create them — the entrypoint
+          # skips initdb on a non-empty cluster, so the migration would fail
+          # with "role does not exist" after the old stack was already down.
+          POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
