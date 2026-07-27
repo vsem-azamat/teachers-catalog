@@ -1,7 +1,7 @@
 # Data model
 
 Postgres 18. 29 tables. The schema is defined in
-`apps/api/src/konnekt/db/models/` and is the source of truth — this document
+`apps/api/src/students_cz/db/models/` and is the source of truth — this document
 explains the decisions behind it, not the columns.
 
 ## The shape of the problem

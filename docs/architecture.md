@@ -36,6 +36,27 @@ Nothing here is DDD. There are no aggregates, no repository per model, no
 command bus. This is a catalog with two dozen endpoints, one bot and one
 database; layering it further would cost more than it returns.
 
+## One name
+
+The product is **Students CZ**, and so is everything that can be renamed
+without moving data: the Python package `students_cz`, the images
+`students-cz-api` and `students-cz-web`, the compose project, the containers,
+`deploy/students-cz`. `konnekt` was the working title and it is gone from
+everywhere a person reads.
+
+Three places keep it, each for a reason and each said out loud where it sits:
+
+| Where | Why |
+| --- | --- |
+| The docker volumes | The data is in them. A compose volume is `<project>_<name>`, so a rename is a move, not an edit — see `docs/deploy.md`. |
+| `LEGACY_STORAGE_KEY` / `LEGACY_OVERRIDE_KEY` in the web app | Somebody's saved theme and language. Read once and moved across, so the rename does not reset everyone to their phone's defaults. |
+| The Postgres role and database | Invisible, and renaming them costs a dump and a restore. |
+
+The repository is still `teachers-catalog` and the domain is still
+`tutors.azamat.io`. Neither is in the code, and neither is free to change —
+one breaks every clone and remote, the other breaks the Mini App's registered
+URL and every link anybody has shared.
+
 ## `api/v1`, one module per domain
 
 Each module owns a slice of the URL space and nothing else. The prefix is
@@ -103,7 +124,7 @@ route in `main.py`, which is defined inside `create_app` and hands the update
 to the dispatcher the lifespan put there — it is the seam between the two
 runtimes rather than a handler.
 
-**A schema** is a leaf. `konnekt/schemas.py` — the package root, not inside
+**A schema** is a leaf. `students-cz/schemas.py` — the package root, not inside
 `api/` — describes what goes over the wire. A service may return one without
 that pointing the domain layer at the HTTP layer, which is the whole reason it
 sits there.

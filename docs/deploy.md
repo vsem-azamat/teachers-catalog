@@ -43,7 +43,7 @@ recovering from a bad release is `Rollback production`.
 
 ### Reference data does not ship with the code
 
-Step 4 runs Alembic and nothing else. `konnekt.db.seed` — subjects,
+Step 4 runs Alembic and nothing else. `students_cz.db.seed` — subjects,
 institutions, service types, languages — is a development and CI convenience;
 production was seeded once and is never re-seeded.
 
@@ -64,6 +64,30 @@ riskier decision that should be made deliberately.
 Only per-commit tags are accepted. `prod-latest` would roll *forward* to
 whatever shipped last, which is the opposite of what the button says.
 
+It cannot reach past the rename. Images built before the project became
+`students-cz` were pushed as `konnekt-api` and `konnekt-web`, and the compose
+file asks for the current names, so a tag from before it will pull nothing.
+Anything from the first deployment after the rename onwards rolls back
+normally.
+
+## The names that stay
+
+The compose project is `students-cz`; the volumes it uses are not. They are
+pinned by name to `konnekt_postgres-data`, `konnekt_caddy-data` and
+`konnekt_caddy-config`, because a compose volume is `<project>_<name>` and
+renaming the project would otherwise hand postgres an empty disk and make Caddy
+re-issue every certificate against Let's Encrypt's rate limits. The old name in
+there is where the data is, not a preference.
+
+The Postgres role and database are whatever the server's `.env` says, and that
+file is not in this repository. Renaming them is a dump and a restore for
+something nobody ever sees, so it has not been done.
+
+The first deployment after the rename stops the old `konnekt` project before
+starting the new one — otherwise both run, and the new Caddy loses the race for
+the published port after the migrations have already gone through. That step is
+guarded and can be deleted once no server has such a project left.
+
 ## One-time setup
 
 None of this is in the repository, because the repository is public.
@@ -80,8 +104,8 @@ Prefer a dedicated key over reusing a personal one. Membership of the `docker`
 group is effectively root, so this identity should be treated as such.
 
 ```sh
-ssh-keygen -t ed25519 -C 'github-actions konnekt deploy' -f konnekt_deploy
-ssh-copy-id -i konnekt_deploy.pub <user>@<host>
+ssh-keygen -t ed25519 -C 'github-actions students-cz deploy' -f students-cz_deploy
+ssh-copy-id -i students-cz_deploy.pub <user>@<host>
 ssh-keyscan -t ed25519 <host>          # for DEPLOY_KNOWN_HOSTS
 ```
 
@@ -109,7 +133,7 @@ ssh-keyscan -t ed25519 <host>          # for DEPLOY_KNOWN_HOSTS
 | `PUBLIC_PORT` | A loopback port not used by another project on the host. |
 | `EDGE_CADDY_SERVICE` | Service name of the edge Caddy in its compose file. |
 | `EDGE_CADDY_CONFIG_PATH` | Path to the Caddyfile *inside* that container. |
-| `POSTGRES_DB`, `POSTGRES_USER` | Optional; both default to `konnekt`. |
+| `POSTGRES_DB`, `POSTGRES_USER` | Optional; both default to `students-cz`. |
 | `INIT_DATA_MAX_AGE_SECONDS` | Optional; defaults to 86400. |
 | `LOG_LEVEL` | Optional; defaults to `INFO`. One of DEBUG, INFO, WARNING, ERROR, CRITICAL. |
 | `BACKUP_HOUR_UTC`, `BACKUP_RETENTION_DAYS` | Optional; default 3 and 14. |
@@ -153,7 +177,7 @@ To restore:
 
 ```sh
 docker compose exec -T postgres pg_restore --clean --if-exists \
-  -U konnekt -d konnekt < data/backups/konnekt-<stamp>.dump
+  -U students-cz -d students-cz < data/backups/students-cz-<stamp>.dump
 ```
 
 Test that on a copy before you need it in anger.
