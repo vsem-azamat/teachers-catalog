@@ -6,7 +6,6 @@ who owns them.
 
 from fastapi import APIRouter
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 
 from konnekt.api.deps import LangDep, SessionDep, UserDep
 from konnekt.api.v1.me import read_me
@@ -32,7 +31,7 @@ from konnekt.schemas import (
     Price,
 )
 from konnekt.services import helpers, parser
-from konnekt.services.catalog import _localised
+from konnekt.services.naming import names_by_id
 
 router = APIRouter()
 
@@ -116,13 +115,13 @@ async def my_helper(session: SessionDep, lang: LangDep, user: UserDep) -> MyHelp
     ).all()
 
     # Names for every axis in one round trip each, rather than per offer.
-    service_names = await _names_by_id(
+    service_names = await names_by_id(
         session, ServiceType, [o.service_type_id for o in offers], lang
     )
-    subject_names = await _names_by_id(
+    subject_names = await names_by_id(
         session, Subject, [o.subject_id for o in offers], lang
     )
-    institution_names = await _names_by_id(
+    institution_names = await names_by_id(
         session, Institution, [o.institution_id for o in offers], lang
     )
     service_codes = {
@@ -162,19 +161,6 @@ async def my_helper(session: SessionDep, lang: LangDep, user: UserDep) -> MyHelp
             for offer in offers
         ],
     )
-
-
-async def _names_by_id(session, model, ids, lang) -> dict[int, str]:
-    """Translated names for a set of taxonomy rows, keyed by id."""
-    wanted = {value for value in ids if value is not None}
-    if not wanted:
-        return {}
-    rows = (
-        await session.scalars(
-            select(model).where(model.id.in_(wanted)).options(selectinload(model.names))
-        )
-    ).all()
-    return {row.id: _localised(row.names, lang) or "" for row in rows}
 
 
 @router.put("/helper", response_model=MeOut, tags=["helper"])

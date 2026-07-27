@@ -6,7 +6,6 @@ accepted, closed — and every step of it notifies somebody.
 
 from fastapi import APIRouter, BackgroundTasks, Query, Request, status
 from sqlalchemy import func, select
-from sqlalchemy.orm import selectinload
 
 from konnekt.api.deps import LangDep, SessionDep, UserDep
 from konnekt.bot.texts import (
@@ -40,7 +39,8 @@ from konnekt.schemas import (
 )
 from konnekt.services import notify
 from konnekt.services import requests as requests_service
-from konnekt.services.catalog import _localised, avatar_for
+from konnekt.services.catalog import avatar_for
+from konnekt.services.naming import rows_by_id, short_form, translated
 from konnekt.services.notify import quote
 
 router = APIRouter()
@@ -395,24 +395,12 @@ async def _requests_out(session, requests: list[HelpRequest], lang) -> list[Requ
     if not requests:
         return []
 
-    async def names_by_id(model, ids: set[int]) -> dict:
-        if not ids:
-            return {}
-        rows = (
-            await session.scalars(
-                select(model).where(model.id.in_(ids)).options(selectinload(model.names))
-            )
-        ).all()
-        return {row.id: row for row in rows}
-
-    subjects = await names_by_id(
-        Subject, {r.subject_id for r in requests if r.subject_id}
+    subjects = await rows_by_id(session, Subject, (r.subject_id for r in requests))
+    institutions = await rows_by_id(
+        session, Institution, (r.institution_id for r in requests)
     )
-    institutions = await names_by_id(
-        Institution, {r.institution_id for r in requests if r.institution_id}
-    )
-    services = await names_by_id(
-        ServiceType, {r.service_type_id for r in requests if r.service_type_id}
+    services = await rows_by_id(
+        session, ServiceType, (r.service_type_id for r in requests)
     )
 
     request_ids = [r.id for r in requests]
@@ -448,14 +436,9 @@ async def _requests_out(session, requests: list[HelpRequest], lang) -> list[Requ
             RequestOut(
                 id=request.id,
                 text=request.raw_text,
-                subject=_localised(subject.names, lang) if subject else None,
-                institution=(
-                    _localised(institution.names, lang, "short_name")
-                    or _localised(institution.names, lang)
-                    if institution
-                    else None
-                ),
-                service_type=_localised(service.names, lang) if service else None,
+                subject=translated(subject, lang) if subject else None,
+                institution=(short_form(institution, lang) if institution else None),
+                service_type=translated(service, lang) if service else None,
                 deadline_on=request.deadline_on,
                 status=request.status.value,
                 responses_count=counts.get(request.id, 0),
