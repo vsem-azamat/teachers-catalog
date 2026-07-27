@@ -28,6 +28,7 @@ from konnekt.schemas import (
     Price,
     Stat,
 )
+from konnekt.services.naming import rows_by_id, short_form, translated
 
 SortKey = Literal["relevance", "price", "available"]
 
@@ -46,23 +47,6 @@ def avatar_for(user: User) -> Avatar:
         tone=user.tg_id % TONE_COUNT,
         photo_url=user.photo_url,
     )
-
-
-def _localised(rows, lang: UiLang, attr: str = "name") -> str | None:
-    """Pick a translation, falling back to any that exists.
-
-    A missing Ukrainian name should show the Czech one, not an empty row.
-    """
-    for row in rows:
-        if row.lang == lang:
-            value = getattr(row, attr, None)
-            if value:
-                return value
-    for row in rows:
-        value = getattr(row, attr, None)
-        if value:
-            return value
-    return None
 
 
 async def home_sections(
@@ -107,8 +91,8 @@ async def home_sections(
         HomeSection(
             kind="service_type",
             code=st.code,
-            name=_localised(st.names, lang) or st.code,
-            hint=_localised(st.names, lang, "hint"),
+            name=translated(st, lang) or st.code,
+            hint=translated(st, lang, "hint"),
             tone=index % TONE_COUNT,
             count=counts.get(st.id, 0),
             avatars=avatars.get(st.id, []),
@@ -529,40 +513,13 @@ async def _offers_out(
     if not helper.offers:
         return []
 
-    subject_ids = {o.subject_id for o in helper.offers if o.subject_id}
-    institution_ids = {o.institution_id for o in helper.offers if o.institution_id}
-    service_ids = {o.service_type_id for o in helper.offers}
-
-    subjects = {
-        s.id: s
-        for s in (
-            await session.scalars(
-                select(Subject)
-                .where(Subject.id.in_(subject_ids or {0}))
-                .options(selectinload(Subject.names))
-            )
-        ).all()
-    }
-    institutions = {
-        i.id: i
-        for i in (
-            await session.scalars(
-                select(Institution)
-                .where(Institution.id.in_(institution_ids or {0}))
-                .options(selectinload(Institution.names))
-            )
-        ).all()
-    }
-    services = {
-        s.id: s
-        for s in (
-            await session.scalars(
-                select(ServiceType)
-                .where(ServiceType.id.in_(service_ids or {0}))
-                .options(selectinload(ServiceType.names))
-            )
-        ).all()
-    }
+    subjects = await rows_by_id(session, Subject, (o.subject_id for o in helper.offers))
+    institutions = await rows_by_id(
+        session, Institution, (o.institution_id for o in helper.offers)
+    )
+    services = await rows_by_id(
+        session, ServiceType, (o.service_type_id for o in helper.offers)
+    )
 
     out: list[OfferOut] = []
     for offer in helper.offers:
@@ -577,15 +534,9 @@ async def _offers_out(
             OfferOut(
                 id=offer.id,
                 service_type=service.code if service else "",
-                service_type_name=(_localised(service.names, lang) if service else "")
-                or "",
-                subject=_localised(subject.names, lang) if subject else None,
-                institution=(
-                    _localised(institution.names, lang, "short_name")
-                    or _localised(institution.names, lang)
-                    if institution
-                    else None
-                ),
+                service_type_name=(translated(service, lang) if service else "") or "",
+                subject=translated(subject, lang) if subject else None,
+                institution=(short_form(institution, lang) if institution else None),
                 price=Price(
                     amount=(
                         float(offer.price_amount)

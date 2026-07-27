@@ -29,7 +29,7 @@ from konnekt.schemas import (
     SearchOut,
 )
 from konnekt.services import catalog, parser
-from konnekt.services.catalog import _localised
+from konnekt.services.naming import short_form, translated
 from konnekt.services.people import log_event
 
 router = APIRouter()
@@ -78,7 +78,7 @@ async def parse_query(
             chips.append(
                 Chip(
                     kind="service_type",
-                    label=_localised(service.names, lang) or service.code,
+                    label=translated(service, lang) or service.code,
                     value=service.id,
                 )
             )
@@ -228,7 +228,7 @@ async def _filter_chips(
             chips.append(
                 Chip(
                     kind="subject",
-                    label=_localised(row.names, lang) or row.slug,
+                    label=translated(row, lang) or row.slug,
                     value=row.id,
                 )
             )
@@ -242,9 +242,7 @@ async def _filter_chips(
             chips.append(
                 Chip(
                     kind="institution",
-                    label=_localised(row.names, lang, "short_name")
-                    or _localised(row.names, lang)
-                    or row.code,
+                    label=short_form(row, lang) or row.code,
                     value=row.id,
                 )
             )
@@ -258,7 +256,7 @@ async def _filter_chips(
             chips.append(
                 Chip(
                     kind="service_type",
-                    label=_localised(row.names, lang) or row.code,
+                    label=translated(row, lang) or row.code,
                     value=row.id,
                 )
             )

@@ -26,7 +26,7 @@ from konnekt.schemas import (
     ServiceTypeOut,
     SubjectOut,
 )
-from konnekt.services.catalog import _localised
+from konnekt.services.naming import translated
 
 router = APIRouter()
 
@@ -49,8 +49,8 @@ async def service_types(
         ServiceTypeOut(
             id=r.id,
             code=r.code,
-            name=_localised(r.names, lang) or r.code,
-            hint=_localised(r.names, lang, "hint"),
+            name=translated(r, lang) or r.code,
+            hint=translated(r, lang, "hint"),
             requires_subject=r.requires_subject,
             requires_institution=r.requires_institution,
         )
@@ -126,7 +126,7 @@ async def subjects(
         SubjectOut(
             id=r.id,
             slug=r.slug,
-            name=_localised(r.names, lang) or r.slug,
+            name=translated(r, lang) or r.slug,
             parent_id=r.parent_id,
             has_children=child_counts.get(r.id, 0) > 0,
             external_code=r.external_code,
@@ -186,8 +186,8 @@ def institution_out(row: Institution, lang, children=()) -> InstitutionOut:
     return InstitutionOut(
         id=row.id,
         code=row.code,
-        name=_localised(row.names, lang) or row.code,
-        short_name=_localised(row.names, lang, "short_name"),
+        name=translated(row, lang) or row.code,
+        short_name=translated(row, lang, "short_name"),
         city=row.city,
         parent_id=row.parent_id,
         faculties=[institution_out(child, lang) for child in children],
@@ -206,6 +206,4 @@ async def languages(
             .options(selectinload(Language.names))
         )
     ).all()
-    return [
-        LanguageOut(code=r.code, name=_localised(r.names, lang) or r.code) for r in rows
-    ]
+    return [LanguageOut(code=r.code, name=translated(r, lang) or r.code) for r in rows]
