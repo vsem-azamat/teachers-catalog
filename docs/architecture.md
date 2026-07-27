@@ -63,6 +63,13 @@ What it raises instead lives in `services/errors.py` — `NotFound`,
 subclass keeps its family's answer. The bot can catch them and answer in
 words.
 
+**A name is a rule too.** Every reference table keeps its names in a side
+table, one row per language, and `services/naming.py` is the only place that
+reads them: which translation to show, what to fall back to when the asked
+language has none, and how to fetch a page's worth of them in one query. Four
+modules need that, which is what makes it a rule rather than a helper belonging
+to whichever module wrote it first.
+
 **A schema** is a leaf. `konnekt/schemas.py` — the package root, not inside
 `api/` — describes what goes over the wire. A service may return one without
 that pointing the domain layer at the HTTP layer, which is the whole reason it
@@ -203,9 +210,6 @@ finds, and a rule with silent exceptions is worse than no rule.
   `browse.helper_detail` and `search.parse`. Named rather than counted — a
   number here is one nobody remembers to correct, and the last three attempts
   at one were all wrong.
-- **`services/catalog._localised` is imported across the package boundary** by
-  name, from a private symbol, at sixteen call sites, and three more
-  "fetch localised names by id" helpers exist alongside it.
 
 Each of these is a separate change with its own tests. None of them is a
 reason to write new code the old way.
