@@ -109,7 +109,7 @@ export default function ProfilePage() {
             </Chips>
             <div style={{ marginTop: 9 }}>
               <Hint>
-                <Trans>По этому мы отсеиваем тех, с кем вы друг друга не поймёте.</Trans>
+                <Trans>Их видно на твоей странице.</Trans>
               </Hint>
             </div>
 

@@ -179,9 +179,7 @@ export default function AskPage() {
           </Rows>
           <div style={{ marginTop: 14 }}>
             <Hint>
-              <Trans>
-                Дальше вопросов не будет — остальное отфильтруешь прямо в списке.
-              </Trans>
+              <Trans>Дальше вопросов не будет.</Trans>
             </Hint>
           </div>
         </>

@@ -179,6 +179,10 @@ msgstr "Profil se uloží, ale v katalogu nebude."
 msgid "Мои заявки"
 msgstr "Moje poptávky"
 
+#: src/pages/Profile.tsx
+msgid "Их видно на твоей странице."
+msgstr "Jsou vidět na tvé stránce."
+
 #: src/components/Phrase.tsx
 msgid "Не понял запрос. Попробуй назвать предмет — «матан», «čeština B2», «сопромат»."
 msgstr "Nerozuměl jsem dotazu. Zkus napsat předmět — „matana“, „čeština B2“, „sopromat“."
@@ -233,8 +237,8 @@ msgid "Сколько берёшь"
 msgstr "Kolik si bereš"
 
 #: src/pages/Landing.tsx
-msgid "Работы и материалы"
-msgstr "Práce a materiály"
+#~ msgid "Работы и материалы"
+#~ msgstr "Práce a materiály"
 
 #: src/pages/Profile.tsx
 #~ msgid "опубликована"
@@ -328,6 +332,10 @@ msgstr "Osobně"
 #: src/components/TabBar.tsx
 msgid "репетиторство, работы, помощь"
 msgstr "doučování, práce, pomoc"
+
+#: src/pages/Ask.tsx
+msgid "Дальше вопросов не будет."
+msgstr "Víc otázek nebude."
 
 #: src/pages/BecomeHelper.tsx
 msgid "Получилось так"
@@ -438,8 +446,8 @@ msgid "Это первое, что читают. Пара живых предл�
 msgstr "Tohle si přečtou první. Pár živých vět funguje líp než seznam."
 
 #: src/pages/Profile.tsx
-msgid "По этому мы отсеиваем тех, с кем вы друг друга не поймёте."
-msgstr "Podle toho vyřazujeme ty, se kterými byste si nerozuměli."
+#~ msgid "По этому мы отсеиваем тех, с кем вы друг друга не поймёте."
+#~ msgstr "Podle toho vyřazujeme ty, se kterými byste si nerozuměli."
 
 #: src/pages/Results.tsx
 msgid "изменить"
@@ -621,6 +629,10 @@ msgstr "Taková stránka neexistuje"
 msgid "С твоего факультета"
 msgstr "Z tvojí fakulty"
 
+#: src/pages/Landing.tsx
+msgid "Работы"
+msgstr "Práce"
+
 #: src/pages/BecomeHelper.tsx
 msgid "Опубликовать"
 msgstr "Zveřejnit"
@@ -790,8 +802,8 @@ msgid "лет на площадке"
 msgstr "let na platformě"
 
 #: src/pages/Ask.tsx
-msgid "Дальше вопросов не будет — остальное отфильтруешь прямо в списке."
-msgstr "Dál se už ptát nebudeme — zbytek si odfiltruješ přímo v seznamu."
+#~ msgid "Дальше вопросов не будет — остальное отфильтруешь прямо в списке."
+#~ msgstr "Dál se už ptát nebudeme — zbytek si odfiltruješ přímo v seznamu."
 
 #: src/components/Phrase.tsx
 #: src/pages/MyHelper.tsx
