@@ -1,18 +1,18 @@
 """Turning a reference row into the name a person reads.
 
-Every reference table — service types, subjects, institutions, languages —
-keeps its names in a side table with one row per language. Two questions come
-up on nearly every screen: what does this row read as, and what do these twenty
-ids read as. Both live here, with one asymmetry worth knowing before reaching
-for the second: `translated` and `short_form` work on any of the four, because
-all they read is `names`, while `rows_by_id` and `names_by_id` ask for an `id`
-and so cannot serve `Language`, which is keyed by its code.
+Every reference table — service types, subjects, institutions, languages, item
+categories — keeps its names in a side table with one row per language. Two
+questions come up on nearly every screen: what does this row read as, and what
+do these twenty ids read as. Both live here, with one asymmetry worth knowing
+before reaching for the second: `translated` and `short_form` work on any of
+them, because all they read is `names`, while `rows_by_id` and `names_by_id`
+ask for an `id` and so cannot serve `Language`, which is keyed by its code.
 
 They live here because the alternative was `catalog._localised`, a private
 symbol imported by name across the package boundary at sixteen call sites,
 with three more hand-rolled "fetch the names for these ids" helpers alongside
-it. A rule that four modules need is a rule, not a private helper of whichever
-module happened to write it first.
+it. Five modules read names off the taxonomy now, and a rule five modules need
+is a rule, not a private helper of whichever module happened to write it first.
 
 Nothing here takes a `UiLang` on faith: a row with no translation in the asked
 language falls back to any translation it has, because a missing Ukrainian name
@@ -31,8 +31,8 @@ from konnekt.db.models.enums import UiLang
 class Named(Protocol):
     """A reference row with a `names` collection loaded.
 
-    Structural rather than a base class: the four tables share the shape but
-    not an ancestor, and this module only ever reads. `names` is the whole
+    Structural rather than a base class: the reference tables share the shape
+    but not an ancestor, and this module only ever reads. `names` is the whole
     requirement — `Language` is keyed by its code and has no `id` at all, so
     asking for one here would exclude a table that translates exactly like the
     others.
@@ -77,12 +77,13 @@ async def rows_by_id(session: AsyncSession, model: Any, ids: Any) -> dict[int, A
     here — an offer without a subject, a request without an institution — and
     is dropped rather than asked about.
 
-    `Subject`, `Institution` and `ServiceType` only: this asks for `model.id`,
-    and `Language` is keyed by its code. `translated` and `short_form` above do
-    serve all four — they only read `names` — so the split is real and this is
-    the half of the module that does not cover it. `model` is untyped because a
-    declarative class is not a `type[Named]` to a checker; the cost is that
-    handing this the wrong table fails at runtime rather than at the call site.
+    The id-keyed tables only — this asks for `model.id`, and `Language` is
+    keyed by its code. `translated` and `short_form` above serve every
+    reference table, because they only read `names`, so the split is real and
+    this is the half of the module that does not cover all of them. `model` is
+    untyped because a declarative class is not a `type[Named]` to a checker;
+    the cost is that handing this the wrong table fails at runtime rather than
+    at the call site.
     """
     wanted = {value for value in ids if value is not None}
     if not wanted:
@@ -96,7 +97,7 @@ async def rows_by_id(session: AsyncSession, model: Any, ids: Any) -> dict[int, A
 async def names_by_id(
     session: AsyncSession, model: Any, ids: Any, lang: UiLang
 ) -> dict[int, str]:
-    """The same, already rendered to names.
+    """The same, already rendered to names — and the same tables.
 
     Empty string rather than `None` for a row with no translation at all, so a
     caller filling a field that must be a string does not have to say so again.

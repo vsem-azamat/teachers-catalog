@@ -1,14 +1,15 @@
 """The rule that turns a reference row into a name.
 
-Four modules read names off the taxonomy and every one of them used to reach
-into `catalog` for a private helper to do it. Now that the rule has a home it
-gets a test of its own — the fallbacks in it are the difference between a
-Ukrainian speaker seeing the Czech name of their faculty and seeing a blank
-row, and nothing above this level would notice which.
+Five modules read names off the taxonomy, and four of them used to reach across
+the package boundary into `catalog` for a private helper to do it. Now that the
+rule has a home it gets a test of its own — the fallbacks in it are the
+difference between a Ukrainian speaker seeing the Czech name of their faculty
+and seeing a blank row, and nothing above this level would notice which.
 """
 
 from collections.abc import Iterator
 from contextlib import contextmanager
+from typing import Any
 
 import pytest
 from sqlalchemy import event
@@ -22,8 +23,8 @@ pytestmark = pytest.mark.asyncio
 
 
 @contextmanager
-def statements(session: AsyncSession) -> Iterator[list[str]]:
-    """Every statement the session sends while the block runs.
+def statements(session: AsyncSession) -> Iterator[list[tuple[str, Any]]]:
+    """Every statement the session sends while the block runs, with its values.
 
     Two of `rows_by_id`'s promises are about the query it does *not* send —
     that `None` is dropped rather than asked about, and that an empty set of
@@ -31,20 +32,36 @@ def statements(session: AsyncSession) -> Iterator[list[str]]:
     still matches the real ids, and a predicate that is always false still
     answers `{}`. A test that only reads the result passes with either
     promise deleted, which is what happened to the first two written here.
+
+    The values come along because the alternative was counting `$` in the SQL,
+    which asks the test to know the driver's paramstyle — true of asyncpg,
+    false of psycopg, and a failure that would say nothing about the rule.
     """
-    sent: list[str] = []
+    sent: list[tuple[str, Any]] = []
     # The session is bound to a connection, not to the engine — see the
     # `session` fixture, which nests every test in a transaction it rolls back.
+    # Listening on the engine still catches it: a connection joins the engine's
+    # dispatch when it is created, and every execute re-reads the engine's flag.
     engine = session.get_bind().engine
 
     def record(conn, cursor, statement, parameters, context, executemany) -> None:
-        sent.append(statement)
+        sent.append((statement, parameters))
 
     event.listen(engine, "before_cursor_execute", record)
     try:
         yield sent
     finally:
         event.remove(engine, "before_cursor_execute", record)
+
+
+def values_of(sent: list[tuple[str, Any]], table: str) -> list[Any]:
+    """The parameters of every statement that touched a table.
+
+    By what the statement says rather than by its position in the list: a
+    savepoint or an autoflush ahead of the one under test would otherwise shift
+    the index, and the failure would name the wrong thing.
+    """
+    return [parameters for statement, parameters in sent if f"FROM {table}" in statement]
 
 
 def subject_named(**by_lang: str) -> Subject:
@@ -123,11 +140,10 @@ async def test_rows_by_id_never_asks_about_none(session: AsyncSession) -> None:
         found = await rows_by_id(session, Subject, [subject.id, None, None])
 
     assert list(found) == [subject.id]
-    # One bind parameter in the lookup, not three. `$` appears in a statement
-    # only where a parameter does. The number of statements is deliberately
-    # not asserted — the names come back in a second one because the
-    # relationship loads `selectin`, and that is not this function's promise.
-    assert sent[0].count("$") == 1
+    # One value asked about, not three. Only the lookup is examined — the names
+    # arrive in a second statement because the relationship loads `selectin`,
+    # and how many queries that costs is not this function's promise.
+    assert values_of(sent, "subjects") == [(subject.id,)]
 
 
 async def test_rows_by_id_asks_nothing_when_there_is_nothing_to_ask(
