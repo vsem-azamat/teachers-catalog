@@ -58,8 +58,10 @@ raise `HTTPException`: an HTTP status is a fact about a protocol, and a
 service that knows about protocols cannot be called by the bot.
 
 What it raises instead lives in `services/errors.py` — `NotFound`,
-`Forbidden`, `Conflict`, `Invalid` — and one handler in `main.py` turns each
-into its status code. The bot can catch the same four and answer in words.
+`Forbidden`, `Conflict`, `Invalid`, `BadRequest` — and one handler in
+`main.py` turns each into its status code, walking the class hierarchy so a
+subclass keeps its family's answer. The bot can catch them and answer in
+words.
 
 **A schema** is a leaf. `api/schemas.py` describes what goes over the wire.
 Screens are assembled server-side — the client renders what it is given rather
@@ -136,12 +138,11 @@ hides the bugs this rule exists to prevent.
 Written down because an agent greps this tree and builds against what it
 finds, and a rule with silent exceptions is worse than no rule.
 
-- **Most writes still happen in route bodies**, without a service: the whole
-  request lifecycle (`create`, `respond`, `accept`, `decline`, `close`, and
-  marking answers read), `browse.start_contact`, `me.update_me`, and the event
-  logging behind `home`, `helper_detail` and `search.parse`. Named rather than
-  counted — a number here is one nobody remembers to decrement, and this one
-  had already drifted twice.
+- **Some endpoints still write in the route body**: `browse.start_contact`,
+  `me.update_me`, and the event logging behind `browse.home`,
+  `browse.helper_detail` and `search.parse`. Named rather than counted — a
+  number here is one nobody remembers to correct, and the last three attempts
+  at one were all wrong.
 - **`services/` imports `api/schemas`,** which points the domain layer at the
   HTTP layer. Moving `schemas.py` to the package root fixes it.
 - **`services/catalog._localised` is imported across the package boundary** by
