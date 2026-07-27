@@ -32,6 +32,11 @@
 html {
   /* Telegram clients may hand the page a text-size override. */
   -webkit-text-size-adjust: 100%;
+
+  /* Locked to one screenful, with `body` below it, so the document has nothing
+     to scroll. The app is a screen and #root is that screen; see the note on
+     #root for what scrolls instead. */
+  height: 100%;
 }
 
 body {
@@ -49,23 +54,33 @@ body {
   color: var(--ink);
   background-color: var(--bg);
 
-  /* Vertical overscroll would drag the whole Mini App down and close it. */
-  overscroll-behavior-y: none;
+  height: 100%;
+  /* With `html` at `visible`, this is what the viewport takes its overflow
+     from: the document scrolls nowhere, and #root does all of it. */
+  overflow: hidden;
 }
 
 /*
- * One screenful, and the device notch — but not the home indicator.
+ * The app itself: exactly one screenful, and the only thing that scrolls.
  *
- * stable-height, not height: the plain one follows the drag gesture and makes
- * anything pinned to the bottom jitter. Falls back to 100dvh until the SDK has
- * mounted the viewport — dvh and not vh, because in a plain mobile browser vh
- * counts the space behind the toolbar, and a page built to fill one screen
- * would then be exactly one toolbar too tall to fit.
+ * `height`, not `min-height`. A box that can grow past the viewport hands its
+ * overflow to the document, and the document's scroll is the one nobody asked
+ * for: a screen with a trailing spacer or a notch's worth of padding offered a
+ * few pixels of travel with nothing at the end of them. Bounded here, a screen
+ * that fits cannot scroll at all, and a screen that does not fit scrolls
+ * inside the app box where a list is supposed to.
  *
- * The height lives here rather than on `body` because `box-sizing: border-box`
- * then counts the insets *inside* the screenful instead of adding them to it.
- * With it on `body`, a page whose content came within a notch of a full screen
- * scrolled by exactly the height of the notch, with nothing down there to see.
+ * 100dvh and not `--tg-viewport-stable-height`: the webview is sized by
+ * Telegram to what is visible, so its own dynamic viewport is the same number
+ * without the round trip, without the mount to wait for, and without the frame
+ * where the signal reads zero. dvh and not vh, because in a plain mobile
+ * browser vh counts the space behind the toolbar, and a page built to fill one
+ * screen would then be exactly one toolbar too tall to fit.
+ *
+ * The insets live here rather than on `body` because `box-sizing: border-box`
+ * then counts them *inside* the screenful instead of adding them to it. With
+ * them on `body`, a page whose content came within a notch of a full screen
+ * scrolled by exactly the height of the notch.
  *
  * The bottom inset is deliberately absent: whatever sits at the bottom of a
  * screen owns it. For a screen with tabs that is the fixed tab bar, which has
@@ -73,13 +88,17 @@ body {
  * them it is `.screen`. Setting it here as well is what counted it twice.
  *
  * A flex column, because `min-height: 100%` on a child of an auto-height parent
- * resolves to `auto` and does nothing — which is why screens used to sit in the
+ * resolves to `auto` and does nothing — which is why screens once sat in the
  * top half of the viewport no matter what they declared.
  */
 #root {
   display: flex;
   flex-direction: column;
-  min-height: var(--tg-viewport-stable-height, 100dvh);
+  height: 100dvh;
+  overflow-y: auto;
+  /* A list that reaches its end should stop there, not hand the gesture on to
+     Telegram, which reads it as "drag the app down". */
+  overscroll-behavior-y: contain;
   padding-top: var(--tg-viewport-safe-area-inset-top, 0px);
   padding-left: var(--tg-viewport-safe-area-inset-left, 0px);
   padding-right: var(--tg-viewport-safe-area-inset-right, 0px);

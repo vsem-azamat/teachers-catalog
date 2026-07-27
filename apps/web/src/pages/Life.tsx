@@ -73,7 +73,6 @@ export default function LifePage() {
           </Trans>
         </Hint>
       </div>
-      <div style={{ height: 24 }} />
     </Screen>
   );
 }

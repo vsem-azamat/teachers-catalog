@@ -7,6 +7,7 @@ import {
   isTMA,
   mainButton,
   miniApp,
+  swipeBehavior,
   themeParams,
   viewport,
 } from '@tma.js/sdk-react';
@@ -113,6 +114,15 @@ function initSdk(): void {
       .catch((error: unknown) => {
         console.error('[tma] viewport failed to mount', error);
       });
+  }
+
+  // Telegram reads a downward drag as "dismiss this app". On a screen with
+  // nothing to scroll that drag and a scroll are the same movement, so the app
+  // appeared to scroll where there was nothing to see. Off, then — Telegram's
+  // own close button is still there, and it is the unambiguous one.
+  // `ifAvailable` because this is Mini Apps 7.7; older clients keep the swipe.
+  if (swipeBehavior.mount.ifAvailable().ok) {
+    swipeBehavior.disableVertical.ifAvailable();
   }
 
   // Mounted here, driven from components via the hooks in @/hooks/useTelegram.
