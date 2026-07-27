@@ -493,6 +493,10 @@ msgstr "Не вистачає"
 msgid "черновик — не видна в каталоге"
 msgstr "чернетка — не видно в каталозі"
 
+#: src/pages/NotFound.tsx
+msgid "Ссылка устарела или в ней опечатка."
+msgstr "Посилання застаріле або в ньому одрук."
+
 #: src/pages/Results.tsx
 msgid "Дешевле"
 msgstr "Дешевше"
@@ -608,6 +612,10 @@ msgstr "{0, plural, one {Готував до цього ж іспиту # люд
 #: src/pages/MyHelper.tsx
 msgid "ČVUT FEL, 3 курс"
 msgstr "ČVUT FEL, 3 курс"
+
+#: src/pages/NotFound.tsx
+msgid "Такой страницы нет"
+msgstr "Такої сторінки немає"
 
 #: src/components/Phrase.tsx
 msgid "С твоего факультета"

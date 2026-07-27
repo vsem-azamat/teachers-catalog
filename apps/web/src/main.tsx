@@ -7,6 +7,7 @@ import {
   isTMA,
   mainButton,
   miniApp,
+  swipeBehavior,
   themeParams,
   viewport,
 } from '@tma.js/sdk-react';
@@ -101,6 +102,20 @@ function initSdk(): void {
   themeParams.mount.ifAvailable();
   themeParams.bindCssVars.ifAvailable();
 
+  // A Mini App opens as a part-height sheet on a phone, and the gesture that
+  // grows it is the one disabled below. Ask for the whole screen rather than
+  // leaving someone in a half sheet with no way out of it. Before the mount
+  // and outside its promise, deliberately: `web_app_expand` needs neither, and
+  // a client that never answers the viewport request must not be able to take
+  // the swipe away without giving the height back.
+  viewport.expand.ifAvailable();
+
+  // Also outside the promise. Subscribing to a signal does not require the
+  // mount to have settled, and the subscriber fires when the client answers —
+  // so a request that never comes back costs a fallback height rather than a
+  // page with no height at all.
+  bindAppHeight();
+
   // Async: the viewport has to ask the client for its dimensions. Nothing
   // downstream waits on it, so the promise is deliberately not awaited — the
   // signals simply start out at zero and fill in.
@@ -113,6 +128,15 @@ function initSdk(): void {
       .catch((error: unknown) => {
         console.error('[tma] viewport failed to mount', error);
       });
+  }
+
+  // Telegram reads a downward drag as "dismiss this app". On a screen with
+  // nothing to scroll that drag and a scroll are the same movement, so the app
+  // appeared to scroll where there was nothing to see. Off, then — Telegram's
+  // own close button is still there, and it is the unambiguous one.
+  // `ifAvailable` because this is Mini Apps 7.7; older clients keep the swipe.
+  if (swipeBehavior.mount.ifAvailable().ok) {
+    swipeBehavior.disableVertical.ifAvailable();
   }
 
   // Mounted here, driven from components via the hooks in @/hooks/useTelegram.
@@ -128,6 +152,40 @@ function initSdk(): void {
   subscribeTheme(paintChrome);
 
   initData.restore();
+}
+
+/**
+ * Publish the height the app is allowed to occupy, as `--app-height`.
+ *
+ * Telegram's number rather than the webview's. On iOS and Android the SDK does
+ * not trust `window.innerHeight` either — it asks the client and waits for
+ * `viewport_changed` — so `100dvh`, which is that same untrusted number, can
+ * be taller than what the person can actually see. An app sized to the webview
+ * then puts its last rows below the visible edge with nothing able to scroll
+ * to them, and `index.css` has deliberately left the document unable to.
+ *
+ * `stableHeight` and not `height`: the plain one follows the drag gesture and
+ * would make everything pinned to the bottom jitter.
+ *
+ * Subscribed rather than read once, and subscribed without waiting for the
+ * mount: the signal exists before it, and this way a client that never answers
+ * `web_app_request_viewport` leaves the page on its `100dvh` fallback instead
+ * of on nothing at all.
+ *
+ * Zero is not an answer, and skipping it is the whole reason this is not left
+ * to `bindCssVars`. The signal reads 0 until the client has reported a stable
+ * state, and a variable set to `0px` is *defined* — `var(--app-height, 100dvh)`
+ * would resolve to zero rather than fall back, and the app would be one frame
+ * of nothing.
+ */
+function bindAppHeight(): void {
+  const publish = (height: number): void => {
+    if (height > 0) {
+      document.documentElement.style.setProperty('--app-height', `${height}px`);
+    }
+  };
+  publish(viewport.stableHeight());
+  viewport.stableHeight.sub(publish);
 }
 
 /** Load the one catalog we need before the first paint, to avoid a flash. */

@@ -214,8 +214,6 @@ export default function BecomeHelperPage() {
           </Hint>
         </div>
       )}
-
-      <div style={{ height: 24 }} />
     </Screen>
   );
 }

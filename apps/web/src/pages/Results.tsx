@@ -142,7 +142,6 @@ export default function ResultsPage() {
             </Cards>
           </>
         )}
-        <div style={{ height: 20 }} />
       </Screen>
       <TabBar />
     </>

@@ -493,6 +493,10 @@ msgstr "Chybí"
 msgid "черновик — не видна в каталоге"
 msgstr "koncept — v katalogu není vidět"
 
+#: src/pages/NotFound.tsx
+msgid "Ссылка устарела или в ней опечатка."
+msgstr "Odkaz je starý nebo je v něm překlep."
+
 #: src/pages/Results.tsx
 msgid "Дешевле"
 msgstr "Levnější"
@@ -608,6 +612,10 @@ msgstr "{0, plural, one {Připravil na tuhle zkoušku # člověka} few {Připrav
 #: src/pages/MyHelper.tsx
 msgid "ČVUT FEL, 3 курс"
 msgstr "ČVUT FEL, 3. ročník"
+
+#: src/pages/NotFound.tsx
+msgid "Такой страницы нет"
+msgstr "Taková stránka neexistuje"
 
 #: src/components/Phrase.tsx
 msgid "С твоего факультета"

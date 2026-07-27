@@ -296,7 +296,6 @@ export default function MyHelperPage() {
           ) : null}
         </>
       )}
-      <div style={{ height: 32 }} />
     </Screen>
   );
 }

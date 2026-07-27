@@ -136,6 +136,63 @@ Tests share one session per test, rolled back at the end, and the override in
 does. A test fixture that is more forgiving than production is a fixture that
 hides the bugs this rule exists to prevent.
 
+## The web shell scrolls in exactly one place
+
+The Mini App is a screen, not a document. `#root` is the app: it is exactly one
+screenful tall and it is the only element that scrolls. `body` carries
+`overflow: hidden`, which the viewport takes its own overflow from, so the
+document has nothing to scroll and cannot invent travel of its own.
+
+**One screenful is Telegram's number, not the webview's.** `--app-height`,
+published by `bindAppHeight` in `main.tsx` from the viewport's stable height,
+with `100dvh` only as the fallback. On iOS and Android the SDK does not trust
+`window.innerHeight` either — it asks the client and waits for
+`viewport_changed` — and `100dvh` is that same untrusted number. Where they
+disagree, an app sized to the webview puts its last rows below the visible edge
+with nothing able to scroll to them. Zero is not an answer and is skipped: the
+signal reads `0` until the client replies, and a CSS variable set to `0px` is
+defined, so the fallback would not fire.
+
+Three rules follow, and they are what to check before changing layout:
+
+- **A scroll must end on content.** Not "a screen that fits must not scroll" —
+  for any layout there is a band of viewport heights where the content is a
+  few pixels too tall, so that rule only moves the failing size around. What
+  makes it a bug is emptiness at the end of the travel. The screen's own
+  `padding-bottom` is the only breathing room at the foot of a page; a spacer
+  under the last element is a stretch of nothing that someone has to scroll
+  through to reach.
+- **Anything pinned to an edge is `position: fixed`** — the tab bar, the sheet,
+  the scrim. They are descendants of `#root` but are laid out against the
+  viewport: a scroll container is not a containing block for fixed elements.
+  That is what lets the tab bar stay put while the screen behind it moves.
+- **Telegram's vertical swipe is off** (`swipeBehavior`, Mini Apps 7.7). The
+  gesture drags the whole app towards dismissal, and on a screen with nothing
+  to scroll a drag and a scroll are the same movement, so the app appears to
+  scroll where there is nothing to see. Because that same gesture is how a
+  part-height Mini App is grown, the app asks for the whole screen with
+  `viewport.expand()` at startup rather than leaving someone in a half sheet
+  with no way out of it. It is dismissed with Telegram's close button.
+
+`pnpm check:scroll` in `apps/web` is the first rule, executable. At three phone
+sizes it measures the gap between the lowest thing that paints and the bottom
+of the screen's content box — the screen's own `padding-bottom` is subtracted,
+which is also what keeps the number right on a phone with a home indicator. A
+container does not count as painting on behalf of its children, so a spacer
+nested inside a card list is as visible to it as one at the foot of the page.
+
+It needs the dev server, the API and signed init data, and it stops rather than
+measuring a home screen that came back without its categories, because that
+means the API is rejecting the init data and every screen behind it is an error
+state. A page it cannot recognise as a screen at all is a hard stop too, and a
+screen it could not reach is named in the summary: a check that reports an
+unmeasured screen as a clean one has stopped being a check.
+
+What it takes on trust is the screen's own `padding-bottom` — that is the
+number it subtracts, so a screen that reserves room for a tab bar it does not
+render will pass with a blank strip at its foot. Nothing runs it automatically;
+it wants a browser and a database, which CI here does not give it.
+
 ## Where the code does not follow this yet
 
 Written down because an agent greps this tree and builds against what it
