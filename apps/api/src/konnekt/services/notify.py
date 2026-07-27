@@ -24,6 +24,7 @@ from aiogram.types import (
 )
 
 from konnekt.bot.texts import OPEN_APP, pick
+from konnekt.db.models import User
 from konnekt.db.models.enums import UiLang
 from konnekt.db.session import get_sessionmaker
 from konnekt.services.people import mark_unreachable
@@ -53,6 +54,48 @@ def _keyboard(lang: UiLang, app_url: str | None) -> InlineKeyboardMarkup | None:
             ]
         ]
     )
+
+
+class Notifier:
+    """Whether a person can be written to, and the writing.
+
+    A dependency rather than something a handler assembles for itself. What a
+    route needs in order to notify — a bot, and the address the app lives at —
+    is decided once when the process starts, and a route that reaches into
+    `app.state` for it is a route that has to decide what to do when it is not
+    there. There is one answer to that and it belongs here.
+
+    A notifier with no bot is a working notifier that delivers nothing. That is
+    how the API runs locally and under test, and it must not be a branch every
+    caller remembers separately.
+    """
+
+    def __init__(self, bot: Bot | None, app_url: str | None = None) -> None:
+        self._bot = bot
+        self._app_url = app_url
+
+    async def tell(self, recipient: User, text: str) -> bool:
+        """Send, if this person can be sent to. Returns whether it arrived.
+
+        `bot_started_at`, not only `bot_can_message`: the latter defaults to
+        true for every row including someone who reached the app through a
+        direct link and never messaged the bot. Telegram answers that send with
+        a 403, which `tell` reads as "blocked" — so the notification is lost
+        *and* the person is recorded as having blocked a bot they never met.
+
+        `unsubscribed_at` is deliberately not consulted. /stop opts out of us
+        writing unprompted; every message that comes through here is the answer
+        to something the recipient set in motion.
+        """
+        if recipient.bot_started_at is None or not recipient.bot_can_message:
+            return False
+        return await tell(
+            self._bot,
+            tg_id=recipient.tg_id,
+            text=text,
+            lang=recipient.ui_lang,
+            app_url=self._app_url,
+        )
 
 
 async def tell(

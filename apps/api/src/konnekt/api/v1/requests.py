@@ -4,10 +4,10 @@ The largest domain here, because a request has a life — posted, seen, answered
 accepted, closed — and every step of it notifies somebody.
 """
 
-from fastapi import APIRouter, BackgroundTasks, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Query, status
 from sqlalchemy import func, select
 
-from konnekt.api.deps import LangDep, SessionDep, UserDep
+from konnekt.api.deps import LangDep, NotifierDep, SessionDep, UserDep
 from konnekt.bot.texts import (
     FOR_PRICE,
     NEW_RESPONSE,
@@ -37,7 +37,6 @@ from konnekt.schemas import (
     ResponseCreate,
     ResponseOut,
 )
-from konnekt.services import notify
 from konnekt.services import requests as requests_service
 from konnekt.services.catalog import avatar_for
 from konnekt.services.naming import rows_by_id, short_form, translated
@@ -150,7 +149,7 @@ async def respond_to_request(
     request_id: int,
     payload: ResponseCreate,
     background: BackgroundTasks,
-    http: Request,
+    notifier: NotifierDep,
     session: SessionDep,
     lang: LangDep,
     user: UserDep,
@@ -168,11 +167,13 @@ async def respond_to_request(
     [rendered] = await _responses_out(session, [answered.response], lang)
     author = answered.author
     if author is not None:
-        _queue_notification(
-            background,
-            http,
-            recipient=author,
-            text=pick(NEW_RESPONSE, author.ui_lang).format(
+        # After the response goes out, not before: Telegram is a network call
+        # to a third party in the middle of a request somebody is waiting on,
+        # and the action is already committed.
+        background.add_task(
+            notifier.tell,
+            author,
+            pick(NEW_RESPONSE, author.ui_lang).format(
                 topic=quote(_topic_of(rendered_request=answered.request), 120),
                 helper=quote(rendered.name, 64),
                 price=(
@@ -217,7 +218,7 @@ async def request_responses(
 async def accept_response(
     response_id: int,
     background: BackgroundTasks,
-    http: Request,
+    notifier: NotifierDep,
     session: SessionDep,
     lang: LangDep,
     user: UserDep,
@@ -227,11 +228,10 @@ async def accept_response(
 
     helper_user = accepted.helper
     if accepted.notify and helper_user is not None:
-        _queue_notification(
-            background,
-            http,
-            recipient=helper_user,
-            text=pick(RESPONSE_ACCEPTED, helper_user.ui_lang).format(
+        background.add_task(
+            notifier.tell,
+            helper_user,
+            pick(RESPONSE_ACCEPTED, helper_user.ui_lang).format(
                 topic=quote(_topic_of(rendered_request=accepted.request), 120),
                 student=quote(user.first_name, 64),
                 contact=(
@@ -276,42 +276,6 @@ def _price_line(price: Price | None) -> str:
         return ""
     amount = int(price.amount) if float(price.amount).is_integer() else price.amount
     return f"{amount} {price.currency}"
-
-
-def _queue_notification(
-    background: BackgroundTasks, http: Request, *, recipient: User, text: str
-) -> None:
-    """Send after the response goes out, not before.
-
-    Telegram is a network call to a third party in the middle of a request the
-    user is waiting on. The action is already committed; the message can take
-    its time.
-    """
-    # `bot_started_at`, not only `bot_can_message`: the latter defaults to true
-    # for every row including someone who reached the app through a direct link
-    # and never messaged the bot. Telegram answers that send with a 403, which
-    # `tell` reads as "blocked" — so the notification is lost *and* the person
-    # is recorded as having blocked a bot they never met.
-    #
-    # `unsubscribed_at` is deliberately not consulted. /stop opts out of us
-    # writing unprompted; this is the answer to something they set in motion.
-    if recipient.bot_started_at is None or not recipient.bot_can_message:
-        return
-    # getattr, because app.state is populated by the lifespan hook and nothing
-    # here should turn "the app was mounted without one" into a 500 on an
-    # action that has already succeeded.
-    bot = getattr(http.app.state, "bot", None)
-    if bot is None:
-        return
-    settings = getattr(http.app.state, "settings", None)
-    background.add_task(
-        notify.tell,
-        bot,
-        tg_id=recipient.tg_id,
-        text=text,
-        lang=recipient.ui_lang,
-        app_url=(settings.public_base_url or None) if settings else None,
-    )
 
 
 async def _responses_out(

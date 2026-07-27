@@ -5,8 +5,10 @@ once someone can reply — who may see incoming requests, who may answer them,
 and what the author sees afterwards.
 """
 
+from datetime import UTC, datetime
+
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,7 +21,7 @@ from konnekt.db.models import (
 )
 from konnekt.db.models.enums import PublishStatus, RequestStatus
 
-from .conftest import auth_header
+from .conftest import app_for, auth_header
 
 STUDENT = 90501
 HELPER = 90502
@@ -483,7 +485,9 @@ async def test_a_failure_after_the_write_leaves_nothing_behind(
     def explode(*args, **kwargs):
         raise RuntimeError("rendering the notification blew up")
 
-    monkeypatch.setattr(requests_api, "_queue_notification", explode)
+    # Rendering the answer, which happens after the row is written and before
+    # the notification is composed from it — the window the rule is about.
+    monkeypatch.setattr(requests_api, "_responses_out", explode)
 
     with pytest.raises(RuntimeError):
         await client.post(
@@ -498,3 +502,81 @@ async def test_a_failure_after_the_write_leaves_nothing_behind(
         .where(RequestResponse.request_id == created["id"])
     )
     assert answered == 0
+
+
+# ── the notification ────────────────────────────────────────────────────
+
+
+class RecordingBot:
+    """A bot that keeps what it was asked to send.
+
+    Enough of aiogram's `Bot` for `notify.tell`, which calls exactly one
+    method on it. The point of the test below is the wiring between the route
+    and the person, so what matters is that a message arrived and who it was
+    addressed to.
+    """
+
+    def __init__(self) -> None:
+        self.sent: list[dict] = []
+
+    async def send_message(self, **kwargs) -> None:
+        self.sent.append(kwargs)
+
+
+async def test_the_author_hears_about_an_answer(
+    session: AsyncSession, helper_factory
+) -> None:
+    """End to end through the dependency, not through a helper function.
+
+    The route asks for a notifier and the notifier reaches for the bot the
+    process was started with. Nothing between the two is mocked here, so this
+    is the test that fails if the wiring is wrong — the unit tests around
+    `Notifier` would all still pass with the route never calling it.
+    """
+    bot = RecordingBot()
+    transport = ASGITransport(app=app_for(session, bot=bot))
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        await helper_factory(tg_id=HELPER)
+        created = await post_request(client, "матан")
+
+        # Somebody who reached the app through a link has never messaged the
+        # bot, and Telegram would answer 403. Say they have.
+        author = await session.scalar(select(User).where(User.tg_id == STUDENT))
+        assert author is not None
+        author.bot_started_at = datetime.now(UTC)
+        await session.flush()
+
+        response = await client.post(
+            f"/api/v1/requests/{created['id']}/respond",
+            json={"message": "могу помочь с этим"},
+            headers=helper_header(),
+        )
+
+    assert response.status_code == 201, response.text
+    assert [message["chat_id"] for message in bot.sent] == [STUDENT]
+    assert "могу помочь с этим" in bot.sent[0]["text"]
+
+
+async def test_nobody_hears_about_it_who_never_started_the_bot(
+    session: AsyncSession, helper_factory
+) -> None:
+    """The control, at the same level.
+
+    Without it the test above passes for any wiring that sends to everybody,
+    and the reachability rule is exactly the one that keeps somebody from
+    being recorded as having blocked a bot they never met.
+    """
+    bot = RecordingBot()
+    transport = ASGITransport(app=app_for(session, bot=bot))
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        await helper_factory(tg_id=HELPER)
+        created = await post_request(client, "матан")
+
+        response = await client.post(
+            f"/api/v1/requests/{created['id']}/respond",
+            json={"message": "могу помочь с этим"},
+            headers=helper_header(),
+        )
+
+    assert response.status_code == 201, response.text
+    assert bot.sent == []
