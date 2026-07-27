@@ -244,8 +244,6 @@ export default function HelperPage() {
           </Hint>
         </div>
       ) : null}
-
-      <div style={{ height: 24 }} />
     </Screen>
   );
 }

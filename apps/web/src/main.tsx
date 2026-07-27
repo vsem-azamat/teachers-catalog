@@ -110,6 +110,11 @@ function initSdk(): void {
     void Promise.resolve(mounted.data)
       .then(() => {
         viewport.bindCssVars.ifAvailable();
+        // A Mini App opens as a part-height sheet on a phone, and the gesture
+        // that grows it is the one disabled below. Ask for the whole screen
+        // rather than leaving someone in a half sheet with no way out of it.
+        viewport.expand.ifAvailable();
+        bindAppHeight();
       })
       .catch((error: unknown) => {
         console.error('[tma] viewport failed to mount', error);
@@ -138,6 +143,35 @@ function initSdk(): void {
   subscribeTheme(paintChrome);
 
   initData.restore();
+}
+
+/**
+ * Publish the height the app is allowed to occupy, as `--app-height`.
+ *
+ * Telegram's number rather than the webview's. On iOS and Android the SDK does
+ * not trust `window.innerHeight` either — it asks the client and waits for
+ * `viewport_changed` — so `100dvh`, which is that same untrusted number, can
+ * be taller than what the person can actually see. An app sized to the webview
+ * then puts its last rows below the visible edge with nothing able to scroll
+ * to them, and `index.css` has deliberately left the document unable to.
+ *
+ * `stableHeight` and not `height`: the plain one follows the drag gesture and
+ * would make everything pinned to the bottom jitter.
+ *
+ * Zero is not an answer, and skipping it is the whole reason this is not left
+ * to `bindCssVars`. The signal reads 0 until the client has reported a stable
+ * state, and a variable set to `0px` is *defined* — `var(--app-height, 100dvh)`
+ * would resolve to zero rather than fall back, and the app would be one frame
+ * of nothing.
+ */
+function bindAppHeight(): void {
+  const publish = (height: number): void => {
+    if (height > 0) {
+      document.documentElement.style.setProperty('--app-height', `${height}px`);
+    }
+  };
+  publish(viewport.stableHeight());
+  viewport.stableHeight.sub(publish);
 }
 
 /** Load the one catalog we need before the first paint, to avoid a flash. */

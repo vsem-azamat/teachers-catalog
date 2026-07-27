@@ -15,14 +15,20 @@
      rather than a design. */
   padding-top: calc(var(--top-clearance) + 8px);
   /* Nothing above #root pads the bottom any more, so a screen without a tab
-     bar clears the home indicator itself. */
-  padding-bottom: calc(12px + var(--tg-viewport-safe-area-inset-bottom, 0px));
+     bar clears the home indicator itself.
+
+     This is also the *only* breathing room at the foot of a screen. Six pages
+     each ended in a spacer div of its own — 20px here, 32px there — and every
+     one of them was a stretch of nothing at the end of a scroll, which is the
+     bug `scripts/check-scroll.mjs` exists to catch. One number, in one place,
+     is both easier to look at and the thing that check can hold us to. */
+  padding-bottom: calc(16px + var(--tg-viewport-safe-area-inset-bottom, 0px));
 }
 
 /* Room for the tab bar, which is fixed. Without it the last row hides behind.
    --h-tab already includes the home indicator, so this does not add it again. */
 .screen.withTabs {
-  padding-bottom: calc(var(--h-tab) + 8px);
+  padding-bottom: calc(var(--h-tab) + 16px);
 }
 
 /* ── header ─────────────────────────────────────────────────────────── */

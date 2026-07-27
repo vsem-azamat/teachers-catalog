@@ -106,7 +106,6 @@ export default function RequestPage() {
           ))}
         </Cards>
       )}
-      <div style={{ height: 20 }} />
     </Screen>
   );
 }

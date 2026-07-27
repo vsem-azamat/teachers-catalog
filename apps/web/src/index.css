@@ -33,10 +33,12 @@ html {
   /* Telegram clients may hand the page a text-size override. */
   -webkit-text-size-adjust: 100%;
 
-  /* Locked to one screenful, with `body` below it, so the document has nothing
-     to scroll. The app is a screen and #root is that screen; see the note on
-     #root for what scrolls instead. */
-  height: 100%;
+  /* Overscroll on the root element is the viewport's overscroll, and the
+     viewport is what Telegram drags when the gesture reaches it. Declared here
+     as well as on `body` because whether the body's value propagates is a
+     question with different answers per engine, and the answer we need is
+     "the app does not move". */
+  overscroll-behavior-y: none;
 }
 
 body {
@@ -54,10 +56,14 @@ body {
   color: var(--ink);
   background-color: var(--bg);
 
-  height: 100%;
-  /* With `html` at `visible`, this is what the viewport takes its overflow
-     from: the document scrolls nowhere, and #root does all of it. */
+  /* With `html` at `visible`, this is where the viewport takes its overflow
+     from: the document scrolls nowhere, and #root does all of it. No height
+     to go with it — #root already has a definite one, and a second definition
+     of "one screenful" here is a second thing to keep in agreement. */
   overflow: hidden;
+
+  /* Vertical overscroll would drag the whole Mini App down and close it. */
+  overscroll-behavior-y: none;
 }
 
 /*
@@ -70,10 +76,16 @@ body {
  * that fits cannot scroll at all, and a screen that does not fit scrolls
  * inside the app box where a list is supposed to.
  *
- * 100dvh and not `--tg-viewport-stable-height`: the webview is sized by
- * Telegram to what is visible, so its own dynamic viewport is the same number
- * without the round trip, without the mount to wait for, and without the frame
- * where the signal reads zero. dvh and not vh, because in a plain mobile
+ * `--app-height` is Telegram's own number for what is visible, published by
+ * `bindAppHeight` in main.tsx. It has to be Telegram's: on iOS and Android the
+ * SDK will not trust `window.innerHeight` either — it asks the client and waits
+ * for `viewport_changed` — and 100dvh is precisely that untrusted number. Where
+ * the two disagree, a box sized to the webview puts content below the visible
+ * area with nothing left able to scroll to it, which is a worse bug than the
+ * one this file is fixing.
+ *
+ * 100dvh is the fallback, for the moment before the client answers and for
+ * every browser that is not Telegram. dvh and not vh, because in a plain mobile
  * browser vh counts the space behind the toolbar, and a page built to fill one
  * screen would then be exactly one toolbar too tall to fit.
  *
@@ -94,10 +106,11 @@ body {
 #root {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  height: var(--app-height, 100dvh);
   overflow-y: auto;
   /* A list that reaches its end should stop there, not hand the gesture on to
-     Telegram, which reads it as "drag the app down". */
+     the viewport. `none` there is what actually stops Telegram; this only
+     keeps a long list from asking it to. */
   overscroll-behavior-y: contain;
   padding-top: var(--tg-viewport-safe-area-inset-top, 0px);
   padding-left: var(--tg-viewport-safe-area-inset-left, 0px);
