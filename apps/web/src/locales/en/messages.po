@@ -179,6 +179,10 @@ msgstr "Your profile is saved, but it will not be in the catalog."
 msgid "Мои заявки"
 msgstr "My requests"
 
+#: src/pages/Profile.tsx
+msgid "Их видно на твоей странице."
+msgstr "They show on your page."
+
 #: src/components/Phrase.tsx
 msgid "Не понял запрос. Попробуй назвать предмет — «матан», «čeština B2», «сопромат»."
 msgstr "Didn't get that. Try naming a subject — \"calculus\", \"čeština B2\", \"structural mechanics\"."
@@ -233,8 +237,8 @@ msgid "Сколько берёшь"
 msgstr "What you charge"
 
 #: src/pages/Landing.tsx
-msgid "Работы и материалы"
-msgstr "Papers and materials"
+#~ msgid "Работы и материалы"
+#~ msgstr "Papers and materials"
 
 #: src/pages/Profile.tsx
 #~ msgid "опубликована"
@@ -328,6 +332,10 @@ msgstr "In person"
 #: src/components/TabBar.tsx
 msgid "репетиторство, работы, помощь"
 msgstr "tutoring, written work, exam help"
+
+#: src/pages/Ask.tsx
+msgid "Дальше вопросов не будет."
+msgstr "No more questions after this."
 
 #: src/pages/BecomeHelper.tsx
 msgid "Получилось так"
@@ -438,8 +446,8 @@ msgid "Это первое, что читают. Пара живых предл�
 msgstr "This is the first thing people read. A couple of real sentences beat a list."
 
 #: src/pages/Profile.tsx
-msgid "По этому мы отсеиваем тех, с кем вы друг друга не поймёте."
-msgstr "That's how we filter out people you wouldn't understand each other with."
+#~ msgid "По этому мы отсеиваем тех, с кем вы друг друга не поймёте."
+#~ msgstr "That's how we filter out people you wouldn't understand each other with."
 
 #: src/pages/Results.tsx
 msgid "изменить"
@@ -621,6 +629,10 @@ msgstr "There is no such page"
 msgid "С твоего факультета"
 msgstr "From your faculty"
 
+#: src/pages/Landing.tsx
+msgid "Работы"
+msgstr "Written work"
+
 #: src/pages/BecomeHelper.tsx
 msgid "Опубликовать"
 msgstr "Publish"
@@ -790,8 +802,8 @@ msgid "лет на площадке"
 msgstr "years on the platform"
 
 #: src/pages/Ask.tsx
-msgid "Дальше вопросов не будет — остальное отфильтруешь прямо в списке."
-msgstr "No more questions after this — filter the rest right in the list."
+#~ msgid "Дальше вопросов не будет — остальное отфильтруешь прямо в списке."
+#~ msgstr "No more questions after this — filter the rest right in the list."
 
 #: src/components/Phrase.tsx
 #: src/pages/MyHelper.tsx

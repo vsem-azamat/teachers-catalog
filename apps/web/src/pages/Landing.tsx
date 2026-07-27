@@ -56,7 +56,7 @@ export default function LandingPage() {
           className={css.chip}
           style={{ background: 'var(--tone-2-bg)', color: 'var(--tone-2-fg)' }}
         >
-          <Trans>Работы и материалы</Trans>
+          <Trans>Работы</Trans>
         </span>
       </div>
 
