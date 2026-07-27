@@ -18,7 +18,7 @@ secret:
     # Templates. Every value is empty or a placeholder, and the whole point of
     # the file is to name the variables without carrying them.
     - .env.example
-    - deploy/konnekt/.env.example
+    - deploy/students-cz/.env.example
 
     # The database password for a container CI throws away minutes later, and
     # which never listens outside the runner.
@@ -27,7 +27,7 @@ secret:
     # Local development defaults, matching docker-compose.yml so that
     # `make setup` works with nothing configured. The database binds to
     # 127.0.0.1 and the README says as much.
-    - apps/api/src/konnekt/core/config.py
+    - apps/api/src/students_cz/core/config.py
     - docker-compose.yml
 
     # Documentation for the retired bot, kept for the data migration. Its

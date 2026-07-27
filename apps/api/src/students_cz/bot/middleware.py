@@ -15,12 +15,12 @@ from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject, Update
 from aiogram.types import User as TelegramUser
 
-from konnekt.core.config import Settings
-from konnekt.db.models.enums import UserEventKind
-from konnekt.db.session import get_sessionmaker
-from konnekt.services.people import log_event, remember
+from students_cz.core.config import Settings
+from students_cz.db.models.enums import UserEventKind
+from students_cz.db.session import get_sessionmaker
+from students_cz.services.people import log_event, remember
 
-log = logging.getLogger("konnekt.bot")
+log = logging.getLogger("students_cz.bot")
 
 
 def _started_with(update: Update) -> tuple[bool, str | None]:
@@ -89,7 +89,7 @@ class RememberUserMiddleware(BaseMiddleware):
                     source=start_param,
                 )
                 await session.commit()
-                data["konnekt_user_id"] = user.id
+                data["students_cz_user_id"] = user.id
         except Exception:
             # A database that is briefly unavailable should cost us the record,
             # not the reply. The person still gets an answer.

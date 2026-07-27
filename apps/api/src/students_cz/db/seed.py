@@ -6,7 +6,7 @@ because the subject list will keep growing — new synonyms get added every time
 a query in `search_queries` comes back empty — and reseeding must stay a safe,
 boring operation.
 
-    uv run python -m konnekt.db.seed
+    uv run python -m students_cz.db.seed
 """
 
 import asyncio
@@ -17,7 +17,7 @@ from typing import Any
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from konnekt.db.models import (
+from students_cz.db.models import (
     Institution,
     InstitutionI18n,
     Language,
@@ -27,8 +27,8 @@ from konnekt.db.models import (
     Subject,
     SubjectI18n,
 )
-from konnekt.db.models.enums import InstitutionKind, NodeKind, UiLang
-from konnekt.db.session import dispose_engine, get_sessionmaker
+from students_cz.db.models.enums import InstitutionKind, NodeKind, UiLang
+from students_cz.db.session import dispose_engine, get_sessionmaker
 
 
 def _find_seeds_dir() -> Path:

@@ -17,7 +17,7 @@ from sqlalchemy import false, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from konnekt.db.models import (
+from students_cz.db.models import (
     Contact,
     HelperProfile,
     HelpRequest,
@@ -28,7 +28,7 @@ from konnekt.db.models import (
     Subject,
     User,
 )
-from konnekt.db.models.enums import (
+from students_cz.db.models.enums import (
     ContentLang,
     PriceUnit,
     PublishStatus,
@@ -37,15 +37,15 @@ from konnekt.db.models.enums import (
     UiLang,
     UserEventKind,
 )
-from konnekt.services import parser
-from konnekt.services.errors import (
+from students_cz.services import parser
+from students_cz.services.errors import (
     BadRequest,
     Conflict,
     Forbidden,
     NotFound,
 )
-from konnekt.services.people import log_event
-from konnekt.services.refs import require_row
+from students_cz.services.people import log_event
+from students_cz.services.refs import require_row
 
 
 @dataclass(frozen=True, slots=True)

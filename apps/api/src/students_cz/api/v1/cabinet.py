@@ -7,20 +7,20 @@ who owns them.
 from fastapi import APIRouter
 from sqlalchemy import select
 
-from konnekt.api.deps import LangDep, SessionDep, UserDep
-from konnekt.api.v1.me import read_me
-from konnekt.db.models import (
+from students_cz.api.deps import LangDep, SessionDep, UserDep
+from students_cz.api.v1.me import read_me
+from students_cz.db.models import (
     HelperProfile,
     Institution,
     Offer,
     ServiceType,
     Subject,
 )
-from konnekt.db.models.enums import (
+from students_cz.db.models.enums import (
     PriceUnit,
     WorkFormat,
 )
-from konnekt.schemas import (
+from students_cz.schemas import (
     Chip,
     HelperUpsert,
     IntroOut,
@@ -30,8 +30,8 @@ from konnekt.schemas import (
     MyOfferOut,
     Price,
 )
-from konnekt.services import helpers, parser
-from konnekt.services.naming import names_by_id
+from students_cz.services import helpers, parser
+from students_cz.services.naming import names_by_id
 
 router = APIRouter()
 

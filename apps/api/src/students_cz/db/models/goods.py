@@ -26,8 +26,8 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from konnekt.db.base import Base, IdMixin, TimestampMixin
-from konnekt.db.models.enums import (
+from students_cz.db.base import Base, IdMixin, TimestampMixin
+from students_cz.db.models.enums import (
     ContentLang,
     ItemCondition,
     ItemKind,

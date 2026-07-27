@@ -2,8 +2,13 @@ from datetime import date
 
 import pytest
 
-from konnekt.services.lookup import normalise
-from konnekt.services.parser import _match_budget, _match_deadline, _match_service, parse
+from students_cz.services.lookup import normalise
+from students_cz.services.parser import (
+    _match_budget,
+    _match_deadline,
+    _match_service,
+    parse,
+)
 
 TODAY = date(2026, 1, 20)
 

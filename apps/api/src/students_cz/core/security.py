@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 
 from aiogram.utils.web_app import WebAppInitData, safe_parse_webapp_init_data
 
-from konnekt.core.config import Settings
+from students_cz.core.config import Settings
 
 
 class InitDataError(Exception):

@@ -133,7 +133,7 @@ ssh-keyscan -t ed25519 <host>          # for DEPLOY_KNOWN_HOSTS
 | `PUBLIC_PORT` | A loopback port not used by another project on the host. |
 | `EDGE_CADDY_SERVICE` | Service name of the edge Caddy in its compose file. |
 | `EDGE_CADDY_CONFIG_PATH` | Path to the Caddyfile *inside* that container. |
-| `POSTGRES_DB`, `POSTGRES_USER` | Optional; both default to `students-cz`. |
+| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Required. The production compose gives them no default on purpose — an unset one would silently create a second, empty cluster. |
 | `INIT_DATA_MAX_AGE_SECONDS` | Optional; defaults to 86400. |
 | `LOG_LEVEL` | Optional; defaults to `INFO`. One of DEBUG, INFO, WARNING, ERROR, CRITICAL. |
 | `BACKUP_HOUR_UTC`, `BACKUP_RETENTION_DAYS` | Optional; default 3 and 14. |
@@ -176,8 +176,8 @@ set up yet.
 To restore:
 
 ```sh
-docker compose exec -T postgres pg_restore --clean --if-exists \
-  -U students-cz -d students-cz < data/backups/students-cz-<stamp>.dump
+docker compose exec -T postgres sh -c 'pg_restore --clean --if-exists \
+  -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < data/backups/<file>.dump
 ```
 
 Test that on a copy before you need it in anger.

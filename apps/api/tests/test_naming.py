@@ -15,9 +15,9 @@ import pytest
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from konnekt.db.models import Institution, InstitutionI18n, Subject, SubjectI18n
-from konnekt.db.models.enums import UiLang
-from konnekt.services.naming import names_by_id, rows_by_id, short_form, translated
+from students_cz.db.models import Institution, InstitutionI18n, Subject, SubjectI18n
+from students_cz.db.models.enums import UiLang
+from students_cz.services.naming import names_by_id, rows_by_id, short_form, translated
 
 pytestmark = pytest.mark.asyncio
 

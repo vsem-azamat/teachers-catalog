@@ -4,7 +4,7 @@
 # Only `caddy` publishes a port, and only on loopback. Public TLS belongs to the
 # shared Edge Caddy on the host, which proxies the hostname to that port.
 
-name: konnekt
+name: students-cz
 
 services:
   postgres:
@@ -36,7 +36,7 @@ services:
   # Run by the deploy script with `compose run --rm` before the API starts, so
   # a failed migration stops the deployment instead of crash-looping the API.
   migrate:
-    image: ghcr.io/${GHCR_OWNER}/konnekt-api:${IMAGE_TAG}
+    image: ghcr.io/${GHCR_OWNER}/students-cz-api:${IMAGE_TAG}
     command: ["alembic", "upgrade", "head"]
     restart: "no"
     # Behind a profile so `up` leaves it alone. `compose run` enables the
@@ -49,7 +49,7 @@ services:
     security_opt: [no-new-privileges:true]
 
   api:
-    image: ghcr.io/${GHCR_OWNER}/konnekt-api:${IMAGE_TAG}
+    image: ghcr.io/${GHCR_OWNER}/students-cz-api:${IMAGE_TAG}
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
@@ -75,7 +75,7 @@ services:
       options: {max-size: "10m", max-file: "3"}
 
   frontend:
-    image: ghcr.io/${GHCR_OWNER}/konnekt-web:${IMAGE_TAG}
+    image: ghcr.io/${GHCR_OWNER}/students-cz-web:${IMAGE_TAG}
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/health || exit 1"]
@@ -133,16 +133,20 @@ services:
           [ "$$target" -le "$$now" ] && target=$$(date -u -d "tomorrow ${BACKUP_HOUR_UTC:-3}:00" +%s)
           sleep $$((target - now))
           stamp=$$(date -u +%Y%m%dT%H%M%SZ)
-          if pg_dump --format=custom --file="/backups/konnekt-$$stamp.dump.part"; then
+          if pg_dump --format=custom --file="/backups/students-cz-$$stamp.dump.part"; then
             # Renamed only once complete, so a partial file is never mistaken
             # for a usable backup.
-            mv "/backups/konnekt-$$stamp.dump.part" "/backups/konnekt-$$stamp.dump"
-            echo "backup ok: konnekt-$$stamp.dump"
+            mv "/backups/students-cz-$$stamp.dump.part" "/backups/students-cz-$$stamp.dump"
+            echo "backup ok: students-cz-$$stamp.dump"
           else
-            rm -f "/backups/konnekt-$$stamp.dump.part"
+            rm -f "/backups/students-cz-$$stamp.dump.part"
             echo "backup FAILED at $$stamp" >&2
           fi
-          find /backups -name 'konnekt-*.dump' -mtime "+$${BACKUP_RETENTION_DAYS:-14}" -delete
+          # Both prefixes: the dumps taken before the rename are still on
+          # disk under the old one, and a retention rule that stops seeing
+          # them keeps them for ever.
+          find /backups \( -name 'students-cz-*.dump' -o -name 'konnekt-*.dump' \) \
+            -mtime "+$${BACKUP_RETENTION_DAYS:-14}" -delete
         done
     security_opt: [no-new-privileges:true]
     logging:
@@ -150,6 +154,16 @@ services:
       options: {max-size: "10m", max-file: "3"}
 
 volumes:
+  # Named for what they are already called on the server, not for the project.
+  # A compose volume is `<project>_<name>`, so renaming the project would point
+  # postgres at a brand new empty one and the API would come up with no
+  # database — and Caddy at an empty one, and re-issue every certificate
+  # against Let's Encrypt's rate limits. The `konnekt` in these names is
+  # history, and it is also the only place the data actually is. Renaming them
+  # is a move of the data, not an edit of this file.
   postgres-data:
+    name: konnekt_postgres-data
   caddy-data:
+    name: konnekt_caddy-data
   caddy-config:
+    name: konnekt_caddy-config

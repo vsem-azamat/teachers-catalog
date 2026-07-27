@@ -4,22 +4,22 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from konnekt.api.deps import LangDep, SessionDep, UserDep
-from konnekt.db.models import (
+from students_cz.api.deps import LangDep, SessionDep, UserDep
+from students_cz.db.models import (
     Contact,
     HelperProfile,
 )
-from konnekt.db.models.enums import (
+from students_cz.db.models.enums import (
     PublishStatus,
     UserEventKind,
 )
-from konnekt.schemas import (
+from students_cz.schemas import (
     ContactOut,
     HelperDetailOut,
     HomeOut,
 )
-from konnekt.services import catalog
-from konnekt.services.people import log_event
+from students_cz.services import catalog
+from students_cz.services.people import log_event
 
 router = APIRouter()
 

@@ -9,8 +9,8 @@ from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from konnekt.db.base import Base, IdMixin, TimestampMixin
-from konnekt.db.models.enums import InstitutionKind, NodeKind, UiLang, pg_enum
+from students_cz.db.base import Base, IdMixin, TimestampMixin
+from students_cz.db.models.enums import InstitutionKind, NodeKind, UiLang, pg_enum
 
 
 class Subject(IdMixin, TimestampMixin, Base):

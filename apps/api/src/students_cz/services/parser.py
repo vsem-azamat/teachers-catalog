@@ -16,7 +16,7 @@ from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from konnekt.services.lookup import Match, find_institutions, find_subjects, normalise
+from students_cz.services.lookup import Match, find_institutions, find_subjects, normalise
 
 _NON_WORD = re.compile(r"[^a-z0-9\u0400-\u04ff]+")
 

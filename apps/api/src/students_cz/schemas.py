@@ -18,7 +18,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field, StringConstraints, field_validator
 
-from konnekt.db.models.enums import PriceUnit, UiLang, WorkFormat
+from students_cz.db.models.enums import PriceUnit, UiLang, WorkFormat
 
 # Matches ARRAY(String(8)) in the schema; a longer code cannot be stored, and a
 # request carrying one should be told so rather than fail at the database.

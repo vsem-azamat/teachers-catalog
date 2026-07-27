@@ -8,17 +8,17 @@ from fastapi import APIRouter, Query
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from konnekt.api.deps import LangDep, SessionDep, UserDep
-from konnekt.db.models import (
+from students_cz.api.deps import LangDep, SessionDep, UserDep
+from students_cz.db.models import (
     Institution,
     SearchQuery,
     ServiceType,
     Subject,
 )
-from konnekt.db.models.enums import (
+from students_cz.db.models.enums import (
     UserEventKind,
 )
-from konnekt.schemas import (
+from students_cz.schemas import (
     Chip,
     Clarify,
     ClarifyOption,
@@ -28,9 +28,9 @@ from konnekt.schemas import (
     SearchFilters,
     SearchOut,
 )
-from konnekt.services import catalog, parser
-from konnekt.services.naming import short_form, translated
-from konnekt.services.people import log_event
+from students_cz.services import catalog, parser
+from students_cz.services.naming import short_form, translated
+from students_cz.services.people import log_event
 
 router = APIRouter()
 

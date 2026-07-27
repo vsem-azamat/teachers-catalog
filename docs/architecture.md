@@ -124,7 +124,7 @@ route in `main.py`, which is defined inside `create_app` and hands the update
 to the dispatcher the lifespan put there — it is the seam between the two
 runtimes rather than a handler.
 
-**A schema** is a leaf. `students-cz/schemas.py` — the package root, not inside
+**A schema** is a leaf. `students_cz/schemas.py` — the package root, not inside
 `api/` — describes what goes over the wire. A service may return one without
 that pointing the domain layer at the HTTP layer, which is the whole reason it
 sits there.

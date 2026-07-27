@@ -11,7 +11,7 @@ import time as clock
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 
-log = logging.getLogger("konnekt")
+log = logging.getLogger("students_cz")
 
 router = APIRouter()
 

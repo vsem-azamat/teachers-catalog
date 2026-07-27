@@ -24,7 +24,7 @@ install:  ## Install both apps' dependencies
 .PHONY: db-up
 db-up:  ## Start Postgres and wait until it answers
 	docker compose up -d db
-	@until docker compose exec -T db pg_isready -q -U konnekt -d konnekt; \
+	@until docker compose exec -T db pg_isready -q -U students-cz -d students-cz; \
 	 do sleep 1; done
 	@echo "database ready"
 
@@ -39,7 +39,7 @@ db-reset:  ## Throw the database away and rebuild it from scratch
 
 .PHONY: db-shell
 db-shell:  ## psql prompt
-	docker compose exec db psql -U konnekt -d konnekt
+	docker compose exec db psql -U students-cz -d students-cz
 
 # ── data ────────────────────────────────────────────────────────────────
 
@@ -53,21 +53,21 @@ revision:  ## Autogenerate a migration: make revision m="what changed"
 
 .PHONY: seed
 seed:  ## Load reference data: subjects, institutions, service types
-	cd $(API) && uv run python -m konnekt.db.seed
+	cd $(API) && uv run python -m students_cz.db.seed
 
 .PHONY: demo
 demo:  ## Load plausible content so the screens have something in them
-	cd $(API) && uv run python -m konnekt.db.demo
+	cd $(API) && uv run python -m students_cz.db.demo
 
 .PHONY: demo-clear
 demo-clear:  ## Remove demo content, keep reference data
-	cd $(API) && uv run python -m konnekt.db.demo --clear
+	cd $(API) && uv run python -m students_cz.db.demo --clear
 
 # ── running ─────────────────────────────────────────────────────────────
 
 .PHONY: api
 api:  ## Run the API and bot with reload
-	cd $(API) && uv run uvicorn konnekt.main:app --reload --port $(API_PORT)
+	cd $(API) && uv run uvicorn students_cz.main:app --reload --port $(API_PORT)
 
 .PHONY: web
 web:  ## Run the mini app

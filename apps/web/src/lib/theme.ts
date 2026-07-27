@@ -27,7 +27,11 @@ export type ThemeChoice = (typeof THEME_CHOICES)[number];
 /** What `data-theme` ends up saying: "system" is not a palette. */
 export type Theme = 'light' | 'dark';
 
-const STORAGE_KEY = 'konnekt.theme';
+const STORAGE_KEY = 'students-cz.theme';
+/** What the key was called before the rename. Read once, then forgotten.
+ *  Delete this and the branch in `readStored` once enough time has passed that
+ *  anybody still carrying it has opened the app since. */
+const LEGACY_STORAGE_KEY = 'konnekt.theme';
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 
 export function isThemeChoice(value: unknown): value is ThemeChoice {
@@ -39,7 +43,18 @@ export function isThemeChoice(value: unknown): value is ThemeChoice {
 function readStored(): ThemeChoice {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    return isThemeChoice(stored) ? stored : 'system';
+    if (isThemeChoice(stored)) return stored;
+
+    // Somebody who chose a theme before the rename. Moving it across is the
+    // difference between a rename and everybody's setting quietly resetting to
+    // whatever their phone happens to be on.
+    const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (isThemeChoice(legacy)) {
+      localStorage.setItem(STORAGE_KEY, legacy);
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+      return legacy;
+    }
+    return 'system';
   } catch {
     // Private mode, or storage disabled. Following the system is a fine
     // answer for someone whose choice we cannot remember across a reload.

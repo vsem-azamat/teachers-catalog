@@ -16,21 +16,21 @@ from fastapi import FastAPI, Header, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from konnekt.api.v1 import router as api_router
-from konnekt.api.v1.health import health_router, name_webhook_state
-from konnekt.bot import build_bot, build_dispatcher, configure
-from konnekt.core.config import get_settings
-from konnekt.db.session import dispose_engine
-from konnekt.services import errors
+from students_cz.api.v1 import router as api_router
+from students_cz.api.v1.health import health_router, name_webhook_state
+from students_cz.bot import build_bot, build_dispatcher, configure
+from students_cz.core.config import get_settings
+from students_cz.db.session import dispose_engine
+from students_cz.services import errors
 
-log = logging.getLogger("konnekt")
+log = logging.getLogger("students_cz")
 
 
 def configure_logging(level: str) -> None:
     """Give this application's logger somewhere to write.
 
     Uvicorn configures its own loggers and nothing else, so without this the
-    `konnekt` logger has no handler and falls back to Python's last-resort
+    `students_cz` logger has no handler and falls back to Python's last-resort
     one — which only emits WARNING and above. Every `log.info` in the process
     went nowhere, including the line that says the webhook was registered and
     where, which is precisely the line wanted when the bot goes quiet.

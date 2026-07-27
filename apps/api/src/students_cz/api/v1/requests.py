@@ -7,8 +7,8 @@ accepted, closed — and every step of it notifies somebody.
 from fastapi import APIRouter, BackgroundTasks, Query, status
 from sqlalchemy import func, select
 
-from konnekt.api.deps import LangDep, NotifierDep, SessionDep, UserDep
-from konnekt.bot.texts import (
+from students_cz.api.deps import LangDep, NotifierDep, SessionDep, UserDep
+from students_cz.bot.texts import (
     FOR_PRICE,
     NEW_RESPONSE,
     RESPONSE_ACCEPTED,
@@ -16,7 +16,7 @@ from konnekt.bot.texts import (
     WRITE_TO,
     pick,
 )
-from konnekt.db.models import (
+from students_cz.db.models import (
     HelperProfile,
     HelpRequest,
     Institution,
@@ -25,10 +25,10 @@ from konnekt.db.models import (
     Subject,
     User,
 )
-from konnekt.db.models.enums import (
+from students_cz.db.models.enums import (
     PriceUnit,
 )
-from konnekt.schemas import (
+from students_cz.schemas import (
     FeedRequestOut,
     Phrase,
     Price,
@@ -37,10 +37,10 @@ from konnekt.schemas import (
     ResponseCreate,
     ResponseOut,
 )
-from konnekt.services import requests as requests_service
-from konnekt.services.catalog import avatar_for
-from konnekt.services.naming import rows_by_id, short_form, translated
-from konnekt.services.notify import Recipient, quote
+from students_cz.services import requests as requests_service
+from students_cz.services.catalog import avatar_for
+from students_cz.services.naming import rows_by_id, short_form, translated
+from students_cz.services.notify import Recipient, quote
 
 router = APIRouter()
 

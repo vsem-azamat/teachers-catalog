@@ -18,12 +18,12 @@ from aiogram.types import (
     WebAppInfo,
 )
 
-from konnekt.bot.middleware import RememberUserMiddleware
-from konnekt.core.config import Settings
-from konnekt.db.session import get_sessionmaker
-from konnekt.services.people import unsubscribe
+from students_cz.bot.middleware import RememberUserMiddleware
+from students_cz.core.config import Settings
+from students_cz.db.session import get_sessionmaker
+from students_cz.services.people import unsubscribe
 
-router = Router(name="konnekt")
+router = Router(name="students_cz")
 
 # Named rather than written inline, because these are claims about the code and
 # a claim wants somewhere a test can read it. See tests/test_bot.py: one says

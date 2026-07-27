@@ -8,8 +8,8 @@ from fastapi import APIRouter, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from konnekt.api.deps import LangDep, SessionDep, UserDep
-from konnekt.db.models import (
+from students_cz.api.deps import LangDep, SessionDep, UserDep
+from students_cz.db.models import (
     HelperProfile,
     Institution,
     Language,
@@ -17,16 +17,16 @@ from konnekt.db.models import (
     ServiceType,
     Subject,
 )
-from konnekt.db.models.enums import (
+from students_cz.db.models.enums import (
     PublishStatus,
 )
-from konnekt.schemas import (
+from students_cz.schemas import (
     InstitutionOut,
     LanguageOut,
     ServiceTypeOut,
     SubjectOut,
 )
-from konnekt.services.naming import translated
+from students_cz.services.naming import translated
 
 router = APIRouter()
 
@@ -73,7 +73,7 @@ async def subjects(
     work. Without it, one level of the tree is returned.
     """
     if q:
-        from konnekt.services.lookup import find_subjects
+        from students_cz.services.lookup import find_subjects
 
         matches = await find_subjects(session, q, lang, limit=limit, threshold=0.4)
         ids = [m.id for m in matches]

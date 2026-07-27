@@ -97,7 +97,7 @@ async def test_subject_browse_walks_the_tree(client):
 async def test_parse_returns_chips_and_logs_the_query(client, session):
     from sqlalchemy import func, select
 
-    from konnekt.db.models import SearchQuery
+    from students_cz.db.models import SearchQuery
 
     before = await session.scalar(select(func.count(SearchQuery.id)))
     response = await client.post(
@@ -155,7 +155,7 @@ async def test_search_finds_a_published_helper(client, helper_factory, session):
 
     from sqlalchemy import select
 
-    from konnekt.db.models import Subject
+    from students_cz.db.models import Subject
 
     subject = await session.scalar(
         select(Subject).where(Subject.slug == "matematicka-analyza")
@@ -174,8 +174,8 @@ async def test_search_finds_a_published_helper(client, helper_factory, session):
 
 
 async def test_helper_page_404s_for_a_draft(client, session):
-    from konnekt.db.models import HelperProfile, User
-    from konnekt.db.models.enums import PublishStatus
+    from students_cz.db.models import HelperProfile, User
+    from students_cz.db.models.enums import PublishStatus
 
     user = User(tg_id=91002, first_name="Draft")
     session.add(user)
@@ -216,7 +216,7 @@ async def test_requests_are_listed_newest_first(client):
 async def test_a_request_without_a_deadline_still_expires(client, session):
     from sqlalchemy import select
 
-    from konnekt.db.models import HelpRequest
+    from students_cz.db.models import HelpRequest
 
     created = (
         await client.post(
@@ -274,7 +274,7 @@ async def test_intro_is_read_into_a_draft_profile(client):
 async def test_publishing_makes_the_profile_findable(client, session):
     from sqlalchemy import select
 
-    from konnekt.db.models import ServiceType, Subject
+    from students_cz.db.models import ServiceType, Subject
 
     headers = auth_header(90302, first_name="Nový")
     service = await session.scalar(
@@ -324,7 +324,7 @@ async def test_publishing_makes_the_profile_findable(client, session):
 async def test_an_unpublished_profile_stays_out_of_search(client, session):
     from sqlalchemy import select
 
-    from konnekt.db.models import ServiceType, Subject
+    from students_cz.db.models import ServiceType, Subject
 
     headers = auth_header(90303)
     service = await session.scalar(
@@ -352,7 +352,7 @@ async def test_offers_are_replaced_not_appended(client, session):
     """The client sends the whole set; a diff would leave deleted rows behind."""
     from sqlalchemy import select
 
-    from konnekt.db.models import ServiceType, Subject
+    from students_cz.db.models import ServiceType, Subject
 
     headers = auth_header(90304)
     service = await session.scalar(
@@ -398,7 +398,7 @@ async def test_hiding_a_published_profile_takes_it_out_of_the_catalog(client, se
     """ "Hide me" has to actually hide; it used to be a no-op once published."""
     from sqlalchemy import select
 
-    from konnekt.db.models import ServiceType, Subject
+    from students_cz.db.models import ServiceType, Subject
 
     headers = auth_header(90401)
     service = await session.scalar(
@@ -429,8 +429,8 @@ async def test_hiding_a_published_profile_takes_it_out_of_the_catalog(client, se
 
 
 async def test_a_banned_profile_cannot_publish_itself(client, session):
-    from konnekt.db.models import HelperProfile
-    from konnekt.db.models.enums import PublishStatus
+    from students_cz.db.models import HelperProfile
+    from students_cz.db.models.enums import PublishStatus
 
     headers = auth_header(90402)
     await client.get("/api/v1/me", headers=headers)  # registers the account
@@ -438,7 +438,7 @@ async def test_a_banned_profile_cannot_publish_itself(client, session):
 
     from sqlalchemy import select
 
-    from konnekt.db.models import User
+    from students_cz.db.models import User
 
     user = await session.scalar(select(User).where(User.tg_id == 90402))
     helper = await session.get(HelperProfile, user.id)
@@ -452,7 +452,7 @@ async def test_a_banned_profile_cannot_publish_itself(client, session):
 async def test_the_same_axes_twice_is_a_422_not_a_traceback(client, session):
     from sqlalchemy import select
 
-    from konnekt.db.models import ServiceType, Subject
+    from students_cz.db.models import ServiceType, Subject
 
     service = await session.scalar(
         select(ServiceType).where(ServiceType.code == "tutoring")
@@ -491,7 +491,7 @@ async def test_one_person_appears_once_however_many_offers_match(
     """Two matching offers is a reason to rank higher, not to show twice."""
     from sqlalchemy import select
 
-    from konnekt.db.models import Offer, ServiceType, Subject
+    from students_cz.db.models import Offer, ServiceType, Subject
 
     user = await helper_factory(tg_id=91101, subject_slug="anatomie")
     subject = await session.scalar(select(Subject).where(Subject.slug == "anatomie"))
@@ -573,8 +573,8 @@ async def test_a_failing_handler_still_answers_the_webhook(monkeypatch):
     """
     from httpx import ASGITransport, AsyncClient
 
-    from konnekt.core.config import get_settings
-    from konnekt.main import create_app
+    from students_cz.core.config import get_settings
+    from students_cz.main import create_app
 
     settings = get_settings()
     monkeypatch.setattr(settings, "webhook_secret", "probe-secret", raising=False)
@@ -610,8 +610,8 @@ async def test_the_webhook_refuses_to_serve_without_a_secret(monkeypatch):
     """Fail closed: an open webhook lets anyone speak as the bot."""
     from httpx import ASGITransport, AsyncClient
 
-    from konnekt.core.config import get_settings
-    from konnekt.main import create_app
+    from students_cz.core.config import get_settings
+    from students_cz.main import create_app
 
     settings = get_settings()
     monkeypatch.setattr(settings, "webhook_secret", "", raising=False)
@@ -636,7 +636,7 @@ async def test_a_matching_institution_ranks_above_one_without(
     """
     from sqlalchemy import select
 
-    from konnekt.db.models import Institution, Subject
+    from students_cz.db.models import Institution, Subject
 
     subject = await session.scalar(select(Subject).where(Subject.slug == "biochemie"))
     cvut = await session.scalar(select(Institution).where(Institution.code == "cvut"))
@@ -675,7 +675,7 @@ async def test_a_matching_institution_ranks_above_one_without(
 async def test_search_reports_what_it_is_filtering_on(client, session):
     from sqlalchemy import select
 
-    from konnekt.db.models import Institution, Subject
+    from students_cz.db.models import Institution, Subject
 
     subject = await session.scalar(
         select(Subject).where(Subject.slug == "matematicka-analyza")
@@ -703,8 +703,8 @@ async def test_search_reports_what_it_is_filtering_on(client, session):
 async def test_opening_the_app_is_recorded(client, session):
     from sqlalchemy import select
 
-    from konnekt.db.models import UserEvent
-    from konnekt.db.models.enums import UserEventKind
+    from students_cz.db.models import UserEvent
+    from students_cz.db.models.enums import UserEventKind
 
     await client.get("/api/v1/home", headers=auth_header(90601))
     kinds = (await session.scalars(select(UserEvent.kind))).all()
@@ -721,8 +721,8 @@ async def test_starting_a_conversation_is_recorded_and_returns_the_link(
     """
     from sqlalchemy import select
 
-    from konnekt.db.models import Contact, UserEvent
-    from konnekt.db.models.enums import UserEventKind
+    from students_cz.db.models import Contact, UserEvent
+    from students_cz.db.models.enums import UserEventKind
 
     helper = await helper_factory(tg_id=91301, first_name="Marek")
     helper.tg_username = "marek_teaches"
@@ -758,7 +758,7 @@ async def test_a_helper_without_a_username_cannot_be_written_to(
 async def test_you_cannot_contact_yourself(client, session, helper_factory):
     from sqlalchemy import select
 
-    from konnekt.db.models import User
+    from students_cz.db.models import User
 
     await client.get("/api/v1/me", headers=auth_header(90604))
     me = await session.scalar(select(User).where(User.tg_id == 90604))

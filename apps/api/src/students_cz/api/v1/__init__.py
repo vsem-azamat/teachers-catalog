@@ -1,8 +1,8 @@
 """The versioned API, assembled from one module per domain.
 
 Every module here owns a slice of the URL space and nothing else: it parses the
-request, leans on `konnekt.services` for the rules, and renders a schema from
-`konnekt.schemas`. The prefix is declared once, here, so a module cannot
+request, leans on `students_cz.services` for the rules, and renders a schema from
+`students_cz.schemas`. The prefix is declared once, here, so a module cannot
 disagree with its neighbours about where it lives.
 
 `health` is deliberately absent from this router — `/healthz` is not part of
@@ -11,7 +11,7 @@ the versioned API and must not move when the version does.
 
 from fastapi import APIRouter
 
-from konnekt.api.v1 import (
+from students_cz.api.v1 import (
     browse,
     cabinet,
     me,

@@ -23,11 +23,11 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from konnekt.db.base import Base, IdMixin, TimestampMixin
-from konnekt.db.models.enums import PriceUnit, WorkFormat, pg_enum
+from students_cz.db.base import Base, IdMixin, TimestampMixin
+from students_cz.db.models.enums import PriceUnit, WorkFormat, pg_enum
 
 if TYPE_CHECKING:
-    from konnekt.db.models.people import HelperProfile
+    from students_cz.db.models.people import HelperProfile
 
 
 class Offer(IdMixin, TimestampMixin, Base):

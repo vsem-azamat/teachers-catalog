@@ -7,7 +7,7 @@ from sqlalchemy import func, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from konnekt.db.models import (
+from students_cz.db.models import (
     AvailabilitySlot,
     HelperProfile,
     Institution,
@@ -17,8 +17,8 @@ from konnekt.db.models import (
     User,
     UserEducation,
 )
-from konnekt.db.models.enums import PublishStatus, UiLang
-from konnekt.schemas import (
+from students_cz.db.models.enums import PublishStatus, UiLang
+from students_cz.schemas import (
     Avatar,
     HelperCardOut,
     HelperDetailOut,
@@ -28,7 +28,7 @@ from konnekt.schemas import (
     Price,
     Stat,
 )
-from konnekt.services.naming import rows_by_id, short_form, translated
+from students_cz.services.naming import rows_by_id, short_form, translated
 
 SortKey = Literal["relevance", "price", "available"]
 

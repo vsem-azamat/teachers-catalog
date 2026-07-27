@@ -15,7 +15,9 @@ export const LOCALE_NAMES: Record<Locale, string> = {
   uk: 'Українська',
 };
 
-const OVERRIDE_KEY = 'konnekt.locale';
+const OVERRIDE_KEY = 'students-cz.locale';
+/** What the key was called before the rename. See `readLocaleOverride`. */
+const LEGACY_OVERRIDE_KEY = 'konnekt.locale';
 
 export function isLocale(value: unknown): value is Locale {
   return typeof value === 'string' && (LOCALES as readonly string[]).includes(value);
@@ -39,7 +41,18 @@ export function normalizeLocale(tag: string | null | undefined): Locale {
 export function readLocaleOverride(): Locale | null {
   try {
     const stored = localStorage.getItem(OVERRIDE_KEY);
-    return isLocale(stored) ? stored : null;
+    if (isLocale(stored)) return stored;
+
+    // Somebody who picked a language before the rename. Without this their
+    // choice is silently replaced by whatever Telegram reports, which is
+    // exactly the thing picking it by hand was meant to overrule.
+    const legacy = localStorage.getItem(LEGACY_OVERRIDE_KEY);
+    if (isLocale(legacy)) {
+      localStorage.setItem(OVERRIDE_KEY, legacy);
+      localStorage.removeItem(LEGACY_OVERRIDE_KEY);
+      return legacy;
+    }
+    return null;
   } catch {
     // Private mode, or storage disabled. Not worth failing a launch over.
     return null;

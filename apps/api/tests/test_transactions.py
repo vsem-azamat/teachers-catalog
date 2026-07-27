@@ -25,8 +25,8 @@ async def test_a_failing_commit_is_not_answered_with_a_success(
     would notify somebody about a row that never landed. `SessionDep` therefore
     asks for function scope; drop that argument and this test sees 200.
     """
-    from konnekt.db.session import session_scope
-    from konnekt.main import create_app
+    from students_cz.db.session import session_scope
+    from students_cz.main import create_app
 
     async def failing_scope():
         try:

@@ -3,13 +3,13 @@ from typing import Annotated
 from fastapi import Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from konnekt.core.config import Settings, get_settings
-from konnekt.core.security import InitDataError, TelegramIdentity, parse_init_data
-from konnekt.db.models import User
-from konnekt.db.models.enums import UiLang
-from konnekt.db.session import session_scope
-from konnekt.services.notify import Notifier
-from konnekt.services.people import remember
+from students_cz.core.config import Settings, get_settings
+from students_cz.core.security import InitDataError, TelegramIdentity, parse_init_data
+from students_cz.db.models import User
+from students_cz.db.models.enums import UiLang
+from students_cz.db.session import session_scope
+from students_cz.services.notify import Notifier
+from students_cz.services.people import remember
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 SessionDep = Annotated[AsyncSession, Depends(session_scope, scope="function")]

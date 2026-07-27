@@ -12,8 +12,8 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from konnekt.db.base import Base, CreatedAtMixin, IdMixin
-from konnekt.db.models.enums import (
+from students_cz.db.base import Base, CreatedAtMixin, IdMixin
+from students_cz.db.models.enums import (
     ContentLang,
     ModeratedEntity,
     ModerationVerdict,

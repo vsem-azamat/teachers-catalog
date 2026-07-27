@@ -5,26 +5,26 @@ autogenerate needs to see the full schema. Import it, do not cherry-pick
 modules, or migrations will silently miss tables.
 """
 
-from konnekt.db.base import Base
-from konnekt.db.models.catalog import Offer
-from konnekt.db.models.goods import Item, Material
-from konnekt.db.models.ops import ModerationReview, SearchQuery, UserEvent
-from konnekt.db.models.partners import (
+from students_cz.db.base import Base
+from students_cz.db.models.catalog import Offer
+from students_cz.db.models.goods import Item, Material
+from students_cz.db.models.ops import ModerationReview, SearchQuery, UserEvent
+from students_cz.db.models.partners import (
     Partner,
     PartnerOffer,
     PartnerOfferI18n,
     Placement,
     PlacementEvent,
 )
-from konnekt.db.models.people import (
+from students_cz.db.models.people import (
     AvailabilitySlot,
     HelperProfile,
     User,
     UserEducation,
     WeeklyAvailability,
 )
-from konnekt.db.models.requests import Contact, HelpRequest, RequestResponse
-from konnekt.db.models.taxonomy import (
+from students_cz.db.models.requests import Contact, HelpRequest, RequestResponse
+from students_cz.db.models.taxonomy import (
     Institution,
     InstitutionI18n,
     ItemCategory,

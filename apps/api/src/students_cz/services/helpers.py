@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from konnekt.db.models import (
+from students_cz.db.models import (
     HelperProfile,
     Institution,
     Offer,
@@ -19,16 +19,16 @@ from konnekt.db.models import (
     Subject,
     User,
 )
-from konnekt.db.models.enums import (
+from students_cz.db.models.enums import (
     ContentLang,
     PublishStatus,
     UiLang,
     UserEventKind,
 )
-from konnekt.schemas import HelperUpsert
-from konnekt.services.errors import Forbidden, Invalid
-from konnekt.services.people import log_event
-from konnekt.services.refs import require_row
+from students_cz.schemas import HelperUpsert
+from students_cz.services.errors import Forbidden, Invalid
+from students_cz.services.people import log_event
+from students_cz.services.refs import require_row
 
 
 async def save_profile(

@@ -25,7 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from konnekt.db.models.enums import UiLang
+from students_cz.db.models.enums import UiLang
 
 
 class Named(Protocol):

@@ -5,17 +5,17 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
-from konnekt.api.deps import LangDep, SessionDep, UserDep
-from konnekt.db.models import (
+from students_cz.api.deps import LangDep, SessionDep, UserDep
+from students_cz.db.models import (
     Placement,
 )
-from konnekt.db.models.enums import (
+from students_cz.db.models.enums import (
     PlacementSlot,
 )
-from konnekt.schemas import (
+from students_cz.schemas import (
     PlacementOut,
 )
-from konnekt.services import placements
+from students_cz.services import placements
 
 router = APIRouter()
 

@@ -10,7 +10,7 @@ Values are HTML — the bot is built with parse_mode=HTML — so anything
 interpolated has to be escaped by the caller.
 """
 
-from konnekt.db.models.enums import UiLang
+from students_cz.db.models.enums import UiLang
 
 # The button under a notification. Opening the app is the only action any of
 # these messages asks for, so there is exactly one label per language.

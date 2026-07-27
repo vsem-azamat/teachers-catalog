@@ -36,9 +36,9 @@ class Settings(BaseSettings):
     )
 
     # ── Database ────────────────────────────────────────────────────────
-    postgres_user: str = "konnekt"
-    postgres_password: str = "konnekt"
-    postgres_db: str = "konnekt"
+    postgres_user: str = "students_cz"
+    postgres_password: str = "students_cz"
+    postgres_db: str = "students_cz"
     postgres_host: str = "127.0.0.1"
     # 5433 on the host: 5432 is usually taken by a local Postgres.
     postgres_port: int = 5433

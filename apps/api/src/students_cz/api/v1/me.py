@@ -4,18 +4,18 @@ from fastapi import APIRouter
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from konnekt.api.deps import LangDep, SessionDep, UserDep
-from konnekt.api.v1.taxonomy import institution_out
-from konnekt.db.models import (
+from students_cz.api.deps import LangDep, SessionDep, UserDep
+from students_cz.api.v1.taxonomy import institution_out
+from students_cz.db.models import (
     HelperProfile,
     Institution,
 )
-from konnekt.schemas import (
+from students_cz.schemas import (
     MeOut,
     MeUpdate,
 )
-from konnekt.services.catalog import avatar_for
-from konnekt.services.refs import require_row
+from students_cz.services.catalog import avatar_for
+from students_cz.services.refs import require_row
 
 router = APIRouter()
 

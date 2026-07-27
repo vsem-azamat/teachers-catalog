@@ -5,12 +5,12 @@ something in them. An empty catalog hides every layout problem worth finding:
 a card with no price, a reason line that wraps to three lines, a section with
 one avatar instead of three.
 
-    uv run python -m konnekt.db.demo
+    uv run python -m students_cz.db.demo
 
 Idempotent, and it only ever touches rows it created: the exact Telegram ids
 listed in PEOPLE, and partner codes prefixed `demo_`.
 
-    uv run python -m konnekt.db.demo --clear
+    uv run python -m students_cz.db.demo --clear
 """
 
 import argparse
@@ -21,7 +21,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import Range
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from konnekt.db.models import (
+from students_cz.db.models import (
     AvailabilitySlot,
     HelperProfile,
     Institution,
@@ -35,7 +35,7 @@ from konnekt.db.models import (
     Subject,
     User,
 )
-from konnekt.db.models.enums import (
+from students_cz.db.models.enums import (
     PayoutModel,
     PlacementSlot,
     PriceUnit,
@@ -43,7 +43,7 @@ from konnekt.db.models.enums import (
     UiLang,
     WorkFormat,
 )
-from konnekt.db.session import dispose_engine, get_sessionmaker
+from students_cz.db.session import dispose_engine, get_sessionmaker
 
 # Demo accounts are numbered from this base. It is a namespace, not a fence:
 # real Telegram ids passed 900 million long ago and are well into the billions,
@@ -340,7 +340,9 @@ async def populate(session: AsyncSession) -> tuple[int, int]:
         i.code: i.id for i in (await session.scalars(select(Institution))).all()
     }
     if not services:
-        raise SystemExit("reference data missing — run `python -m konnekt.db.seed` first")
+        raise SystemExit(
+            "reference data missing — run `python -m students_cz.db.seed` first"
+        )
 
     # Anchored to a fixed month so "free on the 12th" stays in the future
     # rather than drifting into the past a week after seeding.

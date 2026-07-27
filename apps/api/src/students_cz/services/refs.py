@@ -3,7 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from konnekt.services.errors import Invalid
+from students_cz.services.errors import Invalid
 
 
 async def require_row(

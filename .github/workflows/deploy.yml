@@ -12,12 +12,12 @@ on:
 concurrency:
   # Not cancel-in-progress: interrupting a deployment halfway leaves the server
   # in a state nobody chose.
-  group: konnekt-production
+  group: students-cz-production
   cancel-in-progress: false
 
 env:
-  API_IMAGE: konnekt-api
-  WEB_IMAGE: konnekt-web
+  API_IMAGE: students-cz-api
+  WEB_IMAGE: students-cz-web
 
 jobs:
   build:
@@ -61,8 +61,8 @@ jobs:
           tags: |
             ghcr.io/${{ steps.meta.outputs.owner }}/${{ env.API_IMAGE }}:${{ steps.meta.outputs.image_tag }}
             ghcr.io/${{ steps.meta.outputs.owner }}/${{ env.API_IMAGE }}:prod-latest
-          cache-from: type=gha,scope=konnekt-api
-          cache-to: type=gha,scope=konnekt-api,mode=max
+          cache-from: type=gha,scope=students-cz-api
+          cache-to: type=gha,scope=students-cz-api,mode=max
 
       - name: Build and push the mini app
         uses: docker/build-push-action@v6
@@ -72,8 +72,8 @@ jobs:
           tags: |
             ghcr.io/${{ steps.meta.outputs.owner }}/${{ env.WEB_IMAGE }}:${{ steps.meta.outputs.image_tag }}
             ghcr.io/${{ steps.meta.outputs.owner }}/${{ env.WEB_IMAGE }}:prod-latest
-          cache-from: type=gha,scope=konnekt-web
-          cache-to: type=gha,scope=konnekt-web,mode=max
+          cache-from: type=gha,scope=students-cz-web
+          cache-to: type=gha,scope=students-cz-web,mode=max
 
   deploy:
     needs: build
@@ -152,8 +152,8 @@ jobs:
         env:
           GHCR_OWNER: ${{ needs.build.outputs.owner }}
           IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
-          POSTGRES_DB: ${{ vars.POSTGRES_DB || 'konnekt' }}
-          POSTGRES_USER: ${{ vars.POSTGRES_USER || 'konnekt' }}
+          POSTGRES_DB: ${{ vars.POSTGRES_DB || 'students-cz' }}
+          POSTGRES_USER: ${{ vars.POSTGRES_USER || 'students-cz' }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
@@ -207,9 +207,9 @@ jobs:
           set -euo pipefail
           ssh "$DEPLOY_USER@$DEPLOY_HOST" \
             "install -d -m 700 '$DEPLOY_DIR' '$DEPLOY_DIR/data' '$DEPLOY_DIR/data/backups'"
-          scp deploy/konnekt/docker-compose.yml \
-              deploy/konnekt/Caddyfile \
-              deploy/konnekt/apply-edge-route.sh \
+          scp deploy/students-cz/docker-compose.yml \
+              deploy/students-cz/Caddyfile \
+              deploy/students-cz/apply-edge-route.sh \
               "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/"
           scp "${{ steps.prep.outputs.env_file }}" \
               "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/.env.$RUN_ID.tmp"
@@ -270,6 +270,18 @@ jobs:
           chmod +x apply-edge-route.sh
 
           docker login ghcr.io -u "$GHCR_ACTOR" --password-stdin < ".ghcr.$RUN_ID.tmp"
+
+          # The stack used to run under the compose project `konnekt`, and a
+          # renamed project does not stop the old one — it races it for the
+          # published port and loses, after the migrations have already run.
+          # No -v: `down` never removes volumes without it, and the ones that
+          # matter are pinned by name in the compose file anyway, so the
+          # database and the certificates do not move. Delete this once no
+          # server has a `konnekt` project left on it.
+          if [ -n "$(docker ps -aq --filter label=com.docker.compose.project=konnekt)" ]; then
+            echo "stopping the pre-rename stack"
+            docker compose -p konnekt down --remove-orphans
+          fi
 
           docker compose config --quiet
           docker compose pull --quiet

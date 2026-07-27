@@ -14,11 +14,11 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from konnekt import bot as konnekt_bot
-from konnekt.bot import GREETING, UNSUBSCRIBED
-from konnekt.db.models import HelperProfile, HelpRequest, RequestResponse, User
-from konnekt.db.models.enums import UiLang
-from konnekt.services.people import unsubscribe
+from students_cz import bot as students_cz_bot
+from students_cz.bot import GREETING, UNSUBSCRIBED
+from students_cz.db.models import HelperProfile, HelpRequest, RequestResponse, User
+from students_cz.db.models.enums import UiLang
+from students_cz.services.people import unsubscribe
 
 pytestmark = pytest.mark.asyncio
 
@@ -191,11 +191,11 @@ async def test_the_stop_handler_unsubscribes_and_says_so(
 ) -> None:
     """The wiring. Every other test here would still pass if `on_stop` stopped
     calling the rule, stopped committing, or answered something else."""
-    monkeypatch.setattr(konnekt_bot, "get_sessionmaker", lambda: _lend(session))
+    monkeypatch.setattr(students_cz_bot, "get_sessionmaker", lambda: _lend(session))
     user = await _person(session, tg_id=91003)
     message = _Message(user.tg_id)
 
-    await konnekt_bot.on_stop(message)
+    await students_cz_bot.on_stop(message)
 
     assert user.unsubscribed_at is not None
     assert message.answers == [UNSUBSCRIBED]
@@ -206,9 +206,9 @@ async def test_an_update_without_a_sender_is_ignored(
 ) -> None:
     """Channel posts have no `from_user`. Nothing to unsubscribe and nobody to
     answer, which is a return rather than an exception."""
-    monkeypatch.setattr(konnekt_bot, "get_sessionmaker", lambda: _lend(session))
+    monkeypatch.setattr(students_cz_bot, "get_sessionmaker", lambda: _lend(session))
     message = _Message(None)
 
-    await konnekt_bot.on_stop(message)
+    await students_cz_bot.on_stop(message)
 
     assert message.answers == []

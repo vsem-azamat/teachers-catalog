@@ -14,8 +14,8 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from konnekt.db.models import User, UserEvent
-from konnekt.db.models.enums import UiLang, UserEventKind
+from students_cz.db.models import User, UserEvent
+from students_cz.db.models.enums import UiLang, UserEventKind
 
 # Telegram sends a language tag that may carry a region ("en-US"), and may name
 # a language we do not ship.

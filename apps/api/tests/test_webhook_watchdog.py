@@ -62,7 +62,7 @@ async def _run_briefly(coro, seconds: float = 0.4) -> None:
 
 
 async def test_a_webhook_cleared_by_someone_else_is_set_again(settings) -> None:
-    from konnekt.main import keep_webhook_registered
+    from students_cz.main import keep_webhook_registered
 
     bot = Telegram(clear_after=1)
     app = _app()
@@ -77,7 +77,7 @@ async def test_a_webhook_cleared_by_someone_else_is_set_again(settings) -> None:
 
 async def test_a_webhook_that_stays_put_is_not_set_again(settings) -> None:
     """Re-registering for no reason would drop pending updates every minute."""
-    from konnekt.main import keep_webhook_registered
+    from students_cz.main import keep_webhook_registered
 
     bot = Telegram()
     app = _app()
@@ -91,7 +91,7 @@ async def test_a_webhook_that_stays_put_is_not_set_again(settings) -> None:
 
 
 async def test_telegram_failing_a_check_does_not_end_the_watch(settings) -> None:
-    from konnekt.main import keep_webhook_registered
+    from students_cz.main import keep_webhook_registered
 
     class Flaky(Telegram):
         async def get_webhook_info(self):
@@ -119,7 +119,7 @@ async def test_healing_keeps_the_updates_that_queued_while_it_was_deaf(
     queued. That is right at boot — those predate the process — and wrong on a
     heal, where the queue is exactly what the outage cost.
     """
-    from konnekt.main import keep_webhook_registered
+    from students_cz.main import keep_webhook_registered
 
     bot = Telegram(clear_after=1)
     await _run_briefly(
@@ -136,7 +136,7 @@ async def test_healing_keeps_the_updates_that_queued_while_it_was_deaf(
 
 async def test_a_check_that_hangs_does_not_stop_the_watch(settings) -> None:
     """Without a timeout the watch waits as long as aiogram's session will."""
-    from konnekt.main import keep_webhook_registered
+    from students_cz.main import keep_webhook_registered
 
     class Hanging(Telegram):
         async def get_webhook_info(self):
@@ -161,14 +161,14 @@ async def test_a_check_that_hangs_does_not_stop_the_watch(settings) -> None:
 
 async def test_the_check_is_given_up_on_before_the_next_one_is_due(settings) -> None:
     """Otherwise checks pile up on each other."""
-    from konnekt import main
+    from students_cz import main
 
     assert main.WEBHOOK_RECHECK_TIMEOUT < main.WEBHOOK_RECHECK_SECONDS
 
 
 async def test_what_the_watch_saw_is_handed_to_healthz(settings) -> None:
     """One asker, not two: /healthz reuses this rather than repeating the call."""
-    from konnekt.main import keep_webhook_registered
+    from students_cz.main import keep_webhook_registered
 
     app = _app()
     bot = Telegram()
@@ -186,7 +186,7 @@ async def test_healthz_is_told_the_moment_the_webhook_is_back(settings) -> None:
     Which would mean reporting a deaf bot for as long after the fix as the
     outage itself lasted — during exactly the incident this watch exists for.
     """
-    from konnekt.main import keep_webhook_registered
+    from students_cz.main import keep_webhook_registered
 
     app = _app()
     bot = Telegram(clear_after=1)
@@ -202,8 +202,8 @@ async def test_the_watch_reports_a_missing_webhook_in_the_endpoint_s_words(
     settings,
 ) -> None:
     """One vocabulary, so /healthz reads the same either way."""
-    from konnekt.api.v1.health import name_webhook_state
-    from konnekt.main import _publish
+    from students_cz.api.v1.health import name_webhook_state
+    from students_cz.main import _publish
 
     app = _app()
     app.state.webhook_error = "Bad Request: bad webhook"

@@ -14,9 +14,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from konnekt.db.models import PartnerOffer, Placement, PlacementEvent
-from konnekt.db.models.enums import PlacementEventKind, UiLang
-from konnekt.schemas import PlacementOut
+from students_cz.db.models import PartnerOffer, Placement, PlacementEvent
+from students_cz.db.models.enums import PlacementEventKind, UiLang
+from students_cz.schemas import PlacementOut
 
 
 def matches(conditions: dict[str, Any], context: dict[str, Any]) -> bool:

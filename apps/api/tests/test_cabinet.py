@@ -12,8 +12,8 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from konnekt.db.models import HelperProfile, Offer, ServiceType, Subject, User
-from konnekt.db.models.enums import PublishStatus
+from students_cz.db.models import HelperProfile, Offer, ServiceType, Subject, User
+from students_cz.db.models.enums import PublishStatus
 
 from .conftest import auth_header
 
@@ -51,7 +51,7 @@ async def test_a_draft_reads_back_with_ids_and_names(
 
     # Register the caller, then hand them a draft with one offer.
     await client.get("/api/v1/me", headers=auth_header(OWNER))
-    from konnekt.db.models import User
+    from students_cz.db.models import User
 
     user = await session.scalar(select(User).where(User.tg_id == OWNER))
     assert user is not None

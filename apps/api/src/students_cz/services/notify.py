@@ -24,13 +24,13 @@ from aiogram.types import (
     WebAppInfo,
 )
 
-from konnekt.bot.texts import OPEN_APP, pick
-from konnekt.db.models import User
-from konnekt.db.models.enums import UiLang
-from konnekt.db.session import get_sessionmaker
-from konnekt.services.people import mark_unreachable
+from students_cz.bot.texts import OPEN_APP, pick
+from students_cz.db.models import User
+from students_cz.db.models.enums import UiLang
+from students_cz.db.session import get_sessionmaker
+from students_cz.services.people import mark_unreachable
 
-log = logging.getLogger("konnekt.notify")
+log = logging.getLogger("students_cz.notify")
 
 # Telegram occasionally takes seconds to answer. The caller is a background
 # task, but an unbounded wait still leaks a task per stuck send.

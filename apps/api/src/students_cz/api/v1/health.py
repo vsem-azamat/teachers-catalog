@@ -12,10 +12,10 @@ from datetime import UTC, datetime, timedelta
 from fastapi import APIRouter, FastAPI, Request
 from sqlalchemy import select
 
-from konnekt.api.deps import SessionDep
-from konnekt.core.config import get_settings
+from students_cz.api.deps import SessionDep
+from students_cz.core.config import get_settings
 
-log = logging.getLogger("konnekt")
+log = logging.getLogger("students_cz")
 
 _STARTED_AT = datetime.now(UTC)
 

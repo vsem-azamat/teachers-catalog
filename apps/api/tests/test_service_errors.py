@@ -3,8 +3,8 @@
 A pure mapping, tested as one: no database, no client, no fixtures.
 """
 
-from konnekt.main import status_for
-from konnekt.services import errors
+from students_cz.main import status_for
+from students_cz.services import errors
 
 
 def test_each_error_answers_with_its_own_status() -> None:

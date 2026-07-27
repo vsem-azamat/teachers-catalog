@@ -33,8 +33,8 @@ FROM python:3.14-slim-bookworm AS runtime
 
 # Non-root from the start. The application writes nothing to disk — Postgres
 # holds the state and Telegram holds the files.
-RUN groupadd --system --gid 1001 konnekt \
-    && useradd --system --uid 1001 --gid konnekt --create-home konnekt
+RUN groupadd --system --gid 1001 students_cz \
+    && useradd --system --uid 1001 --gid students_cz --create-home students_cz
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
@@ -42,15 +42,15 @@ ENV PATH="/app/.venv/bin:$PATH" \
 
 WORKDIR /app
 
-COPY --from=builder --chown=konnekt:konnekt /app/.venv /app/.venv
-COPY --from=builder --chown=konnekt:konnekt /app/src /app/src
-COPY --from=builder --chown=konnekt:konnekt /app/alembic.ini /app/alembic.ini
-COPY --from=builder --chown=konnekt:konnekt /app/seeds /app/seeds
+COPY --from=builder --chown=students_cz:students_cz /app/.venv /app/.venv
+COPY --from=builder --chown=students_cz:students_cz /app/src /app/src
+COPY --from=builder --chown=students_cz:students_cz /app/alembic.ini /app/alembic.ini
+COPY --from=builder --chown=students_cz:students_cz /app/seeds /app/seeds
 
-USER konnekt
+USER students_cz
 EXPOSE 8000
 
 # One worker, deliberately. The lifespan hook creates the bot, registers the
 # webhook and holds aiogram's dispatcher state; a second worker would register
 # the webhook twice and keep half the state in the wrong process.
-CMD ["uvicorn", "konnekt.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+CMD ["uvicorn", "students_cz.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
