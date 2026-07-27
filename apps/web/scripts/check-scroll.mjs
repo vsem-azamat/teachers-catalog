@@ -1,5 +1,5 @@
 /*
- * When you reach the bottom, there has to be something there.
+ * Nothing should be scrollable to a stretch of nothing.
  *
  * The contract is in docs/architecture.md: the Mini App is a screen, not a
  * document. The bug this guards against is not "the page scrolls" — a list is
@@ -13,19 +13,29 @@
  * pointless. What separates the bug from an ordinary short list is what is
  * waiting at the end of the scroll.
  *
- * So: scroll to the bottom, then ask where the lowest content sits. It should
- * be against the bottom edge — above the tab bar where there is one, a
- * screen's padding above the edge where there is not. Anything more is dead
- * space that was scrolled through for nothing.
+ * So the measurement is geometric and needs no scrolling at all: how far is
+ * the lowest thing that paints from the bottom of the screen's content box?
+ * The screen's own `padding-bottom` is by design and is subtracted, which is
+ * also what keeps the number honest on a phone with a home indicator, where
+ * that padding includes the inset. Anything left over is dead space.
+ *
+ * A container does not paint on behalf of its children: a spacer nested inside
+ * a card list is the same bug as one at the foot of the screen, and an earlier
+ * version of this check — which took any element with children as content —
+ * could see the second and not the first.
  *
  * Measured at several viewport sizes, because a screen that fits on a tall
  * phone is not the question.
  *
- * Needs the dev server (`make web`) with the API behind it: an empty state and
- * a failed request are different heights, so a screen measured against a dead
- * API proves nothing. Both are checked rather than assumed — a blank page has
- * nothing to scroll either, and that is the one way a check like this could
- * congratulate itself on a screen that never came up.
+ * What it cannot do: the mock in `src/mockEnv.ts` reports `tdesktop`, where the
+ * SDK synthesises the viewport from `window.innerHeight`, so `--app-height`
+ * here is always the same number as the `100dvh` fallback. The iOS and Android
+ * path that variable exists for is not exercised by anything on this machine.
+ *
+ * Needs the dev server (`make web`) and the API behind it, with a signed
+ * `VITE_MOCK_INIT_DATA` in `apps/web/.env.local` — the API answers 401 to the
+ * unsigned mock, and a screen full of error states is not the screen being
+ * measured. All three are checked before anything is measured.
  *
  * `make web` serves https through mkcert, which needs sudo once. Where it
  * cannot have it, run the server with VITE_NO_HTTPS=1 and pass
@@ -43,35 +53,50 @@ const VIEWPORTS = [
   { width: 390, height: 568 },
 ];
 
+/**
+ * The detail screens are behind an id this script cannot know, so they are
+ * reached the way a person reaches them: by tapping the first row of the list
+ * that leads there.
+ */
 const ROUTES = [
-  '/',
-  '/ask',
-  '/results',
-  '/mine',
-  '/life',
-  '/profile',
-  '/become-helper',
-  '/my-helper',
-  '/nope',
+  { path: '/' },
+  { path: '/ask' },
+  { path: '/results', into: { name: 'helper detail', click: '[class*="card"]' } },
+  { path: '/mine', into: { name: 'request detail', click: '[class*="card"]' } },
+  { path: '/life' },
+  { path: '/profile' },
+  { path: '/become-helper' },
+  { path: '/my-helper' },
+  { path: '/nope' },
 ];
 
 /**
- * How much emptiness under the last row is by design.
+ * Sub-pixel layout leaves fractions behind; a spacer never weighs four.
  *
- * A screen keeps 16px clear at its foot — see `.screen` in ui.module.css,
- * which is the one place that number lives — and a few pixels of rounding sit
- * on top of that. Past this, the space is not clearance, it is a spacer nobody
- * meant to leave.
+ * Everything a screen keeps clear on purpose is already subtracted — it is
+ * `.screen`'s own `padding-bottom` in ui.module.css, home indicator included —
+ * so this is a tolerance and not an allowance.
  */
-const BY_DESIGN = 20;
+const ROUNDING = 4;
 
 const browser = await chromium.launch();
 const failures = [];
+const skipped = new Set();
 
 /** Stop before measuring anything if the thing being measured is not there. */
 async function preflight() {
-  const context = await browser.newContext({ ignoreHTTPSErrors: true });
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 664 },
+    ignoreHTTPSErrors: true,
+  });
   const page = await context.newPage();
+  const fail = async (why, hint) => {
+    console.error(`Cannot measure against ${BASE}: ${why}`);
+    console.error(hint);
+    await browser.close();
+    process.exit(2);
+  };
+
   try {
     const health = await page.goto(`${BASE}/healthz`, { timeout: 15000 });
     if (!health?.ok()) throw new Error(`/healthz answered ${health?.status()}`);
@@ -80,74 +105,75 @@ async function preflight() {
       throw new Error(`/healthz says ${body.trim().slice(0, 120)}`);
     }
   } catch (error) {
-    console.error(`Cannot measure against ${BASE}: ${error.message}`);
-    console.error('Start the dev server (make web) and the API (make api) first,');
-    console.error('or point BASE at a running one.');
-    await browser.close();
-    process.exit(2);
+    await fail(
+      error.message,
+      'Start the dev server (make web) and the API (make api) first.',
+    );
+  }
+
+  // The home screen's category grid only exists once an authenticated request
+  // has come back. Without it every data screen renders an error state, which
+  // has a height of its own and would be measured as if it were the screen.
+  await page.goto(BASE, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(1200);
+  const gotData = await page.evaluate(() =>
+    Boolean(document.querySelector('[class*="grid"]')),
+  );
+  if (!gotData) {
+    await fail(
+      'the home screen came up without its categories',
+      'The API is rejecting this init data. Put a signed VITE_MOCK_INIT_DATA in apps/web/.env.local.',
+    );
   }
   await context.close();
 }
 
 /**
- * Everything the page has to say about its own bottom edge.
+ * How much emptiness the screen has under its lowest visible thing.
  *
- * Runs in the browser twice — before and after scrolling — because the
- * question is what the scroll changed.
+ * Runs in the browser. Declared as a plain function so `page.evaluate` can
+ * serialise it, inner helper and all.
  */
 function look() {
   /**
-   * Does this element put anything on the screen?
+   * Does this element put anything on the screen *itself*?
    *
-   * A spacer is an element with a height and nothing in it, and it is exactly
-   * what this check exists to find. Counting it as content would let the
-   * scroll end "on" it and report the screen as fine — which is how the
-   * 24-pixel block at the foot of /life stayed invisible.
+   * Its children do not count for it: a container's box is only as meaningful
+   * as what is inside it, and a spacer wrapped in a div is still a spacer.
+   * What counts is text of its own, a box it fills or outlines, or being one
+   * of the elements that draws by nature.
    */
   function paints(el) {
-    if (el.childElementCount > 0 || el.textContent.trim()) return true;
+    if (/^(svg|img|canvas|video|input|textarea|select|hr)$/i.test(el.tagName))
+      return true;
+    for (const node of el.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) return true;
+    }
     const style = getComputedStyle(el);
-    const filled =
-      style.backgroundImage !== 'none' ||
-      !['transparent', 'rgba(0, 0, 0, 0)'].includes(style.backgroundColor);
-    const bordered =
-      ['Top', 'Right', 'Bottom', 'Left'].some(
-        (side) => Number.parseFloat(style[`border${side}Width`]) > 0,
-      ) || style.boxShadow !== 'none';
-    return filled || bordered;
+    if (style.visibility === 'hidden' || style.opacity === '0') return false;
+    if (style.backgroundImage !== 'none') return true;
+    if (!['transparent', 'rgba(0, 0, 0, 0)'].includes(style.backgroundColor)) return true;
+    if (style.boxShadow !== 'none') return true;
+    return ['Top', 'Right', 'Bottom', 'Left'].some(
+      (side) => Number.parseFloat(style[`border${side}Width`]) > 0,
+    );
   }
 
   const doc = document.documentElement;
   const root = document.getElementById('root');
-  if (!root?.firstElementChild) return { rendered: false };
+  const screen = root?.firstElementChild;
+  if (!screen) return { rendered: false };
 
-  // The tab bar is fixed and overlays the foot of the screen, so the content
-  // it covers is not visible content and its own bottom edge is not the
-  // page's. Same for the sheet and its scrim when one is open.
-  const floating = new Set();
-  for (const el of root.querySelectorAll('*')) {
-    if (getComputedStyle(el).position === 'fixed') {
-      floating.add(el);
-      for (const child of el.querySelectorAll('*')) floating.add(child);
-    }
-  }
+  const style = getComputedStyle(screen);
+  const floor =
+    screen.getBoundingClientRect().bottom - Number.parseFloat(style.paddingBottom);
 
   let lowest = Number.NEGATIVE_INFINITY;
-  let cover = 0;
-  for (const el of root.querySelectorAll('*')) {
+  for (const el of screen.querySelectorAll('*')) {
+    // A sheet is fixed to the viewport and is not part of the screen's flow.
+    if (getComputedStyle(el).position === 'fixed') continue;
     const box = el.getBoundingClientRect();
     if (box.height <= 0 || box.width <= 0) continue;
-    if (floating.has(el)) {
-      if (box.bottom >= window.innerHeight - 1) {
-        cover = Math.max(cover, box.height);
-      }
-      continue;
-    }
-    // The screen itself is skipped: its bottom edge is its own reserve for
-    // the tab bar, which is the very padding this check is trying to look
-    // past. Everything inside it counts, cards and their padding included —
-    // a card's own foot is part of the card.
-    if (el.parentElement === root) continue;
     if (!paints(el)) continue;
     lowest = Math.max(lowest, box.bottom);
   }
@@ -155,9 +181,34 @@ function look() {
   return {
     rendered: true,
     travel: doc.scrollHeight - doc.clientHeight + (root.scrollHeight - root.clientHeight),
-    // How far the lowest content sits above the lowest place it could be.
-    slack: window.innerHeight - cover - lowest,
+    // Everything between the last visible thing and where the screen's own
+    // designed clearance begins.
+    dead: lowest === Number.NEGATIVE_INFINITY ? 0 : floor - lowest,
   };
+}
+
+async function measure(page, name, label) {
+  await page.waitForTimeout(900);
+  // The development console is a floating panel of its own and would otherwise
+  // count as content.
+  await page.addStyleTag({ content: '#eruda{display:none !important}' });
+  await page.waitForTimeout(100);
+
+  const seen = await page.evaluate(look);
+  if (!seen.rendered) {
+    console.error(`\n${name} rendered nothing at ${label}.`);
+    await browser.close();
+    process.exit(2);
+  }
+
+  // Dead space nobody can reach is just whitespace at the foot of a page.
+  const dead = seen.travel > 0 ? Math.round(seen.dead) : 0;
+  const pointless = dead > ROUNDING;
+  console.log(
+    `  ${pointless ? 'FAIL' : 'ok  '} ${name.padEnd(20)}` +
+      ` travel=${Math.round(seen.travel)}px  empty=${dead}px`,
+  );
+  if (pointless) failures.push(`${name} at ${label}: ${dead}px of nothing`);
 }
 
 await preflight();
@@ -178,43 +229,42 @@ for (const viewport of VIEWPORTS) {
   for (const route of ROUTES) {
     const page = await context.newPage();
     try {
-      const response = await page.goto(`${BASE}${route}`, { waitUntil: 'networkidle' });
+      const response = await page.goto(`${BASE}${route.path}`, {
+        waitUntil: 'networkidle',
+      });
       if (response && !response.ok()) throw new Error(`HTTP ${response.status()}`);
     } catch (error) {
-      console.error(`\nCannot reach ${BASE}${route}: ${error.message}`);
-      await browser.close();
-      process.exit(2);
-    }
-    await page.waitForTimeout(900);
-    // The development console is a floating panel of its own and would
-    // otherwise count as content.
-    await page.addStyleTag({ content: '#eruda{display:none !important}' });
-    await page.waitForTimeout(100);
-
-    const before = await page.evaluate(look);
-    if (!before.rendered) {
-      console.error(`\n${route} rendered nothing at ${label}.`);
+      console.error(`\nCannot reach ${BASE}${route.path}: ${error.message}`);
       await browser.close();
       process.exit(2);
     }
 
-    // To the end of whichever box turns out to be the scrolling one.
-    await page.evaluate(() => {
-      const root = document.getElementById('root');
-      if (root) root.scrollTop = root.scrollHeight;
-      document.documentElement.scrollTop = document.documentElement.scrollHeight;
-    });
-    await page.waitForTimeout(200);
-    const after = await page.evaluate(look);
+    await measure(page, route.path, label);
+
+    if (route.into) {
+      let opened = true;
+      try {
+        await page.locator(route.into.click).first().click({ timeout: 5000 });
+        await page.waitForURL((url) => url.pathname !== route.path, { timeout: 5000 });
+      } catch {
+        opened = false;
+      }
+      if (opened) {
+        await measure(page, route.into.name, label);
+      } else {
+        // An empty list is a seeding problem rather than a layout one, so it
+        // does not fail the run — but it does mean a screen went unmeasured,
+        // and an unmeasured screen reported as nothing at all is how a check
+        // like this quietly stops being one. Nothing seeds a help request
+        // today, so `request detail` skips on every machine.
+        console.log(
+          `  SKIP ${route.into.name.padEnd(20)} nothing in ${route.path} to open`,
+        );
+        skipped.add(route.into.name);
+      }
+    }
+
     await page.close();
-
-    const dead = before.travel > 0 ? Math.round(after.slack) : 0;
-    const pointless = dead > BY_DESIGN;
-    console.log(
-      `  ${pointless ? 'FAIL' : 'ok  '} ${route.padEnd(16)}` +
-        ` travel=${Math.round(before.travel)}px  empty at the end=${dead}px`,
-    );
-    if (pointless) failures.push(`${route} at ${label}: ${dead}px of nothing`);
   }
 
   await context.close();
@@ -228,4 +278,7 @@ if (failures.length) {
   );
   process.exit(1);
 }
-console.log(`\nEvery scroll ends on content, at all ${VIEWPORTS.length} sizes.`);
+if (skipped.size) {
+  console.log(`\nNot measured, nothing to open: ${[...skipped].join(', ')}.`);
+}
+console.log(`Every screen measured ends on content, at all ${VIEWPORTS.length} sizes.`);

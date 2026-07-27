@@ -17,11 +17,11 @@
   /* Nothing above #root pads the bottom any more, so a screen without a tab
      bar clears the home indicator itself.
 
-     This is also the *only* breathing room at the foot of a screen. Six pages
-     each ended in a spacer div of its own — 20px here, 32px there — and every
-     one of them was a stretch of nothing at the end of a scroll, which is the
-     bug `scripts/check-scroll.mjs` exists to catch. One number, in one place,
-     is both easier to look at and the thing that check can hold us to. */
+     This is also the *only* breathing room at the foot of a screen. Seven
+     pages each ended in a spacer div of its own — 20px here, 32px there — and
+     every one was a stretch of nothing at the end of a scroll, which is the
+     bug `scripts/check-scroll.mjs` exists to catch. One number here and one
+     below is both easier to look at and the thing that check can hold us to. */
   padding-bottom: calc(16px + var(--tg-viewport-safe-area-inset-bottom, 0px));
 }
 

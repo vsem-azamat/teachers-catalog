@@ -102,6 +102,20 @@ function initSdk(): void {
   themeParams.mount.ifAvailable();
   themeParams.bindCssVars.ifAvailable();
 
+  // A Mini App opens as a part-height sheet on a phone, and the gesture that
+  // grows it is the one disabled below. Ask for the whole screen rather than
+  // leaving someone in a half sheet with no way out of it. Before the mount
+  // and outside its promise, deliberately: `web_app_expand` needs neither, and
+  // a client that never answers the viewport request must not be able to take
+  // the swipe away without giving the height back.
+  viewport.expand.ifAvailable();
+
+  // Also outside the promise. Subscribing to a signal does not require the
+  // mount to have settled, and the subscriber fires when the client answers —
+  // so a request that never comes back costs a fallback height rather than a
+  // page with no height at all.
+  bindAppHeight();
+
   // Async: the viewport has to ask the client for its dimensions. Nothing
   // downstream waits on it, so the promise is deliberately not awaited — the
   // signals simply start out at zero and fill in.
@@ -110,11 +124,6 @@ function initSdk(): void {
     void Promise.resolve(mounted.data)
       .then(() => {
         viewport.bindCssVars.ifAvailable();
-        // A Mini App opens as a part-height sheet on a phone, and the gesture
-        // that grows it is the one disabled below. Ask for the whole screen
-        // rather than leaving someone in a half sheet with no way out of it.
-        viewport.expand.ifAvailable();
-        bindAppHeight();
       })
       .catch((error: unknown) => {
         console.error('[tma] viewport failed to mount', error);
@@ -157,6 +166,11 @@ function initSdk(): void {
  *
  * `stableHeight` and not `height`: the plain one follows the drag gesture and
  * would make everything pinned to the bottom jitter.
+ *
+ * Subscribed rather than read once, and subscribed without waiting for the
+ * mount: the signal exists before it, and this way a client that never answers
+ * `web_app_request_viewport` leaves the page on its `100dvh` fallback instead
+ * of on nothing at all.
  *
  * Zero is not an answer, and skipping it is the whole reason this is not left
  * to `bindCssVars`. The signal reads 0 until the client has reported a stable

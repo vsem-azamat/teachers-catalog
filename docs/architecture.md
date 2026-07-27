@@ -174,13 +174,19 @@ Three rules follow, and they are what to check before changing layout:
   `viewport.expand()` at startup rather than leaving someone in a half sheet
   with no way out of it. It is dismissed with Telegram's close button.
 
-`pnpm check:scroll` in `apps/web` is the first rule, executable: it scrolls
-each screen to its end at three phone sizes and measures how much emptiness is
-left under the lowest thing that paints. It needs the dev server **and** the
-API — an empty state and a failed request are different heights — and it checks
-both before measuring, because a blank page has nothing to scroll either.
-Nothing runs it automatically; it wants a browser and a database, which CI
-here does not give it.
+`pnpm check:scroll` in `apps/web` is the first rule, executable. At three phone
+sizes it measures the gap between the lowest thing that paints and the bottom
+of the screen's content box — the screen's own `padding-bottom` is subtracted,
+which is also what keeps the number right on a phone with a home indicator. A
+container does not count as painting on behalf of its children, so a spacer
+nested inside a card list is as visible to it as one at the foot of the page.
+
+It needs the dev server, the API and signed init data, and it says so and stops
+rather than measuring error states — a blank page has nothing to scroll either,
+which is how a check like this quietly stops being one. Screens it could not
+reach are named in its output for the same reason. Nothing runs it
+automatically; it wants a browser and a database, which CI here does not give
+it.
 
 ## Where the code does not follow this yet
 
