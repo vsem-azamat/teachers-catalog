@@ -67,8 +67,10 @@ const VIEWPORTS = [
  * screen. A gap left between two cards is above the segmented control at the
  * foot, and no version of this check has ever seen one.
  *
- * `expect` is what stops a rename of either service code from quietly
- * measuring the grid a second time under this screen's name.
+ * `expect` and `expectCount` are what stop a rename of a service code from
+ * quietly measuring something else under this screen's name. Counted, not
+ * merely present: one code renamed still draws the other's card, and a screen
+ * that has lost half of what it was chosen to show measures as fine.
  */
 const ROUTES = [
   { path: '/' },
@@ -88,6 +90,7 @@ const ROUTES = [
       // are on the screen being measured.
       state: { picked: ['tutoring', 'insurance'] },
       expect: '[class*="svcCard"]',
+      expectCount: 2,
     },
   },
   { path: '/my-helper' },
@@ -326,7 +329,14 @@ for (const viewport of VIEWPORTS) {
             },
             [route.into.state, route.into.path],
           );
-          await page.waitForSelector(route.into.expect, { timeout: 5000 });
+          // The exact count, not merely one: half a state that still names
+          // something renders half a screen, and a screen missing one of the
+          // two shapes it was chosen for would otherwise measure as fine.
+          await page.waitForFunction(
+            ([selector, wanted]) => document.querySelectorAll(selector).length === wanted,
+            [route.into.expect, route.into.expectCount],
+            { timeout: 5000 },
+          );
         } else {
           await page.locator(route.into.click).first().click({ timeout: 5000 });
           await page.waitForURL((url) => url.pathname !== route.path, { timeout: 5000 });
@@ -334,19 +344,22 @@ for (const viewport of VIEWPORTS) {
       } catch {
         opened = false;
       }
-      // A screen entered by state is not the empty-list case below: nothing
-      // about the database decides whether it comes up, so failing to reach it
-      // means this check has stopped checking. Recorded and carried on with —
-      // the remaining screens and sizes are still worth measuring, and one
-      // broken entry should not take the whole report down with it.
-      if (!opened && route.into.state) {
-        unreachable.push(
-          `${route.into.name} at ${label}: ${route.into.expect} never appeared` +
-            ` after pushing ${JSON.stringify(route.into.state)}`,
-        );
-      }
       if (opened) {
         await measure(page, route.into.name, label);
+      } else if (route.into.state) {
+        // Not the empty-list case below: nothing about the database decides
+        // whether a screen entered by state comes up, so failing to reach it
+        // means this check has stopped checking. Recorded and carried on with
+        // — the remaining screens and sizes are still worth measuring, and one
+        // broken entry should not take the whole report down with it.
+        console.log(
+          `  DEAD ${route.into.name.padEnd(20)} ${route.into.expect} ×` +
+            `${route.into.expectCount} never appeared`,
+        );
+        unreachable.push(
+          `${route.into.name} at ${label}: expected ${route.into.expectCount} of` +
+            ` ${route.into.expect} after pushing ${JSON.stringify(route.into.state)}`,
+        );
       } else {
         // An empty list is a seeding problem rather than a layout one, so it
         // does not fail the run — but it does mean a screen went unmeasured,
@@ -373,8 +386,8 @@ if (unreachable.length) {
   );
   console.error(
     'A screen entered by router state fails this way when what the state names' +
-      ' no longer exists — a renamed service code, or a rename of the class' +
-      ' `expect` looks for.',
+      ' no longer draws what it drew — a service code renamed or withdrawn, or' +
+      ' a rename of the class `expect` looks for.',
   );
 }
 if (failures.length) {
