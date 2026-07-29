@@ -27,6 +27,7 @@ from students_cz.schemas import (
     ServiceTypeOut,
     SubjectOut,
 )
+from students_cz.services.catalog import TONE_COUNT
 from students_cz.services.naming import translated
 
 router = APIRouter()
@@ -72,13 +73,16 @@ async def service_types(
             id=r.id,
             code=r.code,
             group=r.group_code.value,
+            # The same rule `home_sections` uses, over the same ordering, so
+            # the two screens agree. TONE_COUNT lives with the other one.
+            tone=index % TONE_COUNT,
             name=translated(r, lang) or r.code,
             hint=translated(r, lang, "hint"),
             requires_subject=r.requires_subject,
             requires_institution=r.requires_institution,
             default_price_unit=_unit(r.default_price_unit),
         )
-        for r in rows
+        for index, r in enumerate(rows)
     ]
 
 

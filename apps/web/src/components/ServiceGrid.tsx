@@ -29,10 +29,9 @@ export interface ServiceTile {
   group: ServiceGroup;
   name: string;
   hint?: string | null;
-  /** Which tile colour. The server picks it so a category keeps the same one
-   *  on every screen; `Tile` wraps whatever number it gets, so a plain index
-   *  is a fine fallback and the count lives in one place. */
-  tone?: number;
+  /** Which of the six tile colours. Comes from the server on both screens, so
+   *  a category is the same colour in the catalog as where it is offered. */
+  tone: number;
 }
 
 export function ServiceGrid<T extends ServiceTile>({
@@ -93,7 +92,7 @@ export function ServiceGrid<T extends ServiceTile>({
                   }
                   selected={selected ? isOn : undefined}
                   leading={
-                    <Tile tone={item.tone ?? index}>
+                    <Tile tone={item.tone}>
                       <Icon size={19} />
                     </Tile>
                   }

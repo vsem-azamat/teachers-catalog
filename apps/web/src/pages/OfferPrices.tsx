@@ -8,6 +8,7 @@ import { SubjectSearch } from '@/components/SubjectSearch';
 import {
   Chips,
   ChipView,
+  Empty,
   Hint,
   Label,
   Screen,
@@ -49,13 +50,17 @@ export default function OfferPricesPage() {
   // reload legitimately restarts it rather than resuming half way through.
   const picked = (location.state as { picked?: string[] } | null)?.picked;
 
-  const { data: serviceTypes } = useQuery({
+  const { data: serviceTypes, isError: typesFailed } = useQuery({
     queryKey: ['service-types'],
     queryFn: ({ signal }) => api.getServiceTypes(signal),
     staleTime: 60 * 60 * 1000,
   });
 
-  const { data: mine, isPending } = useQuery({
+  const {
+    data: mine,
+    isPending,
+    isError: profileFailed,
+  } = useQuery({
     queryKey: ['my-helper'],
     queryFn: ({ signal }) => api.getMyHelper(signal),
   });
@@ -168,7 +173,12 @@ export default function OfferPricesPage() {
         <Trans>Необязательно. Пустое поле значит «договоримся».</Trans>
       </Sub>
 
-      {isPending || !loaded ? (
+      {typesFailed || profileFailed ? (
+        <Empty
+          title={<Trans>Не получилось загрузить анкету</Trans>}
+          body={<Trans>Проверь связь и попробуй ещё раз.</Trans>}
+        />
+      ) : isPending || !loaded ? (
         <div style={{ marginTop: 16 }}>
           <SkeletonRows count={4} />
         </div>

@@ -77,6 +77,10 @@ class ServiceTypeOut(BaseModel):
     hint: str | None = None
     requires_subject: bool
     requires_institution: bool
+    # Which of the six tile colours, picked here so a category wears the same
+    # one on the home screen and on the screen where it is offered. Derived
+    # from position in the same order both endpoints return.
+    tone: int = Field(ge=0, le=5)
     # What the price is per, unless the person says otherwise. Tutoring is by
     # the hour and a thesis is by the job; without this the form has to guess,
     # and a guess here is a price that reads as ten times too much.

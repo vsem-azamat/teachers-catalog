@@ -37,6 +37,11 @@ msgstr "Available"
 msgid "Пока ни одной. Добавь ниже — без них тебя не найдут по поиску."
 msgstr "None yet. Add one below — without them search cannot find you."
 
+#: src/pages/Offer.tsx
+#: src/pages/OfferPrices.tsx
+msgid "Проверь связь и попробуй ещё раз."
+msgstr "Check your connection and try again."
+
 #: src/components/Phrase.tsx
 #: src/pages/MyHelper.tsx
 #: src/pages/OfferPrices.tsx
@@ -855,6 +860,8 @@ msgid "Но без этого не доучишься. Сроки и требо�
 msgstr "But you won't get through school without it. Deadlines and requirements are ours, offers come from partners."
 
 #: src/pages/MyHelper.tsx
+#: src/pages/Offer.tsx
+#: src/pages/OfferPrices.tsx
 msgid "Не получилось загрузить анкету"
 msgstr "Could not load your profile"
 

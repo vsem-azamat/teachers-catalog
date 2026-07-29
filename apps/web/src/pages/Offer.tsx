@@ -31,16 +31,24 @@ export default function OfferPage() {
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [loaded, setLoaded] = useState(false);
 
-  const { data: serviceTypes, isPending } = useQuery({
+  const {
+    data: serviceTypes,
+    isPending,
+    isError: typesFailed,
+  } = useQuery({
     queryKey: ['service-types'],
     queryFn: ({ signal }) => api.getServiceTypes(signal),
     staleTime: 60 * 60 * 1000,
   });
 
-  const { data: mine, isError } = useQuery({
+  const { data: mine, isError: profileFailed } = useQuery({
     queryKey: ['my-helper'],
     queryFn: ({ signal }) => api.getMyHelper(signal),
   });
+
+  // Either failure leaves this screen with nothing true to draw, and `loaded`
+  // needs both — so without this the skeleton would spin for ever.
+  const isError = typesFailed || profileFailed;
 
   // Once, from the server. Re-running this on every render would undo each tap
   // the moment the query refetched.

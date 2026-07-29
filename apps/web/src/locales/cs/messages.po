@@ -37,6 +37,11 @@ msgstr "Volní"
 msgid "Пока ни одной. Добавь ниже — без них тебя не найдут по поиску."
 msgstr "Zatím žádná. Přidej ji níž — bez nich tě vyhledávání nenajde."
 
+#: src/pages/Offer.tsx
+#: src/pages/OfferPrices.tsx
+msgid "Проверь связь и попробуй ещё раз."
+msgstr "Zkontroluj připojení a zkus to znovu."
+
 #: src/components/Phrase.tsx
 #: src/pages/MyHelper.tsx
 #: src/pages/OfferPrices.tsx
@@ -855,6 +860,8 @@ msgid "Но без этого не доучишься. Сроки и требо�
 msgstr "Ale bez tohohle to nedoděláš. Termíny a požadavky jsou naše, nabídky partnerské."
 
 #: src/pages/MyHelper.tsx
+#: src/pages/Offer.tsx
+#: src/pages/OfferPrices.tsx
 msgid "Не получилось загрузить анкету"
 msgstr "Profil se nepodařilo načíst"
 

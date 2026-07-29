@@ -75,6 +75,22 @@ async def test_service_types_carry_their_group(client):
     assert units["insurance"] == "item"
 
 
+async def test_a_category_keeps_its_colour_across_screens(client):
+    """The same tile is drawn twice — on the home screen and on `/offer`.
+
+    A category that is green in the catalog and pink where it is offered reads
+    as two different things, so the colour comes from the server rather than
+    from each screen's own idea of position.
+    """
+    headers = auth_header(90109)
+    home = (await client.get("/api/v1/home", headers=headers)).json()["people"]
+    types = (await client.get("/api/v1/taxonomy/service-types", headers=headers)).json()
+
+    on_home = {s["code"]: s["tone"] for s in home}
+    on_offer = {s["code"]: s["tone"] for s in types}
+    assert on_offer == on_home
+
+
 async def test_home_lists_every_service_type(client):
     body = (await client.get("/api/v1/home", headers=auth_header(90104))).json()
     codes = [s["code"] for s in body["people"]]

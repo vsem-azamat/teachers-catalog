@@ -76,10 +76,16 @@ deployment runs `alembic upgrade head` and never runs `seed.py`
 (`.github/workflows/deploy.yml`), so a service type that exists only in the
 seed reaches every developer's database and no production one. Reference rows
 therefore live in two places on purpose, and
-`apps/api/tests/test_service_groups.py` fails when the two disagree — on which
-types exist, and on what they are called. The names matter as much as the
-codes: renaming a service type in the seed alone would leave production showing
-the old one for ever, so a rename needs a migration too.
+`apps/api/tests/test_service_groups.py` fails when the two disagree about which
+types exist, and — for the rows a migration actually creates — about what they
+are called. Names matter as much as codes: renaming a service type in the seed
+alone leaves production showing the old one for ever, so a rename needs a
+migration too.
+
+The seven types that predate the grouping are the gap. They were named by the
+initial schema and no later migration restates their names, so nothing compares
+them; renaming one of those in the seed still needs a migration, and nothing
+but this paragraph will tell you so.
 
 ## Trees without recursion
 

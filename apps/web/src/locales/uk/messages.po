@@ -37,6 +37,11 @@ msgstr "Вільні"
 msgid "Пока ни одной. Добавь ниже — без них тебя не найдут по поиску."
 msgstr "Поки жодної. Додай нижче — без них тебе не знайдуть у пошуку."
 
+#: src/pages/Offer.tsx
+#: src/pages/OfferPrices.tsx
+msgid "Проверь связь и попробуй ещё раз."
+msgstr "Перевір з'єднання і спробуй ще раз."
+
 #: src/components/Phrase.tsx
 #: src/pages/MyHelper.tsx
 #: src/pages/OfferPrices.tsx
@@ -855,6 +860,8 @@ msgid "Но без этого не доучишься. Сроки и требо�
 msgstr "Але без цього не доучишся. Строки й вимоги — наші, пропозиції — партнерські."
 
 #: src/pages/MyHelper.tsx
+#: src/pages/Offer.tsx
+#: src/pages/OfferPrices.tsx
 msgid "Не получилось загрузить анкету"
 msgstr "Не вдалося завантажити анкету"
 
