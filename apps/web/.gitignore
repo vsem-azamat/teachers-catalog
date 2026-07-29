@@ -7,8 +7,12 @@ dist-ssr/
 .vite/
 .mkcert/
 
-# Types generated from the OpenAPI document (`pnpm api:generate`)
-src/lib/generated/
+# NOT ignored: src/lib/generated/. The types are generated from the API's
+# OpenAPI document by `pnpm api:generate`, which needs the API process up — and
+# CI runs `pnpm typecheck` and `pnpm build` with no backend. Committing the
+# output is what lets a clone type-check, and it puts a contract change in the
+# diff where a reviewer can see it. Regenerate and commit after changing the
+# API; `openapi-ts.config.ts` says the same.
 
 # Catalogs compiled by `pnpm i18n:compile`. The build does not need them —
 # @lingui/vite-plugin compiles the .po files on import — so they are a local

@@ -58,13 +58,43 @@ async def test_service_types_are_localised(client):
     assert cs_names["tutoring"] == "Doučování předmětu"
 
 
+async def test_service_types_carry_their_group(client):
+    body = (
+        await client.get("/api/v1/taxonomy/service-types", headers=auth_header(90107))
+    ).json()
+    groups = {s["code"]: s["group"] for s in body}
+    assert groups["tutoring"] == "study"
+    assert groups["nostrification"] == "entrance"
+    assert groups["insurance"] == "life"
+
+
 async def test_home_lists_every_service_type(client):
     body = (await client.get("/api/v1/home", headers=auth_header(90104))).json()
     codes = [s["code"] for s in body["people"]]
     assert "tutoring" in codes
     assert "nostrification" in codes
+    assert "insurance" in codes
     # Tones cycle so the client can colour tiles without deciding anything.
     assert all(0 <= s["tone"] < 6 for s in body["people"])
+
+
+async def test_home_hands_over_whole_groups(client):
+    """The client renders one heading per group and then its tiles.
+
+    So the order has to be grouped: a section that came back after a different
+    group had started would be drawn under the wrong heading, or silently
+    dropped by a client that groups as it goes.
+    """
+    body = (await client.get("/api/v1/home", headers=auth_header(90108))).json()
+    order = [s["group"] for s in body["people"]]
+    assert order, "home returned no service types"
+
+    seen: list[str] = []
+    for group in order:
+        if not seen or seen[-1] != group:
+            assert group not in seen, f"group {group} resumes after {seen[-1]}"
+            seen.append(group)
+    assert seen == ["study", "entrance", "life"]
 
 
 async def test_subject_search_accepts_slang(client):

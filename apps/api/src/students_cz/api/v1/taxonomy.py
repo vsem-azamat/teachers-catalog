@@ -41,7 +41,12 @@ async def service_types(
         await session.scalars(
             select(ServiceType)
             .where(ServiceType.is_active.is_(True))
-            .order_by(ServiceType.sort)
+            # Group first: the client draws a heading whenever the group
+            # changes, and `sort` alone interleaves them — the first seven
+            # alternate study and entrance. Ordering by the enum column uses
+            # the type's declared order, which is the order the shelves are
+            # meant to appear in; `test_home_hands_over_whole_groups` pins it.
+            .order_by(ServiceType.group_code, ServiceType.sort)
             .options(selectinload(ServiceType.names))
         )
     ).all()
@@ -49,6 +54,7 @@ async def service_types(
         ServiceTypeOut(
             id=r.id,
             code=r.code,
+            group=r.group_code.value,
             name=translated(r, lang) or r.code,
             hint=translated(r, lang, "hint"),
             requires_subject=r.requires_subject,

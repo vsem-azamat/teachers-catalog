@@ -18,7 +18,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field, StringConstraints, field_validator
 
-from students_cz.db.models.enums import PriceUnit, UiLang, WorkFormat
+from students_cz.db.models.enums import PriceUnit, ServiceGroup, UiLang, WorkFormat
 
 # Matches ARRAY(String(8)) in the schema; a longer code cannot be stored, and a
 # request carrying one should be told so rather than fail at the database.
@@ -56,7 +56,9 @@ class Avatar(BaseModel):
     id: int
     initials: str
     tone: int = Field(ge=0, le=5)
-    photo_url: str | None = None
+    # Nullable, but not optional: the key is always in the response, and a
+    # default would tell the generated client otherwise. See `HomeSection`.
+    photo_url: str | None
 
 
 # ── taxonomy ────────────────────────────────────────────────────────────
@@ -65,6 +67,12 @@ class Avatar(BaseModel):
 class ServiceTypeOut(BaseModel):
     id: int
     code: str
+    # The enum, not `str`: this is what puts `"enum": [...]` in the OpenAPI
+    # document, so the generated client gets a union of three literals instead
+    # of `string` and a typo becomes a type error. The client translates it —
+    # see docs/data-model.md for why this one is not in the database's own
+    # i18n tables.
+    group: ServiceGroup
     name: str
     hint: str | None = None
     requires_subject: bool
@@ -226,12 +234,19 @@ class SearchOut(BaseModel):
 class HomeSection(BaseModel):
     kind: str  # service_type | item_category
     code: str
+    # Sections arrive in group order, so the client draws a heading whenever
+    # this changes. Typed as the enum for the same reason as `ServiceTypeOut`.
+    group: ServiceGroup
     name: str
     hint: str | None = None
     tone: int
     count: int
     live_count: int | None = None
-    avatars: list[Avatar] = Field(default_factory=list)
+    # No default. A default makes the field optional in the OpenAPI document,
+    # and the generated client then types it `Avatar[] | undefined` — which is
+    # a lie about a response that always carries the key, and one every call
+    # site has to apologise for. An empty list is passed explicitly instead.
+    avatars: list[Avatar]
 
 
 class HomeOut(BaseModel):

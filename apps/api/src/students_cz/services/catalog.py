@@ -80,7 +80,10 @@ async def home_sections(
         await session.scalars(
             select(ServiceType)
             .where(ServiceType.is_active.is_(True))
-            .order_by(ServiceType.sort)
+            # Whole groups, in the order the enum declares them. `sort` alone
+            # interleaves study and entrance, and the client draws its heading
+            # from where the group changes.
+            .order_by(ServiceType.group_code, ServiceType.sort)
             .options(selectinload(ServiceType.names))
         )
     ).all()
@@ -91,6 +94,7 @@ async def home_sections(
         HomeSection(
             kind="service_type",
             code=st.code,
+            group=st.group_code.value,
             name=translated(st, lang) or st.code,
             hint=translated(st, lang, "hint"),
             tone=index % TONE_COUNT,

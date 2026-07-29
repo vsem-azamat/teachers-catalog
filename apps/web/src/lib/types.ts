@@ -17,6 +17,8 @@
  *   requests.
  */
 
+import type { Avatar, HomeSection } from './generated/types.gen';
+
 export type UiLang = 'ru' | 'cs' | 'en' | 'uk';
 
 export type WorkFormat = 'online' | 'offline' | 'both';
@@ -46,27 +48,28 @@ export interface Price {
 
 /**
  * Enough to draw the little circle without fetching anything. Telegram avatar
- * URLs expire, so the monogram is the fallback rather than a broken image.
+ * URLs expire, so the monogram is the fallback rather than a broken image, and
+ * `tone` is 0-5, derived from the user id so a person keeps their colour.
+ *
+ * From the contract rather than written out again: `HomeSection` carries these
+ * too, and two structurally equal declarations of the same thing are one
+ * rename away from not being equal.
  */
-export interface Avatar {
-  /** The user this face belongs to; a stable React key for a list of them. */
-  id: number;
-  initials: string;
-  /** 0-5, derived from the user id so a person keeps their colour. */
-  tone: number;
-  photo_url: string | null;
-}
+export type { Avatar };
 
 // ── taxonomy ────────────────────────────────────────────────────────────
 
-export interface ServiceType {
-  id: number;
-  code: string;
-  name: string;
-  hint: string | null;
-  requires_subject: boolean;
-  requires_institution: boolean;
-}
+/**
+ * Taken from the contract, not written out again.
+ *
+ * `pnpm api:generate` regenerates `lib/generated` from the API's OpenAPI
+ * document, and these two carry `group`, which is an enum on the server. Going
+ * through the generated type is what makes a mistyped group a compile error
+ * here instead of an empty heading at runtime; a hand-written `string` would
+ * accept anything. The rest of this file is still the hand-written stopgap
+ * described above — types move across as the code that uses them is touched.
+ */
+export type { ServiceGroup, ServiceTypeOut as ServiceType } from './generated/types.gen';
 
 export interface Subject {
   id: number;
@@ -221,16 +224,8 @@ export interface SearchParams {
 
 // ── home ────────────────────────────────────────────────────────────────
 
-export interface HomeSection {
-  kind: 'service_type' | 'item_category' | string;
-  code: string;
-  name: string;
-  hint: string | null;
-  tone: number;
-  count: number;
-  live_count: number | null;
-  avatars: Avatar[];
-}
+/** From the contract, for `group`. See the note above `ServiceType`. */
+export type { HomeSection };
 
 export interface Home {
   people: HomeSection[];
