@@ -82,10 +82,11 @@ are called. Names matter as much as codes: renaming a service type in the seed
 alone leaves production showing the old one for ever, so a rename needs a
 migration too.
 
-The seven types that predate the grouping are the gap. They were named by the
-initial schema and no later migration restates their names, so nothing compares
-them; renaming one of those in the seed still needs a migration, and nothing
-but this paragraph will tell you so.
+The seven types that predate the grouping are the gap, and the reason the rule
+exists at all. No migration creates them — the initial schema builds the table
+and inserts nothing — so they are in production only because somebody ran
+`seed.py` against it by hand. Nothing compares their names, and renaming one in
+the seed still needs a migration; nothing but this paragraph will tell you so.
 
 ## Trees without recursion
 

@@ -96,11 +96,26 @@ export default function OfferPricesPage() {
     setLoaded(true);
   }, [mine, chosen, loaded]);
 
+  /*
+   * Offers whose service type the catalog no longer lists.
+   *
+   * `/taxonomy/service-types` returns only active ones, so a type that was
+   * deactivated leaves its offers invisible to the grid — and the save below
+   * is authoritative, so anything absent from it is deleted. Carried through
+   * untouched: withdrawing a category is our decision, and it should not
+   * quietly take somebody's row with it the next time they edit a price.
+   */
+  const unlisted = useMemo(() => {
+    if (!mine || !serviceTypes) return [];
+    const known = new Set(serviceTypes.map((type) => type.id));
+    return mine.offers.filter((offer) => !known.has(offer.service_type_id));
+  }, [mine, serviceTypes]);
+
   const save = useMutation({
     mutationFn: () =>
       api.saveHelper({
         work_format: workFormat,
-        offers: rows.map(toOffer),
+        offers: [...rows.map(toOffer), ...unlisted.map(keep)],
         // Not an unconditional `true`. Somebody who hid their profile on
         // purpose and then adds a service from the cabinet is adding a
         // service, not asking to be listed again — and `false` here keeps a
@@ -424,6 +439,18 @@ function fromOffer(type: ServiceType, offer: MyOffer): Draft {
     // would render a decimal point the input then refuses to accept.
     price: offer.price_amount == null ? '' : String(Math.round(offer.price_amount)),
     unit: offer.price_unit ?? type.default_price_unit ?? 'hour',
+    langs: offer.langs,
+  };
+}
+
+/** An offer we are not editing, sent back exactly as it came. */
+function keep(offer: MyOffer): OfferInput {
+  return {
+    service_type_id: offer.service_type_id,
+    subject_id: offer.subject_id,
+    institution_id: offer.institution_id,
+    price_amount: offer.price_amount,
+    price_unit: offer.price_unit,
     langs: offer.langs,
   };
 }
