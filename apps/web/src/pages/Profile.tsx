@@ -118,7 +118,10 @@ export default function ProfilePage() {
             </Label>
             <Rows>
               <Row
-                onClick={() => navigate(me.is_helper ? '/my-helper' : '/become-helper')}
+                // `/offer`, not the route that used to be here: `/become-helper`
+                // was deleted with the screen behind it, and a bare string is
+                // not something the compiler can catch.
+                onClick={() => navigate(me.is_helper ? '/my-helper' : '/offer')}
                 leading={
                   <Tile tone={0}>
                     <PersonIcon size={19} />

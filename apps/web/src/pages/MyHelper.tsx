@@ -1,9 +1,10 @@
 import { Trans, useLingui } from '@lingui/react/macro';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 
 import { AppHeader } from '@/components/AppHeader';
-import { CloseIcon } from '@/components/icons';
+import { CloseIcon, PlusIcon } from '@/components/icons';
 import {
   Empty,
   Hint,
@@ -14,23 +15,30 @@ import {
   Segmented,
   SkeletonRows,
   Sub,
+  Tile,
   Title,
   ui,
 } from '@/components/Ui';
-import { hapticSelection, hapticSuccess, useMainButton } from '@/hooks/useTelegram';
+import { hapticSuccess, useMainButton } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
-import type { MyOffer, OfferInput, PriceUnit, Subject, WorkFormat } from '@/lib/types';
+import type { MyOffer, OfferInput, PriceUnit, WorkFormat } from '@/lib/types';
 
 /**
  * The helper's own page: everything they have told us, editable.
  *
  * One screen, not a wizard. Someone who has already decided to help should be
- * able to fix a price or add a subject in ten seconds, and every step between
- * them and that is a step where they close the app instead. Nothing here is
- * required — an empty profile is a profile nobody finds, which is a fair
- * consequence and not an error message.
+ * able to fix a price in ten seconds, and every step between them and that is a
+ * step where they close the app instead. Nothing here is required — an empty
+ * profile is a profile nobody finds, which is a fair consequence and not an
+ * error message.
+ *
+ * Adding a service is the one thing that leaves: it goes to `/offer`, the same
+ * grid used when the person first joined. What used to be here was a subject
+ * search that attached everything it found to tutoring, so somebody who writes
+ * theses or fills in residence forms could not add what they actually do.
  */
 export default function MyHelperPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useLingui();
 
@@ -61,12 +69,6 @@ export default function MyHelperPage() {
     setRows(data.offers.map(toDraft));
     setLoaded(true);
   }, [data, loaded]);
-
-  const { data: serviceTypes } = useQuery({
-    queryKey: ['service-types'],
-    queryFn: ({ signal }) => api.getServiceTypes(signal),
-    staleTime: 60 * 60 * 1000,
-  });
 
   const save = useMutation({
     mutationFn: () =>
@@ -100,32 +102,6 @@ export default function MyHelperPage() {
         }
       : null,
   );
-
-  const tutoring = serviceTypes?.find((type) => type.code === 'tutoring');
-  const tutoringId = tutoring?.id;
-
-  const addSubject = (subject: Subject) => {
-    if (tutoring === undefined) return;
-    if (rows.some((row) => row.subject_id === subject.id)) return;
-    hapticSelection();
-    setRows([
-      ...rows,
-      {
-        key: `subject-${subject.id}`,
-        service_type_id: tutoring.id,
-        service_type_name: tutoring.name,
-        subject_id: subject.id,
-        subject_name: subject.name,
-        institution_id: null,
-        institution_name: null,
-        price: '',
-        // Tutoring is priced by the hour almost everywhere; the row's own
-        // select is there for the exceptions.
-        unit: 'hour',
-        langs: [],
-      },
-    ]);
-  };
 
   if (isError) {
     return (
@@ -190,13 +166,13 @@ export default function MyHelperPage() {
           </div>
 
           <Label>
-            <Trans>Предметы и цены</Trans>
+            <Trans>Мои услуги</Trans>
           </Label>
 
           {rows.length === 0 ? (
             <Hint>
               <Trans>
-                Пока ни одного. Найди предмет ниже — без них тебя не найдут по поиску.
+                Пока ни одной. Добавь ниже — без них тебя не найдут по поиску.
               </Trans>
             </Hint>
           ) : (
@@ -219,12 +195,23 @@ export default function MyHelperPage() {
             </Rows>
           )}
 
+          {/* Adding goes through the same grid the offer flow uses. The box
+              that used to be here searched subjects and attached every one of
+              them to tutoring, so a person who wrote theses could not add that
+              at all. */}
           <div style={{ marginTop: 10 }}>
-            <SubjectSearch
-              onPick={addSubject}
-              disabled={tutoringId === undefined}
-              taken={new Set(rows.map((row) => row.subject_id))}
-            />
+            <Rows>
+              <Row
+                leading={
+                  <Tile tone={1}>
+                    <PlusIcon size={19} />
+                  </Tile>
+                }
+                title={<Trans>Добавить услугу</Trans>}
+                hint={<Trans>репетиторство, работы, документы</Trans>}
+                onClick={() => navigate('/offer')}
+              />
+            </Rows>
           </div>
 
           <Label>
@@ -402,74 +389,6 @@ function SubjectRow({
         <CloseIcon size={14} />
       </button>
     </div>
-  );
-}
-
-/**
- * Find a subject by typing.
- *
- * Fuzzy on the server, so "matan" and "матан" both land on the same node —
- * which is the whole reason this is a search box and not a tree to browse.
- */
-function SubjectSearch({
-  onPick,
-  disabled,
-  taken,
-}: {
-  onPick: (subject: Subject) => void;
-  disabled: boolean;
-  taken: Set<number | null>;
-}) {
-  const { t } = useLingui();
-  const [query, setQuery] = useState('');
-  const [debounced, setDebounced] = useState('');
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(query.trim()), 300);
-    return () => clearTimeout(timer);
-  }, [query]);
-
-  const { data } = useQuery({
-    queryKey: ['subject-search', debounced],
-    queryFn: ({ signal }) => api.searchSubjects(debounced, 6, signal),
-    enabled: debounced.length >= 2,
-  });
-
-  const results = useMemo(
-    () => (data ?? []).filter((subject) => !taken.has(subject.id)),
-    [data, taken],
-  );
-
-  return (
-    <>
-      <div className={ui.field}>
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={t`Добавить предмет — матан, čeština, физика`}
-          disabled={disabled}
-          maxLength={200}
-          style={{ all: 'unset', width: '100%' }}
-        />
-      </div>
-      {results.length > 0 ? (
-        <div style={{ marginTop: 8 }}>
-          <Rows>
-            {results.map((subject) => (
-              <Row
-                key={subject.id}
-                title={subject.name}
-                onClick={() => {
-                  onPick(subject);
-                  setQuery('');
-                  setDebounced('');
-                }}
-              />
-            ))}
-          </Rows>
-        </div>
-      ) : null}
-    </>
   );
 }
 

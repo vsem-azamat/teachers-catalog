@@ -10,7 +10,7 @@ import type { ReactNode } from 'react';
 
 import type { Avatar, Price } from '@/lib/types';
 
-import { ChevronIcon, CloseIcon } from './icons';
+import { CheckIcon, ChevronIcon, CloseIcon } from './icons';
 import css from './ui.module.css';
 
 const TONES = 6;
@@ -58,6 +58,13 @@ export function Cell({
   trailing,
   /** Spans both columns and lays out as a row, for the one that matters most. */
   wide = false,
+  /**
+   * Undefined on a grid that navigates, boolean on one that chooses. The
+   * distinction is the whole difference between the two screens that use this,
+   * and `aria-pressed` has to be absent rather than false on a tile that is
+   * not a toggle at all.
+   */
+  selected,
   onClick,
 }: {
   leading?: ReactNode;
@@ -65,13 +72,17 @@ export function Cell({
   hint?: ReactNode;
   trailing?: ReactNode;
   wide?: boolean;
+  selected?: boolean;
   onClick: () => void;
 }) {
   if (wide) {
     return (
       <button
         type="button"
-        className={`${css.cell} ${css.cellWide} ${css.pressable}`}
+        className={`${css.cell} ${css.cellWide} ${css.pressable} ${
+          selected ? css.cellOn : ''
+        }`}
+        aria-pressed={selected}
         onClick={onClick}
       >
         {leading}
@@ -80,12 +91,19 @@ export function Cell({
           {hint ? <span className={css.rowHint}>{hint}</span> : null}
         </span>
         {trailing ? <span className={css.rowTrailing}>{trailing}</span> : null}
+        {selected === undefined ? null : <CellCheck on={selected} wide />}
       </button>
     );
   }
 
   return (
-    <button type="button" className={`${css.cell} ${css.pressable}`} onClick={onClick}>
+    <button
+      type="button"
+      className={`${css.cell} ${css.pressable} ${selected ? css.cellOn : ''}`}
+      aria-pressed={selected}
+      onClick={onClick}
+    >
+      {selected === undefined ? null : <CellCheck on={selected} />}
       {leading}
       <span className={css.cellName}>{title}</span>
       <span className={css.cellFoot}>
@@ -93,6 +111,28 @@ export function Cell({
         {trailing}
       </span>
     </button>
+  );
+}
+
+/**
+ * The tick in the corner of a chosen tile.
+ *
+ * Drawn even when off, as an empty ring: a checkmark that only appears once
+ * something is chosen leaves the person to work out that the tiles are
+ * choosable at all.
+ */
+function CellCheck({ on, wide = false }: { on: boolean; wide?: boolean }) {
+  return (
+    <span
+      className={`${css.cellCheck} ${on ? css.cellCheckOn : ''} ${
+        // A wide cell lays out as a row, so the corner is the wrong place: the
+        // tick sits at the end of the line with everything else.
+        wide ? css.cellCheckInline : ''
+      }`}
+      aria-hidden="true"
+    >
+      {on ? <CheckIcon size={11} /> : null}
+    </span>
   );
 }
 

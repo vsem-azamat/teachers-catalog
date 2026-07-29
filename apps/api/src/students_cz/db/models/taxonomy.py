@@ -10,7 +10,13 @@ from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from students_cz.db.base import Base, IdMixin, TimestampMixin
-from students_cz.db.models.enums import InstitutionKind, NodeKind, UiLang, pg_enum
+from students_cz.db.models.enums import (
+    InstitutionKind,
+    NodeKind,
+    ServiceGroup,
+    UiLang,
+    pg_enum,
+)
 
 
 class Subject(IdMixin, TimestampMixin, Base):
@@ -184,6 +190,15 @@ class ServiceType(IdMixin, TimestampMixin, Base):
     __tablename__ = "service_types"
 
     code: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    # Which shelf the tile sits on. NOT NULL with a default rather than
+    # nullable: a type in no group would render on neither screen, and the
+    # failure would be an absence nobody sees.
+    group_code: Mapped[ServiceGroup] = mapped_column(
+        pg_enum(ServiceGroup, "service_group"),
+        nullable=False,
+        default=ServiceGroup.STUDY,
+        server_default="study",
+    )
     requires_subject: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
     )

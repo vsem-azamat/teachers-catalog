@@ -103,7 +103,7 @@ export function TabBar() {
             }
             name={<Trans>Предлагаю услугу</Trans>}
             hint={<Trans>репетиторство, работы, помощь</Trans>}
-            onClick={() => post('/become-helper')}
+            onClick={() => post('/offer')}
           />
         </Sheet>
       ) : null}

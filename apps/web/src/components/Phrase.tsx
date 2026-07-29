@@ -14,7 +14,7 @@
 import { Plural, Trans } from '@lingui/react/macro';
 import type { ReactElement } from 'react';
 
-import type { Phrase as PhraseData } from '@/lib/types';
+import type { Phrase as PhraseData, ServiceGroup } from '@/lib/types';
 
 function num(value: unknown): number {
   return typeof value === 'number' ? value : Number(value ?? 0);
@@ -152,6 +152,24 @@ export function PriceUnitLabel({ unit }: { unit: string }): ReactElement {
       return <Trans>договорная</Trans>;
     default:
       return <Trans>за час</Trans>;
+  }
+}
+
+/**
+ * The heading over a shelf of service tiles.
+ *
+ * Translated here rather than in the database, like every other closed enum
+ * the server sends. See docs/data-model.md — the i18n tables are for rows we
+ * keep adding to, and there are three of these for good.
+ */
+export function ServiceGroupLabel({ group }: { group: ServiceGroup }): ReactElement {
+  switch (group) {
+    case 'study':
+      return <Trans>Учёба</Trans>;
+    case 'entrance':
+      return <Trans>Экзамены и поступление</Trans>;
+    case 'life':
+      return <Trans>Документы и жизнь</Trans>;
   }
 }
 

@@ -18,7 +18,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field, StringConstraints, field_validator
 
-from students_cz.db.models.enums import PriceUnit, UiLang, WorkFormat
+from students_cz.db.models.enums import PriceUnit, ServiceGroup, UiLang, WorkFormat
 
 # Matches ARRAY(String(8)) in the schema; a longer code cannot be stored, and a
 # request carrying one should be told so rather than fail at the database.
@@ -56,7 +56,9 @@ class Avatar(BaseModel):
     id: int
     initials: str
     tone: int = Field(ge=0, le=5)
-    photo_url: str | None = None
+    # Nullable, but not optional: the key is always in the response, and a
+    # default would tell the generated client otherwise. See `HomeSection`.
+    photo_url: str | None
 
 
 # ── taxonomy ────────────────────────────────────────────────────────────
@@ -65,10 +67,24 @@ class Avatar(BaseModel):
 class ServiceTypeOut(BaseModel):
     id: int
     code: str
+    # The enum, not `str`: this is what puts `"enum": [...]` in the OpenAPI
+    # document, so the generated client gets a union of three literals instead
+    # of `string` and a typo becomes a type error. The client translates it —
+    # see docs/data-model.md for why this one is not in the database's own
+    # i18n tables.
+    group: ServiceGroup
     name: str
     hint: str | None = None
     requires_subject: bool
     requires_institution: bool
+    # Which of the six tile colours, picked here so a category wears the same
+    # one on the home screen and on the screen where it is offered. Derived
+    # from position in the same order both endpoints return.
+    tone: int = Field(ge=0, le=5)
+    # What the price is per, unless the person says otherwise. Tutoring is by
+    # the hour and a thesis is by the job; without this the form has to guess,
+    # and a guess here is a price that reads as ten times too much.
+    default_price_unit: PriceUnit | None
 
 
 class SubjectOut(BaseModel):
@@ -226,12 +242,19 @@ class SearchOut(BaseModel):
 class HomeSection(BaseModel):
     kind: str  # service_type | item_category
     code: str
+    # Sections arrive in group order, so the client draws a heading whenever
+    # this changes. Typed as the enum for the same reason as `ServiceTypeOut`.
+    group: ServiceGroup
     name: str
     hint: str | None = None
     tone: int
     count: int
     live_count: int | None = None
-    avatars: list[Avatar] = Field(default_factory=list)
+    # No default. A default makes the field optional in the OpenAPI document,
+    # and the generated client then types it `Avatar[] | undefined` — which is
+    # a lie about a response that always carries the key, and one every call
+    # site has to apologise for. An empty list is passed explicitly instead.
+    avatars: list[Avatar]
 
 
 class HomeOut(BaseModel):
@@ -280,26 +303,6 @@ class MeUpdate(BaseModel):
 
 
 # ── becoming a helper ───────────────────────────────────────────────────
-
-
-class IntroRequest(BaseModel):
-    text: str = Field(min_length=10, max_length=4000)
-
-
-class IntroOut(BaseModel):
-    """What we made of "расскажи своими словами".
-
-    Everything is a chip the person can remove, and `missing` names what the
-    text did not say — so the screen asks for exactly that instead of showing
-    a four-step wizard.
-    """
-
-    chips: list[Chip]
-    price: Price | None = None
-    work_format: WorkFormat | None = None
-    institution_id: int | None = None
-    subject_ids: list[int] = Field(default_factory=list)
-    missing: list[str] = Field(default_factory=list)
 
 
 class OfferIn(BaseModel):

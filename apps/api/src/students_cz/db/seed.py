@@ -27,7 +27,7 @@ from students_cz.db.models import (
     Subject,
     SubjectI18n,
 )
-from students_cz.db.models.enums import InstitutionKind, NodeKind, UiLang
+from students_cz.db.models.enums import InstitutionKind, NodeKind, ServiceGroup, UiLang
 from students_cz.db.session import dispose_engine, get_sessionmaker
 
 
@@ -53,9 +53,17 @@ LANGS: tuple[UiLang, ...] = (UiLang.RU, UiLang.CS, UiLang.EN, UiLang.UK)
 # Kinds of help, in the order they appear on the home screen. The requires_*
 # flags drive what the offer form asks for: a written paper needs no subject,
 # entrance preparation is meaningless without naming the school.
+#
+# `group` is not optional, and `test_service_groups.py` fails without it: a
+# missing key would fall to the column's `study` default and put the row on the
+# wrong shelf without anything erroring.
+#
+# Whatever changes here has to change in the migration too — the deployment
+# runs `alembic upgrade head` and never runs this file. See docs/data-model.md.
 SERVICE_TYPES: list[dict[str, Any]] = [
     {
         "code": "tutoring",
+        "group": "study",
         "requires_subject": True,
         "default_price_unit": "hour",
         "names": {
@@ -70,6 +78,7 @@ SERVICE_TYPES: list[dict[str, Any]] = [
     },
     {
         "code": "entrance_prep",
+        "group": "entrance",
         "requires_institution": True,
         "default_price_unit": "hour",
         "names": {
@@ -81,6 +90,7 @@ SERVICE_TYPES: list[dict[str, Any]] = [
     },
     {
         "code": "language_tutoring",
+        "group": "study",
         "requires_subject": True,
         "default_price_unit": "hour",
         "names": {
@@ -92,6 +102,7 @@ SERVICE_TYPES: list[dict[str, Any]] = [
     },
     {
         "code": "exam_live_help",
+        "group": "entrance",
         "default_price_unit": "hour",
         "names": {
             "ru": ("Помощь на экзамене", "подстраховка онлайн в день сдачи"),
@@ -102,6 +113,7 @@ SERVICE_TYPES: list[dict[str, Any]] = [
     },
     {
         "code": "exam_prep",
+        "group": "study",
         "requires_subject": True,
         "default_price_unit": "hour",
         "names": {
@@ -113,6 +125,7 @@ SERVICE_TYPES: list[dict[str, Any]] = [
     },
     {
         "code": "nostrification",
+        "group": "entrance",
         "default_price_unit": "hour",
         "names": {
             "ru": ("Нострификация", "аттестат, диплом, досдача предметов"),
@@ -123,12 +136,71 @@ SERVICE_TYPES: list[dict[str, Any]] = [
     },
     {
         "code": "writing",
+        "group": "study",
         "default_price_unit": "work",
         "names": {
             "ru": ("Написать работу", "семестровка, бакалаврская, реферат"),
             "cs": ("Napsat práci", "semestrální, bakalářská, referát"),
             "en": ("Written work", "term paper, bachelor thesis, essay"),
             "uk": ("Написати роботу", "семестрова, бакалаврська, реферат"),
+        },
+    },
+    # Help that is not about studying at all. No subject, no institution: both
+    # axes stay null and the tile is the whole query. Priced per item, because
+    # one insurance policy or one bank statement is the unit people think in.
+    {
+        "code": "insurance",
+        "group": "life",
+        "default_price_unit": "item",
+        "names": {
+            "ru": ("Страховка", "VZP, PVZP, для визы"),
+            "cs": ("Pojištění", "VZP, PVZP, k vízu"),
+            "en": ("Insurance", "VZP, PVZP, for the visa"),
+            "uk": ("Страхування", "VZP, PVZP, для візи"),
+        },
+    },
+    {
+        "code": "bank_letter",
+        "group": "life",
+        "default_price_unit": "item",
+        "names": {
+            "ru": ("Справка из банка", "счёт, výpis, для ВНЖ"),
+            "cs": ("Potvrzení z banky", "účet, výpis, k pobytu"),
+            "en": ("Bank statement", "account, výpis, for the permit"),
+            "uk": ("Довідка з банку", "рахунок, výpis, для посвідки"),
+        },
+    },
+    {
+        "code": "translation",
+        "group": "life",
+        "default_price_unit": "item",
+        "names": {
+            "ru": ("Перевод документов", "с razítkem, судебный"),
+            "cs": ("Překlad dokumentů", "s razítkem, soudní"),
+            "en": ("Document translation", "stamped, sworn"),
+            "uk": ("Переклад документів", "з razítkem, судовий"),
+        },
+    },
+    {
+        "code": "residence",
+        "group": "life",
+        "default_price_unit": "item",
+        "names": {
+            "ru": ("Виза и ВНЖ", "запись, подача, продление"),
+            "cs": ("Vízum a pobyt", "termín, podání, prodloužení"),
+            "en": ("Visa and residence", "appointment, filing, renewal"),
+            "uk": ("Віза та посвідка", "запис, подання, продовження"),
+        },
+    },
+    {
+        "code": "housing",
+        "group": "life",
+        "default_price_unit": "item",
+        "names": {
+            "ru": ("Жильё и переезд", "общежитие, договор"),
+            "cs": ("Bydlení a stěhování", "kolej, smlouva"),
+            "en": ("Housing and moving", "dorm, lease"),
+            "uk": ("Житло та переїзд", "гуртожиток, договір"),
         },
     },
 ]
@@ -167,6 +239,9 @@ async def seed_service_types(session: AsyncSession) -> int:
         if row is None:
             row = ServiceType(code=spec["code"])
             session.add(row)
+        # Indexed, not `.get`: a spec with no group is a bug in this file, and
+        # defaulting it would put the row on the wrong shelf silently.
+        row.group_code = ServiceGroup(spec["group"])
         row.requires_subject = spec.get("requires_subject", False)
         row.requires_institution = spec.get("requires_institution", False)
         row.default_price_unit = spec.get("default_price_unit")

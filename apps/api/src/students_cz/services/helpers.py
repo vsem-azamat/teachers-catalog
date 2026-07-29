@@ -44,8 +44,10 @@ async def save_profile(
     publishing happened once in a lifetime, and not harmless now that the
     cabinet invites someone to fix a price in ten seconds.
 
-    Fields the caller does not carry are left alone. A profile is edited by
-    more than one screen, and each of them sends what it knows about.
+    Fields the caller does not carry are left alone — every one of them, checked
+    through `model_fields_set` rather than by testing for `None`, because a
+    field with a default cannot tell the two apart otherwise. A profile is
+    edited by more than one screen, and each sends only what it knows about.
 
     Does not commit: the caller owns the transaction.
     """
@@ -61,7 +63,12 @@ async def save_profile(
     _apply_text(helper, spec, lang)
     await _apply_status(session, helper, user, publish=spec.publish)
     await session.flush()
-    await _apply_offers(session, user=user, spec=spec)
+    # Same rule as the text fields, and for the same reason. `offers` defaults
+    # to an empty list, so an unconditional call here deletes everything the
+    # person offers the moment a screen sends anything else on its own — which
+    # is the promise the docstring above already makes.
+    if "offers" in spec.model_fields_set:
+        await _apply_offers(session, user=user, helper=helper, spec=spec)
     return helper
 
 
@@ -84,7 +91,12 @@ def _apply_text(helper: HelperProfile, spec: HelperUpsert, lang: UiLang) -> None
         helper.place_note = spec.place_note
     helper.raw_intro = spec.raw_intro or helper.raw_intro
     helper.about_lang = ContentLang(lang.value)
-    helper.work_format = spec.work_format
+    # `work_format` has a default of `both`, so writing it unconditionally
+    # moved an online-only tutor to "either way" the moment any screen saved
+    # anything else — and `_apply_offers` copies it onto every offer, so the
+    # change reached each of their rows too.
+    if "work_format" in given:
+        helper.work_format = spec.work_format
 
 
 async def _apply_status(
@@ -104,16 +116,30 @@ async def _apply_status(
     helper.status = PublishStatus.HIDDEN if helper.published_at else PublishStatus.DRAFT
 
 
-async def _apply_offers(session: AsyncSession, *, user: User, spec: HelperUpsert) -> None:
-    valid_service_ids = set(
-        (await session.scalars(select(ServiceType.id).where(ServiceType.is_active))).all()
-    )
+async def _apply_offers(
+    session: AsyncSession, *, user: User, helper: HelperProfile, spec: HelperUpsert
+) -> None:
     existing = {
         (row.service_type_id, row.subject_id, row.institution_id): row
         for row in (
             await session.scalars(select(Offer).where(Offer.helper_id == user.id))
         ).all()
     }
+    # Active types, plus whatever this person already offers.
+    #
+    # The list is authoritative — anything missing from it is deleted below — so
+    # a screen has to send back rows it is not editing, including any whose
+    # category we have since withdrawn. Accepting only active types turns that
+    # into a 422 on every save, which is worse than the deletion it prevents:
+    # the person cannot change a price at all, and nothing on screen says why.
+    #
+    # Nobody gains a category this way: to hold one at all it had to be active
+    # when the offer was first made. Someone who holds a withdrawn type can add
+    # rows under it — another subject, say — and that is accepted on purpose;
+    # the alternative is a form that half works for them.
+    valid_service_ids = set(
+        (await session.scalars(select(ServiceType.id).where(ServiceType.is_active))).all()
+    ) | {service_type_id for service_type_id, _, _ in existing}
 
     seen_axes: set[tuple[int, int | None, int | None]] = set()
     for offer_spec in spec.offers:
@@ -139,6 +165,7 @@ async def _apply_offers(session: AsyncSession, *, user: User, spec: HelperUpsert
         seen_axes.add(axes)
 
         offer = existing.get(axes)
+        is_new = offer is None
         if offer is None:
             offer = Offer(
                 helper_id=user.id,
@@ -150,7 +177,15 @@ async def _apply_offers(session: AsyncSession, *, user: User, spec: HelperUpsert
         offer.price_amount = offer_spec.price_amount
         offer.price_unit = offer_spec.price_unit
         offer.langs = offer_spec.langs or list(user.spoken_langs)
-        offer.work_format = spec.work_format
+        # Same rule: a caller that said nothing about the format is not saying
+        # every offer is now "either way". A row being created still needs one,
+        # and the profile's is the only answer that cannot contradict it — the
+        # column's own default would put a new service in person for somebody
+        # whose page says online only.
+        if "work_format" in spec.model_fields_set:
+            offer.work_format = spec.work_format
+        elif is_new:
+            offer.work_format = helper.work_format
         offer.is_active = True
 
     dropped = [row.id for axes, row in existing.items() if axes not in seen_axes]

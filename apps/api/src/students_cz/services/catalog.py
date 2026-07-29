@@ -33,8 +33,18 @@ from students_cz.services.naming import rows_by_id, short_form, translated
 SortKey = Literal["relevance", "price", "available"]
 
 # Tile colours on the client, in a fixed order. The server picks an index so
-# the same person keeps the same colour on every screen.
+# the same person, and the same category, keep the same colour on every screen.
 TONE_COUNT = 6
+
+
+def tone_for(index: int) -> int:
+    """Which colour the nth tile wears.
+
+    One function rather than `index % TONE_COUNT` written out wherever tiles are
+    built: the home screen and the offer screen both draw the same categories,
+    and they only agree for as long as the rule is the same in both places.
+    """
+    return index % TONE_COUNT
 
 
 def avatar_for(user: User) -> Avatar:
@@ -80,7 +90,10 @@ async def home_sections(
         await session.scalars(
             select(ServiceType)
             .where(ServiceType.is_active.is_(True))
-            .order_by(ServiceType.sort)
+            # Whole groups, in the order the enum declares them. `sort` alone
+            # interleaves study and entrance, and the client draws its heading
+            # from where the group changes.
+            .order_by(ServiceType.group_code, ServiceType.sort)
             .options(selectinload(ServiceType.names))
         )
     ).all()
@@ -91,9 +104,10 @@ async def home_sections(
         HomeSection(
             kind="service_type",
             code=st.code,
+            group=st.group_code.value,
             name=translated(st, lang) or st.code,
             hint=translated(st, lang, "hint"),
-            tone=index % TONE_COUNT,
+            tone=tone_for(index),
             count=counts.get(st.id, 0),
             avatars=avatars.get(st.id, []),
         )

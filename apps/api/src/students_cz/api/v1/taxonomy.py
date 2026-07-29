@@ -18,6 +18,7 @@ from students_cz.db.models import (
     Subject,
 )
 from students_cz.db.models.enums import (
+    PriceUnit,
     PublishStatus,
 )
 from students_cz.schemas import (
@@ -26,9 +27,26 @@ from students_cz.schemas import (
     ServiceTypeOut,
     SubjectOut,
 )
+from students_cz.services.catalog import tone_for
 from students_cz.services.naming import translated
 
 router = APIRouter()
+
+
+def _unit(value: str | None) -> PriceUnit | None:
+    """`service_types.default_price_unit` is a plain string column.
+
+    The contract promises an enum, so a value nobody has heard of has to become
+    "did not say" rather than a ValueError inside response serialisation, which
+    would take the whole taxonomy — and with it every screen — down over one bad
+    reference row.
+    """
+    if value is None:
+        return None
+    try:
+        return PriceUnit(value)
+    except ValueError:
+        return None
 
 
 @router.get(
@@ -41,7 +59,12 @@ async def service_types(
         await session.scalars(
             select(ServiceType)
             .where(ServiceType.is_active.is_(True))
-            .order_by(ServiceType.sort)
+            # Group first: the client draws a heading whenever the group
+            # changes, and `sort` alone interleaves them — the first seven
+            # alternate study and entrance. Ordering by the enum column uses
+            # the type's declared order, which is the order the shelves are
+            # meant to appear in; `test_home_hands_over_whole_groups` pins it.
+            .order_by(ServiceType.group_code, ServiceType.sort)
             .options(selectinload(ServiceType.names))
         )
     ).all()
@@ -49,12 +72,18 @@ async def service_types(
         ServiceTypeOut(
             id=r.id,
             code=r.code,
+            group=r.group_code.value,
+            # The same rule the home screen uses, over the same ordering, so
+            # the two agree. Shared rather than repeated for exactly that
+            # reason; `test_a_category_keeps_its_colour_across_screens` pins it.
+            tone=tone_for(index),
             name=translated(r, lang) or r.code,
             hint=translated(r, lang, "hint"),
             requires_subject=r.requires_subject,
             requires_institution=r.requires_institution,
+            default_price_unit=_unit(r.default_price_unit),
         )
-        for r in rows
+        for index, r in enumerate(rows)
     ]
 
 

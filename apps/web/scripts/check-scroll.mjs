@@ -65,7 +65,11 @@ const ROUTES = [
   { path: '/mine', into: { name: 'request detail', click: 'button[class*="card"]' } },
   { path: '/life' },
   { path: '/profile' },
-  { path: '/become-helper' },
+  { path: '/offer' },
+  // `/offer/prices` is not here. It is reachable only with a choice in router
+  // state and redirects to `/offer` without one, so measuring it would measure
+  // the grid a second time under a name that lies about which screen was seen.
+
   { path: '/my-helper' },
   { path: '/nope' },
 ];

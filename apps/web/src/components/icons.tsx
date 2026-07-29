@@ -167,6 +167,38 @@ export const CheckIcon = (p: IconProps) => (
   </Svg>
 );
 
+export const ShieldIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 3.4 5.6 6v5.8c0 3.6 2.7 6.5 6.4 8.4 3.7-1.9 6.4-4.8 6.4-8.4V6L12 3.4Z" />
+  </Svg>
+);
+
+export const BankIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M3.6 9.6 12 4.6l8.4 5" />
+    <path d="M6.4 11.6v6.2" />
+    <path d="M10.1 11.6v6.2" />
+    <path d="M13.9 11.6v6.2" />
+    <path d="M17.6 11.6v6.2" />
+    <path d="M4 20.2h16" />
+  </Svg>
+);
+
+export const PassportIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="5.8" y="3.4" width="12.4" height="17.2" rx="2" />
+    <circle cx="12" cy="10.4" r="2.4" />
+    <path d="M9.8 16.4h4.4" />
+  </Svg>
+);
+
+export const HomeIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4.4 10.6 12 4.6l7.6 6v9H4.4v-9Z" />
+    <path d="M9.8 19.6v-5.2h4.4v5.2" />
+  </Svg>
+);
+
 /**
  * Which icon belongs to which kind of help.
  *
@@ -181,6 +213,13 @@ const BY_SERVICE: Record<string, (p: IconProps) => React.ReactElement> = {
   exam_prep: CheckIcon,
   nostrification: SealIcon,
   writing: DocumentIcon,
+  // Help that is not about studying. The fallback is a person, which reads as
+  // "a tutor" and is wrong for every one of these.
+  insurance: ShieldIcon,
+  bank_letter: BankIcon,
+  translation: LanguageIcon,
+  residence: PassportIcon,
+  housing: HomeIcon,
   rental: HeadsetIcon,
   books: BookIcon,
 };
