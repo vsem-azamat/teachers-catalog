@@ -59,8 +59,11 @@ export function ServiceGrid<T extends ServiceTile>({
 }) {
   return (
     <>
-      {groupRuns(items, (item) => item.group).map(({ key: group, items: tiles }) => (
-        <div key={group}>
+      {groupRuns(items, (item) => item.group).map(({ key: group, items: tiles }, run) => (
+        // Keyed by position: see the note in lib/groups.ts on why a split
+        // group has to survive as two headings.
+        // biome-ignore lint/suspicious/noArrayIndexKey: runs come from the server's order and never reorder in place
+        <div key={run}>
           <Label>
             <ServiceGroupLabel group={group} />
           </Label>

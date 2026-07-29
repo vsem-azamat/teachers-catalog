@@ -464,7 +464,10 @@
 /* One offered service on the screen where prices are set.
    Four services in a row of grey labels read as one long list of fields, so
    each gets a box with its own icon — the same icon and the same tone the
-   category wears in the catalog. */
+   category wears in the catalog.
+
+   Not `.card`, which it resembles: that one is a person's listing and is
+   pressed, this one holds inputs and is not. */
 .svcCard {
   padding: 11px 12px 12px;
   border-radius: var(--r-card);
@@ -477,7 +480,12 @@
 
 /* The fields inside drop to the page colour. On --surface they would be the
    same grey as the card and the box would stop reading as a box — which is
-   the entire point of it. */
+   the entire point of it.
+
+   Two classes deep, so this beats any single-class state of .field or .row.
+   A future modifier that paints a background — an error field, a selected
+   row — has to be written to win here, or it will silently lose inside a
+   card. */
 .svcCard .field,
 .svcCard .row {
   background: var(--bg);

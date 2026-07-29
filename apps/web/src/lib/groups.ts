@@ -6,6 +6,10 @@
  * server chose rather than sorting again here. Runs, not a lookup: a group
  * that came back split shows up as two headings instead of silently merging
  * into one, which is the honest rendering of a server that has gone wrong.
+ *
+ * That is also why callers key the list by position and not by the group:
+ * a split group would otherwise hand React the same key twice, and the two
+ * honest headings would collapse back into a warning.
  */
 export function groupRuns<T, K>(
   items: T[],

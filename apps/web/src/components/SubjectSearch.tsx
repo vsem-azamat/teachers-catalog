@@ -68,7 +68,9 @@ export function SubjectSearch({
         />
       </div>
       {results.length > 0 ? (
-        <div style={{ marginTop: 8 }}>
+        // No margin of its own: the only caller stacks this inside a service
+        // card, and the card spaces everything in it.
+        <div>
           <Rows>
             {results.map((subject) => (
               <Row
