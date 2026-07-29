@@ -211,11 +211,8 @@ export default function OfferPricesPage() {
         </div>
       ) : (
         <>
-          {groupRuns(chosen, (type) => type.group).map(({ key: group, items }, run) => (
-            // Keyed by position: see the note in lib/groups.ts on why a split
-            // group has to survive as two headings.
-            // biome-ignore lint/suspicious/noArrayIndexKey: runs come from the server's order and never reorder in place
-            <div key={run}>
+          {groupRuns(chosen, (type) => type.group).map(({ id, value: group, items }) => (
+            <div key={id}>
               <Label>
                 <ServiceGroupLabel group={group} />
               </Label>

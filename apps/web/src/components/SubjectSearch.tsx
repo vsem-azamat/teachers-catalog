@@ -19,6 +19,10 @@ import type { Subject } from '@/lib/types';
  * moving into that page because the next screen that lets someone name a
  * subject will want the same debounce, the same minimum length, and the same
  * idea of what counts as already taken.
+ *
+ * It brings no spacing of its own — no margin above the results, nothing after
+ * the box — because a caller that stacks it with a rule of its own would then
+ * have two answers for one gap. A second caller has to say what the gap is.
  */
 export function SubjectSearch({
   onPick,

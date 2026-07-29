@@ -466,8 +466,10 @@
    each gets a box with its own icon — the same icon and the same tone the
    category wears in the catalog.
 
-   Not `.card`, which it resembles: that one is a person's listing and is
-   pressed, this one holds inputs and is not. */
+   It is a paler twin of `.card` — a hair less padding at the top — and stays
+   a class of its own for the sake of the two rules below, which re-skin what
+   is inside. Written as `.card .field` they would reach the fields in every
+   card on every other screen. */
 .svcCard {
   padding: 11px 12px 12px;
   border-radius: var(--r-card);

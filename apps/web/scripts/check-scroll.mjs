@@ -57,6 +57,15 @@ const VIEWPORTS = [
  * The detail screens are behind an id this script cannot know, so they are
  * reached the way a person reaches them: by tapping the first row of the list
  * that leads there.
+ *
+ * One screen cannot be reached that way at all. `/offer/prices` opens on
+ * Telegram's main button, which no browser has, and it redirects to `/offer`
+ * without a choice in router state — so it is entered by pushing that state,
+ * the same shape the app pushes. Measuring it matters more than the purity of
+ * the route: it is the only screen whose spacing comes from a card rather than
+ * from the screen, which is where a spacer hides best. `expect` is what stops
+ * a rename of either code from quietly measuring the grid a second time under
+ * this screen's name.
  */
 const ROUTES = [
   { path: '/' },
@@ -65,11 +74,16 @@ const ROUTES = [
   { path: '/mine', into: { name: 'request detail', click: 'button[class*="card"]' } },
   { path: '/life' },
   { path: '/profile' },
-  { path: '/offer' },
-  // `/offer/prices` is not here. It is reachable only with a choice in router
-  // state and redirects to `/offer` without one, so measuring it would measure
-  // the grid a second time under a name that lies about which screen was seen.
-
+  {
+    path: '/offer',
+    into: {
+      name: '/offer/prices',
+      // One that takes subjects and one that does not, so both shapes of card
+      // are on the screen being measured.
+      state: { picked: ['tutoring', 'insurance'] },
+      expect: '[class*="svcCard"]',
+    },
+  },
   { path: '/my-helper' },
   { path: '/nope' },
 ];
@@ -296,10 +310,33 @@ for (const viewport of VIEWPORTS) {
     if (route.into) {
       let opened = true;
       try {
-        await page.locator(route.into.click).first().click({ timeout: 5000 });
-        await page.waitForURL((url) => url.pathname !== route.path, { timeout: 5000 });
+        if (route.into.state) {
+          await page.evaluate(
+            ([usr, path]) => {
+              history.pushState({ usr, key: 'check-scroll', idx: 1 }, '', path);
+              dispatchEvent(new PopStateEvent('popstate', { state: history.state }));
+            },
+            [route.into.state, route.into.name],
+          );
+          await page.waitForSelector(route.into.expect, { timeout: 5000 });
+        } else {
+          await page.locator(route.into.click).first().click({ timeout: 5000 });
+          await page.waitForURL((url) => url.pathname !== route.path, { timeout: 5000 });
+        }
       } catch {
         opened = false;
+      }
+      // A screen entered by state has nothing to be empty of: it did not open
+      // because the state no longer names anything, and that is a broken check
+      // rather than a thin database.
+      if (!opened && route.into.state) {
+        console.error(
+          `\n${route.into.name} at ${label}: pushed ${JSON.stringify(route.into.state)}` +
+            ` and ${route.into.expect} never appeared.` +
+            '\nThose service codes are reference data — if one was renamed, rename it here too.',
+        );
+        await browser.close();
+        process.exit(2);
       }
       if (opened) {
         await measure(page, route.into.name, label);
