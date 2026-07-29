@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { iconForService } from '@/components/icons';
 import { ServiceGroupLabel } from '@/components/Phrase';
 import { Cell, Grid, Label, Tile } from '@/components/Ui';
+import { groupRuns } from '@/lib/groups';
 import type { ServiceGroup } from '@/lib/types';
 
 /**
@@ -56,55 +57,47 @@ export function ServiceGrid<T extends ServiceTile>({
   /** Something to say under one group's heading, before its tiles. */
   renderNote?: (group: ServiceGroup) => ReactNode;
 }) {
-  const groups: { group: ServiceGroup; items: T[] }[] = [];
-  for (const item of items) {
-    const last = groups.at(-1);
-    // Contiguous runs, not a lookup: the order the server chose is the order
-    // the screen shows, and a group that came back split would show up as two
-    // headings rather than silently merging into one.
-    if (last && last.group === item.group) last.items.push(item);
-    else groups.push({ group: item.group, items: [item] });
-  }
-
   return (
     <>
-      {groups.map(({ group, items: tiles }) => (
-        <div key={group}>
-          <Label>
-            <ServiceGroupLabel group={group} />
-          </Label>
-          {renderNote?.(group)}
-          <Grid>
-            {tiles.map((item, index) => {
-              const Icon = iconForService(item.code);
-              const isOn = selected?.has(item.code) ?? false;
-              // Two columns leave an odd group's last tile alone in its row,
-              // which reads as something having failed to load. Widening the
-              // first one makes the count even again — and the wide cell is
-              // the only one with room for faces.
-              const wide = tiles.length % 2 === 1 && index === 0;
-              return (
-                <Cell
-                  key={item.code}
-                  wide={wide}
-                  onClick={() =>
-                    onToggle ? onToggle(item.code) : onPick ? onPick(item) : undefined
-                  }
-                  selected={selected ? isOn : undefined}
-                  leading={
-                    <Tile tone={item.tone}>
-                      <Icon size={19} />
-                    </Tile>
-                  }
-                  title={item.name}
-                  hint={item.hint ?? undefined}
-                  trailing={renderTrailing?.(item, wide)}
-                />
-              );
-            })}
-          </Grid>
-        </div>
-      ))}
+      {groupRuns(items, (item) => item.group).map(
+        ({ id, value: group, items: tiles }) => (
+          <div key={id}>
+            <Label>
+              <ServiceGroupLabel group={group} />
+            </Label>
+            {renderNote?.(group)}
+            <Grid>
+              {tiles.map((item, index) => {
+                const Icon = iconForService(item.code);
+                const isOn = selected?.has(item.code) ?? false;
+                // Two columns leave an odd group's last tile alone in its row,
+                // which reads as something having failed to load. Widening the
+                // first one makes the count even again — and the wide cell is
+                // the only one with room for faces.
+                const wide = tiles.length % 2 === 1 && index === 0;
+                return (
+                  <Cell
+                    key={item.code}
+                    wide={wide}
+                    onClick={() =>
+                      onToggle ? onToggle(item.code) : onPick ? onPick(item) : undefined
+                    }
+                    selected={selected ? isOn : undefined}
+                    leading={
+                      <Tile tone={item.tone}>
+                        <Icon size={19} />
+                      </Tile>
+                    }
+                    title={item.name}
+                    hint={item.hint ?? undefined}
+                    trailing={renderTrailing?.(item, wide)}
+                  />
+                );
+              })}
+            </Grid>
+          </div>
+        ),
+      )}
     </>
   );
 }

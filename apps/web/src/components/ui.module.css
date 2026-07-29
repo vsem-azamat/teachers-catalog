@@ -459,6 +459,68 @@
   white-space: nowrap;
 }
 
+/* ── service card ───────────────────────────────────────────────────── */
+
+/* One offered service on the screen where prices are set.
+   Four services in a row of grey labels read as one long list of fields, so
+   each gets a box with its own icon — the same icon and the same tone the
+   category wears in the catalog.
+
+   It is `.card` with a hair less padding at the top, and stays a class of its
+   own for the sake of the two rules below, which re-skin what is inside.
+   Written as `.card .field` they would reach the fields in every card on
+   every other screen. */
+.svcCard {
+  padding: 11px 12px 12px;
+  border-radius: var(--r-card);
+  background: var(--surface);
+}
+
+.svcCard + .svcCard {
+  margin-top: 9px;
+}
+
+/* The fields inside drop to the page colour. On --surface they would be the
+   same grey as the card and the box would stop reading as a box — which is
+   the entire point of it.
+
+   These are two classes deep, which ties with a single-class state like
+   `.row:active` rather than beating it — the tie goes to whichever comes
+   last in this file. That is why the pressed colour is restated here, and
+   why a `:hover` or `:focus` on .field or .row written *below* this block
+   would quietly win inside a card. */
+.svcCard .field,
+.svcCard .row {
+  background: var(--bg);
+}
+
+/* --surface-pressed, not --surface: that is the card's own colour, and a row
+   that becomes the card under the finger reads as having vanished. */
+.svcCard .row:active {
+  background: var(--surface-pressed);
+}
+
+/* The head is a row without the row: a tile, a name, a hint. It borrows
+   .rowBody, .rowName and .rowHint rather than restating them at slightly
+   different weights, which is how three near-identical title styles would
+   have ended up in one file. */
+.svcHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* One rule for everything stacked inside a card — subjects, the search box,
+   the prices — instead of a margin on each, which is how the gaps drifted
+   apart on the screens that came before. */
+.svcBody {
+  margin-top: 10px;
+}
+
+.svcBody > * + * {
+  margin-top: 8px;
+}
+
 /* ── sheet ──────────────────────────────────────────────────────────── */
 
 .scrim {

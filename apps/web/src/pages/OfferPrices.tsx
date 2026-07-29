@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router';
 
 import { AppHeader } from '@/components/AppHeader';
+import { iconForService } from '@/components/icons';
+import { ServiceGroupLabel } from '@/components/Phrase';
 import { SubjectSearch } from '@/components/SubjectSearch';
 import {
   Chips,
@@ -15,11 +17,13 @@ import {
   Segmented,
   SkeletonRows,
   Sub,
+  Tile,
   Title,
   ui,
 } from '@/components/Ui';
 import { hapticSelection, hapticSuccess, useMainButton } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
+import { groupRuns } from '@/lib/groups';
 import type {
   MyOffer,
   OfferInput,
@@ -69,15 +73,15 @@ export default function OfferPricesPage() {
   const [workFormat, setWorkFormat] = useState<WorkFormat>('both');
   const [loaded, setLoaded] = useState(false);
 
-  const chosen = useMemo(
-    () =>
-      picked && serviceTypes
-        ? picked
-            .map((code) => serviceTypes.find((type) => type.code === code))
-            .filter((type): type is ServiceType => type !== undefined)
-        : [],
-    [picked, serviceTypes],
-  );
+  // In the catalog's order, not the order the tiles happened to be tapped.
+  // The headings below are contiguous runs of the group field, so a person who
+  // ticked insurance first and tutoring second would otherwise get «Документы и
+  // жизнь» above «Учёба» — and two headings if they went back for a third.
+  const chosen = useMemo(() => {
+    if (!picked || !serviceTypes) return [];
+    const wanted = new Set(picked);
+    return serviceTypes.filter((type) => wanted.has(type.code));
+  }, [picked, serviceTypes]);
 
   // Filled once. Whatever the person already offers is carried in, so a save
   // that replaces the whole list does not throw away the prices they set last
@@ -207,85 +211,106 @@ export default function OfferPricesPage() {
         </div>
       ) : (
         <>
-          {chosen.map((type) => {
-            const mineHere = rows.filter((row) => row.service_type_id === type.id);
-            return (
-              <div key={type.id}>
-                <Label>{type.name}</Label>
+          {groupRuns(chosen, (type) => type.group).map(({ id, value: group, items }) => (
+            <div key={id}>
+              <Label>
+                <ServiceGroupLabel group={group} />
+              </Label>
+              {items.map((type) => {
+                const mineHere = rows.filter((row) => row.service_type_id === type.id);
+                const Icon = iconForService(type.code);
+                return (
+                  // A box each, with the icon and the colour the category wears
+                  // everywhere else. Four services under four grey labels read
+                  // as one long list of fields belonging to nothing.
+                  <div key={type.id} className={ui.svcCard}>
+                    <div className={ui.svcHead}>
+                      <Tile tone={type.tone}>
+                        <Icon size={19} />
+                      </Tile>
+                      <span className={ui.rowBody}>
+                        <span className={ui.rowName}>{type.name}</span>
+                        {type.hint ? (
+                          <span className={ui.rowHint}>{type.hint}</span>
+                        ) : null}
+                      </span>
+                    </div>
 
-                {type.requires_subject ? (
-                  <>
-                    {mineHere.some((row) => row.subject_id !== null) ? (
-                      <div style={{ marginBottom: 8 }}>
-                        <Chips>
-                          {mineHere
-                            .filter((row) => row.subject_id !== null)
-                            .map((row) => (
-                              <ChipView
-                                key={row.key}
-                                active
-                                removeLabel={t`Убрать`}
-                                onRemove={() =>
-                                  setRows((current) => {
-                                    const left = current.filter(
-                                      (other) => other.key !== row.key,
-                                    );
-                                    // Removing the last subject must not remove
-                                    // the service: the person ticked it, and a
-                                    // service with no subject is one search
-                                    // cannot reach yet, not one they withdrew.
-                                    return left.some(
-                                      (other) => other.service_type_id === type.id,
-                                    )
-                                      ? left
-                                      : [...left, blank(type)];
-                                  })
-                                }
-                              >
-                                {row.subject_name}
-                              </ChipView>
-                            ))}
-                        </Chips>
-                      </div>
-                    ) : null}
-                    <SubjectSearch
-                      onPick={(subject) => addSubject(type, subject)}
-                      taken={new Set(mineHere.map((row) => row.subject_id))}
-                    />
-                    <div style={{ height: 8 }} />
-                  </>
-                ) : null}
+                    <div className={ui.svcBody}>
+                      {type.requires_subject ? (
+                        <>
+                          {mineHere.some((row) => row.subject_id !== null) ? (
+                            <Chips>
+                              {mineHere
+                                .filter((row) => row.subject_id !== null)
+                                .map((row) => (
+                                  <ChipView
+                                    key={row.key}
+                                    active
+                                    removeLabel={t`Убрать`}
+                                    onRemove={() =>
+                                      setRows((current) => {
+                                        const left = current.filter(
+                                          (other) => other.key !== row.key,
+                                        );
+                                        // Removing the last subject must not
+                                        // remove the service: the person ticked
+                                        // it, and a service with no subject is
+                                        // one search cannot reach yet, not one
+                                        // they withdrew.
+                                        return left.some(
+                                          (other) => other.service_type_id === type.id,
+                                        )
+                                          ? left
+                                          : [...left, blank(type)];
+                                      })
+                                    }
+                                  >
+                                    {row.subject_name}
+                                  </ChipView>
+                                ))}
+                            </Chips>
+                          ) : null}
+                          <SubjectSearch
+                            onPick={(subject) => addSubject(type, subject)}
+                            taken={new Set(mineHere.map((row) => row.subject_id))}
+                          />
+                        </>
+                      ) : null}
 
-                {/* One price per row, not per service. A tutor really does
-                    charge 500 for calculus and 700 for physics, and a single
-                    field for the pair rewrites both the first time either is
-                    touched. The subject names the line when there is more than
-                    one. */}
-                {mineHere.map((row) => (
-                  <PriceRow
-                    key={row.key}
-                    name={mineHere.length > 1 ? row.subject_name : null}
-                    value={row.price}
-                    unit={row.unit}
-                    onPrice={(price) =>
-                      setRows((current) =>
-                        current.map((other) =>
-                          other.key === row.key ? { ...other, price } : other,
-                        ),
-                      )
-                    }
-                    onUnit={(unit) =>
-                      setRows((current) =>
-                        current.map((other) =>
-                          other.key === row.key ? { ...other, unit } : other,
-                        ),
-                      )
-                    }
-                  />
-                ))}
-              </div>
-            );
-          })}
+                      {/* One price per row, not per service. A tutor really
+                          does charge 500 for calculus and 700 for physics, and
+                          a single field for the pair rewrites both the first
+                          time either is touched. The subject names the line
+                          when there is more than one. */}
+                      {mineHere.map((row) => (
+                        <PriceRow
+                          key={row.key}
+                          name={mineHere.length > 1 ? row.subject_name : null}
+                          value={row.price}
+                          unit={row.unit}
+                          onPrice={(price) =>
+                            setRows((current) =>
+                              current.map((other) =>
+                                other.key === row.key ? { ...other, price } : other,
+                              ),
+                            )
+                          }
+                          onUnit={(unit) =>
+                            setRows((current) =>
+                              current.map((other) =>
+                                other.key === row.key ? { ...other, unit } : other,
+                              ),
+                            )
+                          }
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
 
           <Label>
             <Trans>Как занимаешься</Trans>
@@ -359,7 +384,8 @@ function PriceRow({
   ];
 
   return (
-    <div className={ui.field} style={{ marginTop: 8 }}>
+    // No margin of its own: everything inside a card is spaced by the card.
+    <div className={ui.field}>
       {name ? (
         <span
           style={{

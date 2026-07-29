@@ -57,6 +57,20 @@ const VIEWPORTS = [
  * The detail screens are behind an id this script cannot know, so they are
  * reached the way a person reaches them: by tapping the first row of the list
  * that leads there.
+ *
+ * One screen cannot be reached that way at all. `/offer/prices` opens on
+ * Telegram's main button, which no browser has, and it redirects to `/offer`
+ * without a choice in router state — so it is entered by pushing that state,
+ * the same shape the app pushes. Until it was, the screen was not measured at
+ * any size; being measured is the whole of what this buys. What it catches is
+ * what it catches everywhere else: emptiness under the last thing on the
+ * screen. A gap left between two cards is above the segmented control at the
+ * foot, and no version of this check has ever seen one.
+ *
+ * `expect` and `expectCount` are what stop a rename of a service code from
+ * quietly measuring something else under this screen's name. Counted, not
+ * merely present: one code renamed still draws the other's card, and a screen
+ * that has lost half of what it was chosen to show measures as fine.
  */
 const ROUTES = [
   { path: '/' },
@@ -65,11 +79,20 @@ const ROUTES = [
   { path: '/mine', into: { name: 'request detail', click: 'button[class*="card"]' } },
   { path: '/life' },
   { path: '/profile' },
-  { path: '/offer' },
-  // `/offer/prices` is not here. It is reachable only with a choice in router
-  // state and redirects to `/offer` without one, so measuring it would measure
-  // the grid a second time under a name that lies about which screen was seen.
-
+  {
+    path: '/offer',
+    into: {
+      name: '/offer/prices',
+      // Where to push it. `name` is a label — the click routes call themselves
+      // "helper detail" — and a label is not a URL.
+      path: '/offer/prices',
+      // One that takes subjects and one that does not, so both shapes of card
+      // are on the screen being measured.
+      state: { picked: ['tutoring', 'insurance'] },
+      expect: '[class*="svcCard"]',
+      expectCount: 2,
+    },
+  },
   { path: '/my-helper' },
   { path: '/nope' },
 ];
@@ -85,6 +108,8 @@ const ROUNDING = 4;
 
 const browser = await chromium.launch();
 const failures = [];
+/** Screens that never came up — a broken check, not a thin database. */
+const unreachable = [];
 const skipped = new Set();
 
 /** Stop before measuring anything if the thing being measured is not there. */
@@ -296,13 +321,45 @@ for (const viewport of VIEWPORTS) {
     if (route.into) {
       let opened = true;
       try {
-        await page.locator(route.into.click).first().click({ timeout: 5000 });
-        await page.waitForURL((url) => url.pathname !== route.path, { timeout: 5000 });
+        if (route.into.state) {
+          await page.evaluate(
+            ([usr, path]) => {
+              history.pushState({ usr, key: 'check-scroll', idx: 1 }, '', path);
+              dispatchEvent(new PopStateEvent('popstate', { state: history.state }));
+            },
+            [route.into.state, route.into.path],
+          );
+          // The exact count, not merely one: half a state that still names
+          // something renders half a screen, and a screen missing one of the
+          // two shapes it was chosen for would otherwise measure as fine.
+          await page.waitForFunction(
+            ([selector, wanted]) => document.querySelectorAll(selector).length === wanted,
+            [route.into.expect, route.into.expectCount],
+            { timeout: 5000 },
+          );
+        } else {
+          await page.locator(route.into.click).first().click({ timeout: 5000 });
+          await page.waitForURL((url) => url.pathname !== route.path, { timeout: 5000 });
+        }
       } catch {
         opened = false;
       }
       if (opened) {
         await measure(page, route.into.name, label);
+      } else if (route.into.state) {
+        // Not the empty-list case below: nothing about the database decides
+        // whether a screen entered by state comes up, so failing to reach it
+        // means this check has stopped checking. Recorded and carried on with
+        // — the remaining screens and sizes are still worth measuring, and one
+        // broken entry should not take the whole report down with it.
+        console.log(
+          `  DEAD ${route.into.name.padEnd(20)} ${route.into.expect} ×` +
+            `${route.into.expectCount} never appeared`,
+        );
+        unreachable.push(
+          `${route.into.name} at ${label}: expected ${route.into.expectCount} of` +
+            ` ${route.into.expect} after pushing ${JSON.stringify(route.into.state)}`,
+        );
       } else {
         // An empty list is a seeding problem rather than a layout one, so it
         // does not fail the run — but it does mean a screen went unmeasured,
@@ -323,12 +380,22 @@ for (const viewport of VIEWPORTS) {
 
 await browser.close();
 
+if (unreachable.length) {
+  console.error(
+    `\n${unreachable.length} screen(s) never came up:\n  ${unreachable.join('\n  ')}`,
+  );
+  console.error(
+    'A screen entered by router state fails this way when what the state names' +
+      ' no longer draws what it drew — a service code renamed or withdrawn, or' +
+      ' a rename of the class `expect` looks for.',
+  );
+}
 if (failures.length) {
   console.error(
     `\n${failures.length} screen(s) scroll to nothing:\n  ${failures.join('\n  ')}`,
   );
-  process.exit(1);
 }
+if (failures.length || unreachable.length) process.exit(1);
 if (skipped.size) {
   console.log(`\nNot measured, nothing to open: ${[...skipped].join(', ')}.`);
 }
