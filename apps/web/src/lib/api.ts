@@ -8,7 +8,6 @@ import type {
   HelpRequest,
   Home,
   Institution,
-  IntroResult,
   LanguageOption,
   Me,
   MeUpdate,
@@ -259,10 +258,6 @@ export const api = {
     request<RequestResponse>(`/responses/${responseId}/decline`, { method: 'POST' }),
 
   // ── becoming a helper ─────────────────────────────────────────────────
-
-  /** Read a free-text introduction into a draft profile. Saves nothing. */
-  readIntro: (text: string, signal?: AbortSignal) =>
-    request<IntroResult>('/helper/intro', { method: 'POST', body: { text }, signal }),
 
   /** The caller's own profile, whatever state it is in. Never 404s. */
   getMyHelper: (signal?: AbortSignal) => request<MyHelper>('/helper', { signal }),

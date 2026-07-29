@@ -301,26 +301,6 @@ class MeUpdate(BaseModel):
 # ── becoming a helper ───────────────────────────────────────────────────
 
 
-class IntroRequest(BaseModel):
-    text: str = Field(min_length=10, max_length=4000)
-
-
-class IntroOut(BaseModel):
-    """What we made of "расскажи своими словами".
-
-    Everything is a chip the person can remove, and `missing` names what the
-    text did not say — so the screen asks for exactly that instead of showing
-    a four-step wizard.
-    """
-
-    chips: list[Chip]
-    price: Price | None = None
-    work_format: WorkFormat | None = None
-    institution_id: int | None = None
-    subject_ids: list[int] = Field(default_factory=list)
-    missing: list[str] = Field(default_factory=list)
-
-
 class OfferIn(BaseModel):
     service_type_id: int
     subject_id: int | None = None

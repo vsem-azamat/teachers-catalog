@@ -16,81 +16,16 @@ from students_cz.db.models import (
     ServiceType,
     Subject,
 )
-from students_cz.db.models.enums import (
-    PriceUnit,
-    WorkFormat,
-)
 from students_cz.schemas import (
-    Chip,
     HelperUpsert,
-    IntroOut,
-    IntroRequest,
     MeOut,
     MyHelperOut,
     MyOfferOut,
-    Price,
 )
-from students_cz.services import helpers, parser
+from students_cz.services import helpers
 from students_cz.services.naming import names_by_id
 
 router = APIRouter()
-
-
-@router.post("/helper/intro", response_model=IntroOut, tags=["helper"])
-async def read_intro(
-    payload: IntroRequest, session: SessionDep, lang: LangDep, user: UserDep
-) -> IntroOut:
-    """Read a free-text introduction into a draft profile.
-
-    Nothing is saved. The point is to show the person that they were
-    understood — and to let them correct it — before anything is published.
-    """
-    parsed = await parser.parse_intro(session, payload.text, lang.value)
-
-    chips = [
-        Chip(
-            kind="subject",
-            label=match.label,
-            value=match.id,
-            confidence=round(match.score, 2),
-        )
-        for match in parsed.subjects
-    ]
-    if parsed.institution:
-        chips.append(
-            Chip(
-                kind="institution",
-                label=parsed.institution.label,
-                value=parsed.institution.id,
-                confidence=round(parsed.institution.score, 2),
-            )
-        )
-    price = None
-    if parsed.price_amount is not None:
-        price = Price(
-            amount=parsed.price_amount,
-            unit=PriceUnit(parsed.price_unit or "hour"),
-        )
-        chips.append(
-            Chip(
-                kind="price",
-                label=str(int(parsed.price_amount)),
-                value=int(parsed.price_amount),
-            )
-        )
-    if parsed.work_format:
-        chips.append(
-            Chip(kind="work_format", label=parsed.work_format, value=parsed.work_format)
-        )
-
-    return IntroOut(
-        chips=chips,
-        price=price,
-        work_format=WorkFormat(parsed.work_format) if parsed.work_format else None,
-        institution_id=parsed.institution.id if parsed.institution else None,
-        subject_ids=[m.id for m in parsed.subjects],
-        missing=parsed.missing,
-    )
 
 
 @router.get("/helper", response_model=MyHelperOut, tags=["helper"])

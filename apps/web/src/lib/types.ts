@@ -334,16 +334,6 @@ export interface ResponseCreate {
 
 // ── becoming a helper ───────────────────────────────────────────────────
 
-export interface IntroResult {
-  chips: Chip[];
-  price: Price | null;
-  work_format: WorkFormat | null;
-  institution_id: number | null;
-  subject_ids: number[];
-  /** What the text did not say, so the screen can ask for exactly that. */
-  missing: string[];
-}
-
 export interface OfferInput {
   service_type_id: number;
   subject_id?: number | null;

@@ -284,28 +284,30 @@ async def test_only_the_author_can_close_a_request(client):
     assert mine.json()["status"] == "closed"
 
 
-async def test_intro_is_read_into_a_draft_profile(client):
-    """The onboarding form is one field; the rest is extracted and shown back."""
+async def test_reading_an_introduction_is_gone(client):
+    """Onboarding is a grid of tiles now; nothing writes a paragraph any more.
+
+    The endpoint that read one is removed rather than left standing, because a
+    parser nobody calls is a parser nobody notices breaking.
+    """
+    response = await client.post(
+        "/api/v1/helper/intro",
+        json={"text": "Могу подтянуть матан. Беру 500 в час."},
+        headers=auth_header(90301),
+    )
+    assert response.status_code == 404
+
+
+async def test_reading_a_query_still_works(client):
+    """The other parser stays: the student's search box uses it."""
     body = (
         await client.post(
-            "/api/v1/helper/intro",
-            json={
-                "text": (
-                    "Учусь на FEL, третий курс. Могу подтянуть матан и линейку, "
-                    "сам сдавал на A. Беру 500 в час, онлайн или в Дейвице."
-                )
-            },
-            headers=auth_header(90301),
+            "/api/v1/search/parse",
+            json={"text": "нужен матан на ČVUT"},
+            headers=auth_header(90302),
         )
     ).json()
-
-    labels = [c["label"] for c in body["chips"] if c["kind"] == "subject"]
-    assert "Математический анализ" in labels
-    assert body["price"]["amount"] == 500
-    assert body["price"]["unit"] == "hour"
-    assert body["institution_id"] is not None
-    # Nothing in the text says when they are free, and that is worth asking for.
-    assert "availability" in body["missing"]
+    assert [c["label"] for c in body["chips"] if c["kind"] == "subject"]
 
 
 async def test_publishing_makes_the_profile_findable(client, session):

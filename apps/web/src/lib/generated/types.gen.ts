@@ -388,46 +388,6 @@ export type InstitutionOut = {
 };
 
 /**
- * IntroOut
- *
- * What we made of "расскажи своими словами".
- *
- * Everything is a chip the person can remove, and `missing` names what the
- * text did not say — so the screen asks for exactly that instead of showing
- * a four-step wizard.
- */
-export type IntroOut = {
-    /**
-     * Chips
-     */
-    chips: Array<Chip>;
-    price?: Price | null;
-    work_format?: WorkFormat | null;
-    /**
-     * Institution Id
-     */
-    institution_id?: number | null;
-    /**
-     * Subject Ids
-     */
-    subject_ids?: Array<number>;
-    /**
-     * Missing
-     */
-    missing?: Array<string>;
-};
-
-/**
- * IntroRequest
- */
-export type IntroRequest = {
-    /**
-     * Text
-     */
-    text: string;
-};
-
-/**
  * LanguageOut
  */
 export type LanguageOut = {
@@ -1519,37 +1479,6 @@ export type StartContactApiV1HelpersUserIdContactPostResponses = {
 };
 
 export type StartContactApiV1HelpersUserIdContactPostResponse = StartContactApiV1HelpersUserIdContactPostResponses[keyof StartContactApiV1HelpersUserIdContactPostResponses];
-
-export type ReadIntroApiV1HelperIntroPostData = {
-    body: IntroRequest;
-    headers?: {
-        /**
-         * Authorization
-         */
-        authorization?: string | null;
-    };
-    path?: never;
-    query?: never;
-    url: '/api/v1/helper/intro';
-};
-
-export type ReadIntroApiV1HelperIntroPostErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type ReadIntroApiV1HelperIntroPostError = ReadIntroApiV1HelperIntroPostErrors[keyof ReadIntroApiV1HelperIntroPostErrors];
-
-export type ReadIntroApiV1HelperIntroPostResponses = {
-    /**
-     * Successful Response
-     */
-    200: IntroOut;
-};
-
-export type ReadIntroApiV1HelperIntroPostResponse = ReadIntroApiV1HelperIntroPostResponses[keyof ReadIntroApiV1HelperIntroPostResponses];
 
 export type MyHelperApiV1HelperGetData = {
     body?: never;
