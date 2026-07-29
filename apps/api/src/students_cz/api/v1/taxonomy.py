@@ -18,6 +18,7 @@ from students_cz.db.models import (
     Subject,
 )
 from students_cz.db.models.enums import (
+    PriceUnit,
     PublishStatus,
 )
 from students_cz.schemas import (
@@ -59,6 +60,9 @@ async def service_types(
             hint=translated(r, lang, "hint"),
             requires_subject=r.requires_subject,
             requires_institution=r.requires_institution,
+            default_price_unit=(
+                PriceUnit(r.default_price_unit) if r.default_price_unit else None
+            ),
         )
         for r in rows
     ]

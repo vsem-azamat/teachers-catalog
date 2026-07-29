@@ -77,6 +77,10 @@ class ServiceTypeOut(BaseModel):
     hint: str | None = None
     requires_subject: bool
     requires_institution: bool
+    # What the price is per, unless the person says otherwise. Tutoring is by
+    # the hour and a thesis is by the job; without this the form has to guess,
+    # and a guess here is a price that reads as ten times too much.
+    default_price_unit: PriceUnit | None
 
 
 class SubjectOut(BaseModel):

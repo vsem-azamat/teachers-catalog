@@ -1020,6 +1020,7 @@ export type ServiceTypeOut = {
      * Requires Institution
      */
     requires_institution: boolean;
+    default_price_unit: PriceUnit | null;
 };
 
 /**

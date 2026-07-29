@@ -67,6 +67,13 @@ async def test_service_types_carry_their_group(client):
     assert groups["nostrification"] == "entrance"
     assert groups["insurance"] == "life"
 
+    # What the price is per, so the form does not have to guess. A thesis
+    # priced by the hour reads as ten times too little.
+    units = {s["code"]: s["default_price_unit"] for s in body}
+    assert units["tutoring"] == "hour"
+    assert units["writing"] == "work"
+    assert units["insurance"] == "item"
+
 
 async def test_home_lists_every_service_type(client):
     body = (await client.get("/api/v1/home", headers=auth_header(90104))).json()
