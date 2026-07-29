@@ -51,6 +51,23 @@ class PublishStatus(StrEnum):
     BANNED = "banned"
 
 
+class ServiceGroup(StrEnum):
+    """Which shelf a kind of help sits on.
+
+    Both screens that show these tiles — the catalog's front door and the
+    screen where someone offers a service — render the same list grouped by
+    this. ``life`` is the help that has no subject and no institution: the
+    paperwork of staying in the country rather than of studying.
+
+    Closed on purpose. Group names are translated on the client, the way
+    ``work_format`` and ``price_unit`` are; see docs/data-model.md.
+    """
+
+    STUDY = "study"
+    ENTRANCE = "entrance"
+    LIFE = "life"
+
+
 class NodeKind(StrEnum):
     """Position in a tree. Only leaves are selectable in search."""
 

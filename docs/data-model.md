@@ -7,10 +7,15 @@ explains the decisions behind it, not the columns.
 ## The shape of the problem
 
 Students CZ connects students in the Czech Republic — mostly foreigners — with
-people who help them: tutors, exam help, written work, nostrification. It also
-lists physical things (gear to rent, textbooks to buy), digital materials, and
-partner services that have nothing to do with studying but everything to do with
-staying in the country.
+people who help them: tutors, exam help, written work, nostrification, and the
+paperwork of staying in the country — insurance, a bank statement, a sworn
+translation. It also lists physical things (gear to rent, textbooks to buy),
+digital materials, and partner offers for some of that same paperwork.
+
+The last two overlap on purpose: a person offering to sit in the bank with you
+and a partner selling insurance are different listings with different rules,
+and both are useful. `offers` holds the first, `placements` the second, and
+nothing merges them.
 
 Three different kinds of listing, three different sets of rules. The schema
 keeps them apart rather than forcing them into one shape.
@@ -36,6 +41,43 @@ because two NULLs would count as different values.
 > The legacy schema modelled this as two parallel branches — `LessonsUniversity`
 > and `LessonsLanguage` — each with its own join table. A third kind of help
 > meant a third pair of tables. Here it is one row in `service_types`.
+
+## Kinds of help come in three groups
+
+`service_types.group_code` is a native Postgres enum (`service_group`) with
+exactly three members:
+
+| group | what is in it |
+| --- | --- |
+| `study` | tutoring, languages, exam preparation, written work |
+| `entrance` | entrance exams, help during the exam, nostrification |
+| `life` | insurance, a bank statement, translations, residence, housing |
+
+The group orders both screens that show these tiles — the catalog's front door
+and the screen where someone offers a service — and they render the same grid
+from the same list. A kind of help that is in no group would appear on neither,
+so the column is `NOT NULL` with `study` as its default.
+
+`life` is help with no subject and no institution: both axis columns stay null
+and the tile is the whole query. That is why the axes were made nullable, and
+it is the case that would have needed a third pair of tables in the legacy
+schema.
+
+**Group names are translated on the client, not through an `*_i18n` table.**
+This is a deliberate exception to the rule below, not an oversight. The i18n
+tables exist for rows we author and keep adding to — subjects, institutions,
+service types. A closed enum of three has the same shape as `work_format` and
+`price_unit`, which `apps/web/src/components/Phrase.tsx` already translates
+client-side. Adding a `service_group_i18n` table would mean a migration every
+time a word changes.
+
+**A migration that adds reference data carries the rows itself.** The
+deployment runs `alembic upgrade head` and never runs `seed.py`
+(`.github/workflows/deploy.yml`), so a service type that exists only in the
+seed reaches every developer's database and no production one. Reference rows
+therefore live in two places on purpose, and
+`apps/api/tests/test_service_groups.py::test_seed_and_migration_agree` fails
+when the two disagree.
 
 ## Trees without recursion
 
