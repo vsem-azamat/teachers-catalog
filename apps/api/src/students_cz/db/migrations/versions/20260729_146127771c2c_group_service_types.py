@@ -49,6 +49,7 @@ SERVICE_TYPES: list[dict] = [
         "code": "insurance",
         "group": "life",
         "sort": 8,
+        "default_price_unit": "item",
         "names": {
             "ru": ("Страховка", "VZP, PVZP, для визы"),
             "cs": ("Pojištění", "VZP, PVZP, k vízu"),
@@ -60,6 +61,7 @@ SERVICE_TYPES: list[dict] = [
         "code": "bank_letter",
         "group": "life",
         "sort": 9,
+        "default_price_unit": "item",
         "names": {
             "ru": ("Справка из банка", "счёт, výpis, для ВНЖ"),
             "cs": ("Potvrzení z banky", "účet, výpis, k pobytu"),
@@ -71,6 +73,7 @@ SERVICE_TYPES: list[dict] = [
         "code": "translation",
         "group": "life",
         "sort": 10,
+        "default_price_unit": "item",
         "names": {
             "ru": ("Перевод документов", "с razítkem, судебный"),
             "cs": ("Překlad dokumentů", "s razítkem, soudní"),
@@ -82,6 +85,7 @@ SERVICE_TYPES: list[dict] = [
         "code": "residence",
         "group": "life",
         "sort": 11,
+        "default_price_unit": "item",
         "names": {
             "ru": ("Виза и ВНЖ", "запись, подача, продление"),
             "cs": ("Vízum a pobyt", "termín, podání, prodloužení"),
@@ -93,6 +97,7 @@ SERVICE_TYPES: list[dict] = [
         "code": "housing",
         "group": "life",
         "sort": 12,
+        "default_price_unit": "item",
         "names": {
             "ru": ("Жильё и переезд", "общежитие, договор"),
             "cs": ("Bydlení a stěhování", "kolej, smlouva"),
@@ -127,7 +132,7 @@ def upgrade() -> None:
                     "INSERT INTO service_types"
                     " (code, group_code, default_price_unit, sort, is_active,"
                     "  created_at, updated_at)"
-                    " VALUES (:code, CAST(:group AS service_group), 'item',"
+                    " VALUES (:code, CAST(:group AS service_group), :unit,"
                     "         :sort, true, now(), now())"
                     # Not DO NOTHING: `downgrade` deactivates these five rather
                     # than deleting them, so a database that has been down and
@@ -139,7 +144,12 @@ def upgrade() -> None:
                     "   is_active = true,"
                     "   updated_at = now()"
                 ),
-                {"code": spec["code"], "group": spec["group"], "sort": spec["sort"]},
+                {
+                    "code": spec["code"],
+                    "group": spec["group"],
+                    "unit": spec["default_price_unit"],
+                    "sort": spec["sort"],
+                },
             )
             for lang, (name, hint) in spec["names"].items():
                 bind.execute(

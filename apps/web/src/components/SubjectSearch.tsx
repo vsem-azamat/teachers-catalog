@@ -12,10 +12,12 @@ import type { Subject } from '@/lib/types';
  * Fuzzy on the server, so "matan" and "матан" both land on the same node —
  * which is the whole reason this is a search box and not a tree to browse.
  *
- * Shared by the cabinet and by the offer flow. It was private to the cabinet
- * until the offer screen needed the same thing, and a second copy would have
- * been a second debounce, a second minimum length, and two ideas about what
- * counts as already taken.
+ * Lifted out of the cabinet when the offer flow needed it. The cabinet has
+ * since stopped searching subjects itself — adding a service goes through the
+ * grid — so `OfferPrices` is the only caller today. It stays here rather than
+ * moving into that page because the next screen that lets someone name a
+ * subject will want the same debounce, the same minimum length, and the same
+ * idea of what counts as already taken.
  */
 export function SubjectSearch({
   onPick,

@@ -32,23 +32,71 @@ def _seeded_groups() -> dict[str, str]:
     return {spec["code"]: spec["group"] for spec in SERVICE_TYPES}
 
 
+def _seeded_rows() -> dict[str, dict[str, Any]]:
+    """Everything about a service type that a deployed database has to match."""
+    return {
+        spec["code"]: {
+            "group": spec["group"],
+            "unit": spec.get("default_price_unit"),
+            "names": {lang: tuple(value) for lang, value in spec["names"].items()},
+        }
+        for spec in SERVICE_TYPES
+    }
+
+
+def _migrated_rows() -> dict[str, dict[str, Any]]:
+    """The same, for the rows the migrations actually create."""
+    rows: dict[str, dict[str, Any]] = {}
+    for path in sorted(VERSIONS.glob("*.py")):
+        for row in _load(path):
+            if "names" not in row:
+                continue
+            rows[row["code"]] = {
+                "group": row["group"],
+                "unit": row["default_price_unit"],
+                "names": {lang: tuple(value) for lang, value in row["names"].items()},
+            }
+    return rows
+
+
+def _load(path: Path) -> list[dict[str, Any]]:
+    """The service types one migration writes, or nothing if it writes none.
+
+    Every row is checked for the two keys these comparisons index, and named if
+    it lacks them: a future migration that spells its table differently should
+    say so here rather than fail with a bare `KeyError` in a helper.
+    """
+    spec = importlib.util.spec_from_file_location(f"_migration_{path.stem}", path)
+    assert spec is not None and spec.loader is not None, f"cannot load {path}"
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    rows = list(getattr(module, "SERVICE_TYPES", []))
+    for row in rows:
+        missing = sorted({"code", "group"} - set(row))
+        assert not missing, f"{path.name}: a SERVICE_TYPES row is missing {missing}"
+    return rows
+
+
 def _migrated_groups() -> dict[str, str]:
     """What the migrations, taken together, leave a deployed database holding.
 
     Every migration, not one named file. A migration describes the database at
     a moment in time and must never be edited afterwards, so pinning this to a
     single revision would mean the thirteenth service type could only be added
-    by rewriting history. Later revisions win, by filename — they are date
-    prefixed, and alembic's `versions` directory is not a package, so each is
-    loaded by path rather than imported.
+    by rewriting history.
+
+    Later revisions win, ordered by filename rather than by walking the revision
+    chain. That is only correct because every file here is date prefixed, which
+    is this repository's convention and not alembic's rule — two revisions
+    landing on the same day and disagreeing about the same code would be
+    resolved arbitrarily. They would also be a mistake worth catching by hand.
+
+    Loaded by path rather than imported: `versions` is not a package.
     """
     groups: dict[str, str] = {}
     for path in sorted(VERSIONS.glob("*.py")):
-        spec = importlib.util.spec_from_file_location(f"_migration_{path.stem}", path)
-        assert spec is not None and spec.loader is not None, f"cannot load {path}"
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        for row in getattr(module, "SERVICE_TYPES", []):
+        for row in _load(path):
             groups[row["code"]] = row["group"]
     return groups
 
@@ -86,7 +134,7 @@ async def test_seeded_groups_reach_the_database(session: Any) -> None:
     assert {code: stored.get(code) for code in expected} == expected
 
 
-def test_seed_and_migrations_agree() -> None:
+def test_seed_and_migrations_agree_on_which_types_exist() -> None:
     """The one that stops production drifting from the seed.
 
     `seed.py` builds a fresh database; the migrations are the only thing that
@@ -95,3 +143,21 @@ def test_seed_and_migrations_agree() -> None:
     category live in production that no fresh checkout has.
     """
     assert _migrated_groups() == _seeded_groups()
+
+
+def test_seed_and_migrations_agree_on_what_those_types_say() -> None:
+    """Names too, not only codes — that is where most of the data is.
+
+    Forty translated strings and a price unit are written out twice, and only
+    the seed's copy is ever re-read. Renaming a service type there and stopping
+    would leave production showing the old name for ever, because the seed does
+    not run on the deployed database: a rename needs a migration, and this is
+    what says so.
+
+    Only the rows a migration creates are compared. The seven that predate the
+    grouping were named by the initial schema, and this migration deliberately
+    does not restate their names — it only moves them onto a shelf.
+    """
+    migrated = _migrated_rows()
+    seeded = _seeded_rows()
+    assert migrated == {code: seeded[code] for code in migrated}

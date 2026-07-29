@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router';
 
 import { AppHeader } from '@/components/AppHeader';
 import { ServiceGrid } from '@/components/ServiceGrid';
-import { Hint, Screen, SkeletonRows, Sub, Title } from '@/components/Ui';
+import { Empty, Hint, Screen, SkeletonRows, Sub, Title } from '@/components/Ui';
 import { hapticSelection, useMainButton } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
 
@@ -37,7 +37,7 @@ export default function OfferPage() {
     staleTime: 60 * 60 * 1000,
   });
 
-  const { data: mine } = useQuery({
+  const { data: mine, isError } = useQuery({
     queryKey: ['my-helper'],
     queryFn: ({ signal }) => api.getMyHelper(signal),
   });
@@ -66,8 +66,16 @@ export default function OfferPage() {
     });
   };
 
+  /*
+   * Nothing may leave this screen before the person's current services have
+   * arrived. The next screen sends an authoritative offer list and the server
+   * deletes whatever is missing from it, so walking on with a half-loaded set
+   * of ticks publishes a list that silently drops everything they already had.
+   * `/helper` does more work than `/taxonomy/service-types`, so it really is
+   * the slower of the two.
+   */
   useMainButton(
-    picked.size > 0
+    loaded && picked.size > 0
       ? {
           text: t`Дальше · ${picked.size}`,
           isVisible: true,
@@ -87,7 +95,16 @@ export default function OfferPage() {
         <Trans>Отметь всё, что умеешь. Цены спросим на следующем экране.</Trans>
       </Sub>
 
-      {isPending || !serviceTypes ? (
+      {/* Refusing to draw the grid rather than drawing it empty. Without the
+          profile we do not know what is already offered, and every tick made
+          before it arrives is one the effect above overwrites — or worse, one
+          that publishes a list missing everything the person had. */}
+      {isError ? (
+        <Empty
+          title={<Trans>Не получилось загрузить анкету</Trans>}
+          body={<Trans>Проверь связь и попробуй ещё раз.</Trans>}
+        />
+      ) : !loaded || isPending || !serviceTypes ? (
         <div style={{ marginTop: 16 }}>
           <SkeletonRows count={6} />
         </div>

@@ -32,6 +32,22 @@ from students_cz.services.naming import translated
 router = APIRouter()
 
 
+def _unit(value: str | None) -> PriceUnit | None:
+    """`service_types.default_price_unit` is a plain string column.
+
+    The contract promises an enum, so a value nobody has heard of has to become
+    "did not say" rather than a ValueError inside response serialisation, which
+    would take the whole taxonomy — and with it every screen — down over one bad
+    reference row.
+    """
+    if value is None:
+        return None
+    try:
+        return PriceUnit(value)
+    except ValueError:
+        return None
+
+
 @router.get(
     "/taxonomy/service-types", response_model=list[ServiceTypeOut], tags=["taxonomy"]
 )
@@ -60,9 +76,7 @@ async def service_types(
             hint=translated(r, lang, "hint"),
             requires_subject=r.requires_subject,
             requires_institution=r.requires_institution,
-            default_price_unit=(
-                PriceUnit(r.default_price_unit) if r.default_price_unit else None
-            ),
+            default_price_unit=_unit(r.default_price_unit),
         )
         for r in rows
     ]

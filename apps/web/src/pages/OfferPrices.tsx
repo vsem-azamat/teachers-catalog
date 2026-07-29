@@ -96,7 +96,11 @@ export default function OfferPricesPage() {
       api.saveHelper({
         work_format: workFormat,
         offers: rows.map(toOffer),
-        publish: true,
+        // Not an unconditional `true`. Somebody who hid their profile on
+        // purpose and then adds a service from the cabinet is adding a
+        // service, not asking to be listed again — and `false` here keeps a
+        // hidden profile hidden rather than un-hiding it behind their back.
+        publish: mine?.status !== 'hidden',
       }),
     onSuccess: (me) => {
       hapticSuccess();
@@ -219,24 +223,33 @@ export default function OfferPricesPage() {
                   </>
                 ) : null}
 
-                <PriceRow
-                  value={mineHere[0]?.price ?? ''}
-                  unit={mineHere[0]?.unit ?? 'hour'}
-                  onPrice={(price) =>
-                    setRows((current) =>
-                      current.map((row) =>
-                        row.service_type_id === type.id ? { ...row, price } : row,
-                      ),
-                    )
-                  }
-                  onUnit={(unit) =>
-                    setRows((current) =>
-                      current.map((row) =>
-                        row.service_type_id === type.id ? { ...row, unit } : row,
-                      ),
-                    )
-                  }
-                />
+                {/* One price per row, not per service. A tutor really does
+                    charge 500 for calculus and 700 for physics, and a single
+                    field for the pair rewrites both the first time either is
+                    touched. The subject names the line when there is more than
+                    one. */}
+                {mineHere.map((row) => (
+                  <PriceRow
+                    key={row.key}
+                    name={mineHere.length > 1 ? row.subject_name : null}
+                    value={row.price}
+                    unit={row.unit}
+                    onPrice={(price) =>
+                      setRows((current) =>
+                        current.map((other) =>
+                          other.key === row.key ? { ...other, price } : other,
+                        ),
+                      )
+                    }
+                    onUnit={(unit) =>
+                      setRows((current) =>
+                        current.map((other) =>
+                          other.key === row.key ? { ...other, unit } : other,
+                        ),
+                      )
+                    }
+                  />
+                ))}
               </div>
             );
           })}
@@ -275,11 +288,14 @@ export default function OfferPricesPage() {
  * at the top would rewrite "4000 за работу" as "4000 в час".
  */
 function PriceRow({
+  name,
   value,
   unit,
   onPrice,
   onUnit,
 }: {
+  /** The subject this price is for, when a service has more than one. */
+  name?: string | null;
   value: string;
   unit: PriceUnit;
   onPrice: (price: string) => void;
@@ -299,7 +315,26 @@ function PriceRow({
   ];
 
   return (
-    <div className={ui.field}>
+    <div className={ui.field} style={{ marginTop: 8 }}>
+      {name ? (
+        <span
+          style={{
+            // `flex: none` so the name keeps its width: the input next to it is
+            // `flex: 1` and would otherwise squeeze this to two characters and
+            // an ellipsis. The cap is what stops a long subject doing the same
+            // thing to the input.
+            flex: 'none',
+            maxWidth: 132,
+            color: 'var(--muted)',
+            fontSize: 13,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {name}
+        </span>
+      ) : null}
       <input
         value={value}
         // Digits only, filtered as they are typed. "1 500" and "1,500" both
@@ -309,7 +344,12 @@ function PriceRow({
         placeholder={t`Сколько`}
         inputMode="numeric"
         aria-label={t`Цена`}
-        style={{ all: 'unset', flex: 1, fontVariantNumeric: 'tabular-nums' }}
+        style={{
+          all: 'unset',
+          flex: 1,
+          minWidth: 0,
+          fontVariantNumeric: 'tabular-nums',
+        }}
       />
       <span style={{ color: 'var(--muted)', fontSize: 13 }}>Kč</span>
       <select

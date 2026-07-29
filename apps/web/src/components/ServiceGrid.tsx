@@ -29,7 +29,9 @@ export interface ServiceTile {
   group: ServiceGroup;
   name: string;
   hint?: string | null;
-  /** Which of the six tile colours. The server picks it so it stays stable. */
+  /** Which tile colour. The server picks it so a category keeps the same one
+   *  on every screen; `Tile` wraps whatever number it gets, so a plain index
+   *  is a fine fallback and the count lives in one place. */
   tone?: number;
 }
 
@@ -91,7 +93,7 @@ export function ServiceGrid<T extends ServiceTile>({
                   }
                   selected={selected ? isOn : undefined}
                   leading={
-                    <Tile tone={item.tone ?? index % 6}>
+                    <Tile tone={item.tone ?? index}>
                       <Icon size={19} />
                     </Tile>
                   }
