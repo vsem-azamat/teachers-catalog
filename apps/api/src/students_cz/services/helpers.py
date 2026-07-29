@@ -110,15 +110,23 @@ async def _apply_status(
 
 
 async def _apply_offers(session: AsyncSession, *, user: User, spec: HelperUpsert) -> None:
-    valid_service_ids = set(
-        (await session.scalars(select(ServiceType.id).where(ServiceType.is_active))).all()
-    )
     existing = {
         (row.service_type_id, row.subject_id, row.institution_id): row
         for row in (
             await session.scalars(select(Offer).where(Offer.helper_id == user.id))
         ).all()
     }
+    # Active types, plus whatever this person already offers.
+    #
+    # The list is authoritative — anything missing from it is deleted below — so
+    # a screen has to send back rows it is not editing, including any whose
+    # category we have since withdrawn. Accepting only active types turns that
+    # into a 422 on every save, which is worse than the deletion it prevents:
+    # the person cannot change a price at all, and nothing on screen says why.
+    # Nobody gains a category this way; they only keep one they already had.
+    valid_service_ids = set(
+        (await session.scalars(select(ServiceType.id).where(ServiceType.is_active))).all()
+    ) | {service_type_id for service_type_id, _, _ in existing}
 
     seen_axes: set[tuple[int, int | None, int | None]] = set()
     for offer_spec in spec.offers:

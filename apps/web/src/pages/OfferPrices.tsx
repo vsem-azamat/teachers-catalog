@@ -104,6 +104,11 @@ export default function OfferPricesPage() {
    * is authoritative, so anything absent from it is deleted. Carried through
    * untouched: withdrawing a category is our decision, and it should not
    * quietly take somebody's row with it the next time they edit a price.
+   *
+   * The server has to accept them, and now does — `_apply_offers` allows the
+   * active types plus whatever the caller already holds. Sending these without
+   * that rule would have been worse than the deletion: a 422 on every save,
+   * with nothing on screen to say which row was the reason.
    */
   const unlisted = useMemo(() => {
     if (!mine || !serviceTypes) return [];

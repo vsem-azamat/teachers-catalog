@@ -154,9 +154,12 @@ def test_seed_and_migrations_agree_on_what_those_types_say() -> None:
     not run on the deployed database: a rename needs a migration, and this is
     what says so.
 
-    Only the rows a migration creates are compared. The seven that predate the
-    grouping were named by the initial schema, and this migration deliberately
-    does not restate their names — it only moves them onto a shelf.
+    Only the rows a migration creates are compared, which is five of the twelve.
+    No migration creates the other seven — the initial schema builds the table
+    and inserts nothing, and they reached production because somebody ran the
+    seed against it by hand. Renaming one of those still needs a migration, and
+    nothing here will tell you so; docs/data-model.md is where that is written
+    down.
     """
     migrated = _migrated_rows()
     seeded = _seeded_rows()

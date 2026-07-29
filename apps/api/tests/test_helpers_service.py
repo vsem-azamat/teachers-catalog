@@ -127,6 +127,69 @@ async def test_an_explicitly_empty_offer_list_still_clears_them(
     assert left == []
 
 
+async def test_a_service_type_we_withdrew_can_still_be_saved_back(
+    session: AsyncSession,
+) -> None:
+    """Deactivating a category must not lock its helpers out of their own form.
+
+    The save is authoritative — anything missing from the list is deleted — so a
+    screen has to send back offers it is not editing. Validating only against
+    *active* types turned that into a 422 on every save, which is worse than the
+    deletion it avoids: the person cannot change a price at all until they
+    notice that one row is the reason.
+
+    A type nobody holds is still refused; this only widens the check by what the
+    caller already has.
+    """
+    user = await _person(session, 91106)
+    service = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "writing")
+    )
+    assert service is not None
+
+    await helpers.save_profile(
+        session,
+        user=user,
+        spec=HelperUpsert(
+            offers=[OfferIn(service_type_id=service.id, price_amount=4000)]
+        ),
+        lang=UiLang.RU,
+    )
+    await session.flush()
+
+    service.is_active = False
+    await session.flush()
+
+    await helpers.save_profile(
+        session,
+        user=user,
+        spec=HelperUpsert(
+            offers=[OfferIn(service_type_id=service.id, price_amount=4500)]
+        ),
+        lang=UiLang.RU,
+    )
+    await session.flush()
+
+    kept = (await session.scalars(select(Offer).where(Offer.helper_id == user.id))).all()
+    assert [(row.service_type_id, row.price_amount) for row in kept] == [
+        (service.id, 4500)
+    ]
+
+
+async def test_a_service_type_nobody_holds_is_still_refused(
+    session: AsyncSession,
+) -> None:
+    user = await _person(session, 91107)
+    with pytest.raises(errors.Invalid) as raised:
+        await helpers.save_profile(
+            session,
+            user=user,
+            spec=HelperUpsert(offers=[OfferIn(service_type_id=10**9)]),
+            lang=UiLang.RU,
+        )
+    assert "unknown service type" in str(raised.value)
+
+
 async def test_hiding_a_profile_that_was_published_keeps_it_hidden_not_draft(
     session: AsyncSession,
 ) -> None:
