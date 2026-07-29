@@ -68,7 +68,7 @@ async def save_profile(
     # person offers the moment a screen sends anything else on its own — which
     # is the promise the docstring above already makes.
     if "offers" in spec.model_fields_set:
-        await _apply_offers(session, user=user, spec=spec)
+        await _apply_offers(session, user=user, helper=helper, spec=spec)
     return helper
 
 
@@ -116,7 +116,9 @@ async def _apply_status(
     helper.status = PublishStatus.HIDDEN if helper.published_at else PublishStatus.DRAFT
 
 
-async def _apply_offers(session: AsyncSession, *, user: User, spec: HelperUpsert) -> None:
+async def _apply_offers(
+    session: AsyncSession, *, user: User, helper: HelperProfile, spec: HelperUpsert
+) -> None:
     existing = {
         (row.service_type_id, row.subject_id, row.institution_id): row
         for row in (
@@ -163,6 +165,7 @@ async def _apply_offers(session: AsyncSession, *, user: User, spec: HelperUpsert
         seen_axes.add(axes)
 
         offer = existing.get(axes)
+        is_new = offer is None
         if offer is None:
             offer = Offer(
                 helper_id=user.id,
@@ -175,9 +178,14 @@ async def _apply_offers(session: AsyncSession, *, user: User, spec: HelperUpsert
         offer.price_unit = offer_spec.price_unit
         offer.langs = offer_spec.langs or list(user.spoken_langs)
         # Same rule: a caller that said nothing about the format is not saying
-        # every offer is now "either way".
+        # every offer is now "either way". A row being created still needs one,
+        # and the profile's is the only answer that cannot contradict it — the
+        # column's own default would put a new service in person for somebody
+        # whose page says online only.
         if "work_format" in spec.model_fields_set:
             offer.work_format = spec.work_format
+        elif is_new:
+            offer.work_format = helper.work_format
         offer.is_active = True
 
     dropped = [row.id for axes, row in existing.items() if axes not in seen_axes]

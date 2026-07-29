@@ -233,6 +233,44 @@ async def test_a_save_that_says_nothing_about_the_format_keeps_it(
     assert profile.work_format is WorkFormat.ONLINE
 
 
+async def test_a_new_offer_takes_the_format_the_profile_already_says(
+    session: AsyncSession,
+) -> None:
+    """A row created without a format follows the profile, not the column default.
+
+    Guarding `work_format` fixed one divergence and could have introduced
+    another: the profile keeps `online`, while a new offer added by a caller
+    that said nothing about the format would sit on the column's `both`. The
+    person would then be online-only on their page and available in person on
+    one of their services.
+    """
+    user = await _person(session, 91109)
+    service_type_id = await session.scalar(
+        select(ServiceType.id).where(ServiceType.code == "writing")
+    )
+    assert service_type_id is not None
+
+    await helpers.save_profile(
+        session,
+        user=user,
+        spec=HelperUpsert(work_format=WorkFormat.ONLINE),
+        lang=UiLang.RU,
+    )
+    await session.flush()
+
+    await helpers.save_profile(
+        session,
+        user=user,
+        spec=HelperUpsert(offers=[OfferIn(service_type_id=service_type_id)]),
+        lang=UiLang.RU,
+    )
+    await session.flush()
+
+    offer = await session.scalar(select(Offer).where(Offer.helper_id == user.id))
+    assert offer is not None
+    assert offer.work_format is WorkFormat.ONLINE
+
+
 async def test_hiding_a_profile_that_was_published_keeps_it_hidden_not_draft(
     session: AsyncSession,
 ) -> None:
