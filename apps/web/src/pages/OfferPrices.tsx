@@ -216,7 +216,7 @@ export default function OfferPricesPage() {
             // group has to survive as two headings.
             // biome-ignore lint/suspicious/noArrayIndexKey: runs come from the server's order and never reorder in place
             <div key={run}>
-              <Label aside={items.length}>
+              <Label>
                 <ServiceGroupLabel group={group} />
               </Label>
               {items.map((type) => {
@@ -231,10 +231,10 @@ export default function OfferPricesPage() {
                       <Tile tone={type.tone}>
                         <Icon size={19} />
                       </Tile>
-                      <span className={ui.svcTitle}>
-                        <span className={ui.svcName}>{type.name}</span>
+                      <span className={ui.rowBody}>
+                        <span className={ui.rowName}>{type.name}</span>
                         {type.hint ? (
-                          <span className={ui.svcHint}>{type.hint}</span>
+                          <span className={ui.rowHint}>{type.hint}</span>
                         ) : null}
                       </span>
                     </div>

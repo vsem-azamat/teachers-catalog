@@ -67,24 +67,22 @@ export function SubjectSearch({
           style={{ all: 'unset', flex: 1, minWidth: 0 }}
         />
       </div>
+      {/* No wrapper and no margin of its own: the only caller stacks this
+          inside a service card, and the card spaces everything in it. */}
       {results.length > 0 ? (
-        // No margin of its own: the only caller stacks this inside a service
-        // card, and the card spaces everything in it.
-        <div>
-          <Rows>
-            {results.map((subject) => (
-              <Row
-                key={subject.id}
-                title={subject.name}
-                onClick={() => {
-                  onPick(subject);
-                  setQuery('');
-                  setDebounced('');
-                }}
-              />
-            ))}
-          </Rows>
-        </div>
+        <Rows>
+          {results.map((subject) => (
+            <Row
+              key={subject.id}
+              title={subject.name}
+              onClick={() => {
+                onPick(subject);
+                setQuery('');
+                setDebounced('');
+              }}
+            />
+          ))}
+        </Rows>
       ) : null}
     </>
   );

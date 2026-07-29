@@ -482,10 +482,11 @@
    same grey as the card and the box would stop reading as a box — which is
    the entire point of it.
 
-   Two classes deep, so this beats any single-class state of .field or .row.
-   A future modifier that paints a background — an error field, a selected
-   row — has to be written to win here, or it will silently lose inside a
-   card. */
+   These are two classes deep, which ties with a single-class state like
+   `.row:active` rather than beating it — the tie goes to whichever comes
+   last in this file. That is why the pressed colour is restated here, and
+   why a `:hover` or `:focus` on .field or .row written *below* this block
+   would quietly win inside a card. */
 .svcCard .field,
 .svcCard .row {
   background: var(--bg);
@@ -495,35 +496,14 @@
   background: var(--surface);
 }
 
+/* The head is a row without the row: a tile, a name, a hint. It borrows
+   .rowBody, .rowName and .rowHint rather than restating them at slightly
+   different weights, which is how three near-identical title styles would
+   have ended up in one file. */
 .svcHead {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-/* min-width:0 so the hint can truncate rather than push the tile off. */
-.svcTitle {
-  flex: 1;
-  min-width: 0;
-}
-
-.svcName {
-  display: block;
-  font-size: 14.5px;
-  font-weight: 660;
-  letter-spacing: -0.015em;
-  line-height: 1.25;
-}
-
-.svcHint {
-  display: block;
-  margin-top: 1px;
-  font-size: 11.5px;
-  line-height: 1.3;
-  color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* One rule for everything stacked inside a card — subjects, the search box,
