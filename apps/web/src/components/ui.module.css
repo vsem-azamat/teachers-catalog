@@ -363,6 +363,8 @@
 }
 
 .cell {
+  /* The containing block for `.cellCheck`, which sits in the corner. */
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -378,6 +380,44 @@
 
 .cell:active {
   background: var(--surface-pressed);
+}
+
+/* A chosen tile. The ring is inset rather than a real border: a border would
+   change the box and shift every tile in the row by a pixel as it toggles. */
+.cellOn {
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1.6px var(--ink);
+}
+
+.cellCheck {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 19px;
+  height: 19px;
+  border-radius: var(--r-pill);
+  display: grid;
+  place-items: center;
+  /* Off: an empty ring, so the tile reads as choosable before anything is
+     chosen. On: filled, and the tick inherits this colour. */
+  box-shadow: inset 0 0 0 1.5px var(--hairline);
+  color: transparent;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.cellCheckOn {
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: none;
+}
+
+/* In a wide cell the layout is a row, so the tick takes its place in the line
+   instead of floating over the corner. */
+.cellCheckInline {
+  position: static;
+  flex: none;
 }
 
 .cellWide {
