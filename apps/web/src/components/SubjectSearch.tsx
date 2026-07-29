@@ -2,6 +2,7 @@ import { useLingui } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 
+import { SearchIcon } from '@/components/icons';
 import { Row, Rows, ui } from '@/components/Ui';
 import { api } from '@/lib/api';
 import type { Subject } from '@/lib/types';
@@ -54,13 +55,16 @@ export function SubjectSearch({
   return (
     <>
       <div className={ui.field}>
+        {/* Stacked with the price fields inside a service card, this one has to
+            say at a glance that it is not another price. */}
+        <SearchIcon size={18} className={ui.fieldIcon} />
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder={placeholder ?? t`Добавить предмет — матан, čeština, физика`}
           disabled={disabled}
           maxLength={200}
-          style={{ all: 'unset', width: '100%' }}
+          style={{ all: 'unset', flex: 1, minWidth: 0 }}
         />
       </div>
       {results.length > 0 ? (

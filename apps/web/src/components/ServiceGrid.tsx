@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { iconForService } from '@/components/icons';
 import { ServiceGroupLabel } from '@/components/Phrase';
 import { Cell, Grid, Label, Tile } from '@/components/Ui';
+import { groupRuns } from '@/lib/groups';
 import type { ServiceGroup } from '@/lib/types';
 
 /**
@@ -56,19 +57,9 @@ export function ServiceGrid<T extends ServiceTile>({
   /** Something to say under one group's heading, before its tiles. */
   renderNote?: (group: ServiceGroup) => ReactNode;
 }) {
-  const groups: { group: ServiceGroup; items: T[] }[] = [];
-  for (const item of items) {
-    const last = groups.at(-1);
-    // Contiguous runs, not a lookup: the order the server chose is the order
-    // the screen shows, and a group that came back split would show up as two
-    // headings rather than silently merging into one.
-    if (last && last.group === item.group) last.items.push(item);
-    else groups.push({ group: item.group, items: [item] });
-  }
-
   return (
     <>
-      {groups.map(({ group, items: tiles }) => (
+      {groupRuns(items, (item) => item.group).map(({ key: group, items: tiles }) => (
         <div key={group}>
           <Label>
             <ServiceGroupLabel group={group} />

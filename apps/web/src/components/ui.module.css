@@ -459,6 +459,76 @@
   white-space: nowrap;
 }
 
+/* ── service card ───────────────────────────────────────────────────── */
+
+/* One offered service on the screen where prices are set.
+   Four services in a row of grey labels read as one long list of fields, so
+   each gets a box with its own icon — the same icon and the same tone the
+   category wears in the catalog. */
+.svcCard {
+  padding: 11px 12px 12px;
+  border-radius: var(--r-card);
+  background: var(--surface);
+}
+
+.svcCard + .svcCard {
+  margin-top: 9px;
+}
+
+/* The fields inside drop to the page colour. On --surface they would be the
+   same grey as the card and the box would stop reading as a box — which is
+   the entire point of it. */
+.svcCard .field,
+.svcCard .row {
+  background: var(--bg);
+}
+
+.svcCard .row:active {
+  background: var(--surface);
+}
+
+.svcHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* min-width:0 so the hint can truncate rather than push the tile off. */
+.svcTitle {
+  flex: 1;
+  min-width: 0;
+}
+
+.svcName {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 660;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+.svcHint {
+  display: block;
+  margin-top: 1px;
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* One rule for everything stacked inside a card — subjects, the search box,
+   the prices — instead of a margin on each, which is how the gaps drifted
+   apart on the screens that came before. */
+.svcBody {
+  margin-top: 10px;
+}
+
+.svcBody > * + * {
+  margin-top: 8px;
+}
+
 /* ── sheet ──────────────────────────────────────────────────────────── */
 
 .scrim {
