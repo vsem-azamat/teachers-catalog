@@ -176,15 +176,29 @@ async def test_a_service_type_we_withdrew_can_still_be_saved_back(
     ]
 
 
-async def test_a_service_type_nobody_holds_is_still_refused(
+async def test_a_withdrawn_service_type_you_do_not_hold_is_still_refused(
     session: AsyncSession,
 ) -> None:
+    """The border the widening actually runs along.
+
+    An id that never existed is refused by anything; the case worth pinning is
+    a real but deactivated type that this caller has no offer for. That is
+    exactly one step from what the rule above allows, and it is where a sloppy
+    widening would let a withdrawn category back into the catalog.
+    """
     user = await _person(session, 91107)
+    service = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "nostrification")
+    )
+    assert service is not None
+    service.is_active = False
+    await session.flush()
+
     with pytest.raises(errors.Invalid) as raised:
         await helpers.save_profile(
             session,
             user=user,
-            spec=HelperUpsert(offers=[OfferIn(service_type_id=10**9)]),
+            spec=HelperUpsert(offers=[OfferIn(service_type_id=service.id)]),
             lang=UiLang.RU,
         )
     assert "unknown service type" in str(raised.value)

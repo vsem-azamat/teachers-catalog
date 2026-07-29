@@ -59,9 +59,9 @@ from the same list. A kind of help that is in no group would appear on neither,
 so the column is `NOT NULL` with `study` as its default.
 
 `life` is help with no subject and no institution: both axis columns stay null
-and the tile is the whole query. That is why the axes were made nullable, and
-it is the case that would have needed a third pair of tables in the legacy
-schema.
+and the tile is the whole query. The axes were already nullable for writing a
+thesis, as above — this group is the case that leans on it hardest, and the one
+that would have needed a third pair of tables in the legacy schema.
 
 **Group names are translated on the client, not through an `*_i18n` table.**
 This is a deliberate exception to the rule below, not an oversight. The i18n

@@ -123,7 +123,11 @@ async def _apply_offers(session: AsyncSession, *, user: User, spec: HelperUpsert
     # category we have since withdrawn. Accepting only active types turns that
     # into a 422 on every save, which is worse than the deletion it prevents:
     # the person cannot change a price at all, and nothing on screen says why.
-    # Nobody gains a category this way; they only keep one they already had.
+    #
+    # Nobody gains a category this way: to hold one at all it had to be active
+    # when the offer was first made. Someone who holds a withdrawn type can add
+    # rows under it — another subject, say — and that is accepted on purpose;
+    # the alternative is a form that half works for them.
     valid_service_ids = set(
         (await session.scalars(select(ServiceType.id).where(ServiceType.is_active))).all()
     ) | {service_type_id for service_type_id, _, _ in existing}
