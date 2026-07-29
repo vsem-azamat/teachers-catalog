@@ -228,6 +228,7 @@ msgid "Партнёр"
 msgstr "Partner"
 
 #: src/pages/MyHelper.tsx
+#: src/pages/OfferPrices.tsx
 msgid "Сохранить"
 msgstr "Uložit"
 
@@ -278,6 +279,10 @@ msgstr "Obojí"
 #: src/pages/Profile.tsx
 #~ msgid "опубликована"
 #~ msgstr "zveřejněna"
+
+#: src/pages/OfferPrices.tsx
+msgid "Анкета скрыта — услуги сохранятся, но в каталоге их не будет. Включить видимость можно в анкете."
+msgstr "Profil je skrytý — služby se uloží, ale v katalogu nebudou. Viditelnost zapneš v profilu."
 
 #: src/pages/Request.tsx
 msgid "Отказать"

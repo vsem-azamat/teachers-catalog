@@ -136,10 +136,13 @@ export default function OfferPricesPage() {
     },
   });
 
+  // A hidden profile stays hidden, so the button must not promise otherwise.
+  const hidden = mine?.status === 'hidden';
+
   useMainButton(
     loaded
       ? {
-          text: t`Опубликовать`,
+          text: hidden ? t`Сохранить` : t`Опубликовать`,
           isVisible: true,
           isEnabled: !save.isPending,
           isLoaderVisible: save.isPending,
@@ -296,6 +299,17 @@ export default function OfferPricesPage() {
               { value: 'both' as WorkFormat, label: <Trans>И так, и так</Trans> },
             ]}
           />
+
+          {hidden ? (
+            <div style={{ marginTop: 12 }}>
+              <Hint>
+                <Trans>
+                  Анкета скрыта — услуги сохранятся, но в каталоге их не будет. Включить
+                  видимость можно в анкете.
+                </Trans>
+              </Hint>
+            </div>
+          ) : null}
 
           {save.isError ? (
             <div style={{ marginTop: 12 }}>

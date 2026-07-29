@@ -44,8 +44,10 @@ async def save_profile(
     publishing happened once in a lifetime, and not harmless now that the
     cabinet invites someone to fix a price in ten seconds.
 
-    Fields the caller does not carry are left alone. A profile is edited by
-    more than one screen, and each of them sends what it knows about.
+    Fields the caller does not carry are left alone — every one of them, checked
+    through `model_fields_set` rather than by testing for `None`, because a
+    field with a default cannot tell the two apart otherwise. A profile is
+    edited by more than one screen, and each sends only what it knows about.
 
     Does not commit: the caller owns the transaction.
     """
@@ -89,7 +91,12 @@ def _apply_text(helper: HelperProfile, spec: HelperUpsert, lang: UiLang) -> None
         helper.place_note = spec.place_note
     helper.raw_intro = spec.raw_intro or helper.raw_intro
     helper.about_lang = ContentLang(lang.value)
-    helper.work_format = spec.work_format
+    # `work_format` has a default of `both`, so writing it unconditionally
+    # moved an online-only tutor to "either way" the moment any screen saved
+    # anything else — and `_apply_offers` copies it onto every offer, so the
+    # change reached each of their rows too.
+    if "work_format" in given:
+        helper.work_format = spec.work_format
 
 
 async def _apply_status(
@@ -167,7 +174,10 @@ async def _apply_offers(session: AsyncSession, *, user: User, spec: HelperUpsert
         offer.price_amount = offer_spec.price_amount
         offer.price_unit = offer_spec.price_unit
         offer.langs = offer_spec.langs or list(user.spoken_langs)
-        offer.work_format = spec.work_format
+        # Same rule: a caller that said nothing about the format is not saying
+        # every offer is now "either way".
+        if "work_format" in spec.model_fields_set:
+            offer.work_format = spec.work_format
         offer.is_active = True
 
     dropped = [row.id for axes, row in existing.items() if axes not in seen_axes]

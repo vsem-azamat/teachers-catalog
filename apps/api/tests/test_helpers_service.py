@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from students_cz.db.models import HelperProfile, Offer, ServiceType, User
-from students_cz.db.models.enums import PublishStatus, UiLang
+from students_cz.db.models.enums import PublishStatus, UiLang, WorkFormat
 from students_cz.schemas import HelperUpsert, OfferIn
 from students_cz.services import errors, helpers
 
@@ -202,6 +202,35 @@ async def test_a_withdrawn_service_type_you_do_not_hold_is_still_refused(
             lang=UiLang.RU,
         )
     assert "unknown service type" in str(raised.value)
+
+
+async def test_a_save_that_says_nothing_about_the_format_keeps_it(
+    session: AsyncSession,
+) -> None:
+    """`work_format` follows the same rule as every other field.
+
+    It has a default of `both`, so an unconditional write meant a screen that
+    only sent a headline would quietly move an online-only tutor to "either
+    way" — and put every one of their offers there too, since `_apply_offers`
+    copies it onto each row.
+    """
+    user = await _person(session, 91108)
+    await helpers.save_profile(
+        session,
+        user=user,
+        spec=HelperUpsert(work_format=WorkFormat.ONLINE),
+        lang=UiLang.RU,
+    )
+    await session.flush()
+
+    await helpers.save_profile(
+        session, user=user, spec=HelperUpsert(headline="ČVUT FEL"), lang=UiLang.RU
+    )
+    await session.flush()
+
+    profile = await session.get(HelperProfile, user.id)
+    assert profile is not None
+    assert profile.work_format is WorkFormat.ONLINE
 
 
 async def test_hiding_a_profile_that_was_published_keeps_it_hidden_not_draft(

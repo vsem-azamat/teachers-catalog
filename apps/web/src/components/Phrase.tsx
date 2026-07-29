@@ -155,7 +155,6 @@ export function PriceUnitLabel({ unit }: { unit: string }): ReactElement {
   }
 }
 
-/** Online, in person, or either. */
 /**
  * The heading over a shelf of service tiles.
  *
@@ -174,6 +173,7 @@ export function ServiceGroupLabel({ group }: { group: ServiceGroup }): ReactElem
   }
 }
 
+/** Online, in person, or either. */
 export function WorkFormatLabel({ format }: { format: string }): ReactElement {
   switch (format) {
     case 'online':
