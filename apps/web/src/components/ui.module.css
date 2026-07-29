@@ -466,10 +466,10 @@
    each gets a box with its own icon — the same icon and the same tone the
    category wears in the catalog.
 
-   It is a paler twin of `.card` — a hair less padding at the top — and stays
-   a class of its own for the sake of the two rules below, which re-skin what
-   is inside. Written as `.card .field` they would reach the fields in every
-   card on every other screen. */
+   It is `.card` with a hair less padding at the top, and stays a class of its
+   own for the sake of the two rules below, which re-skin what is inside.
+   Written as `.card .field` they would reach the fields in every card on
+   every other screen. */
 .svcCard {
   padding: 11px 12px 12px;
   border-radius: var(--r-card);
@@ -494,8 +494,10 @@
   background: var(--bg);
 }
 
+/* --surface-pressed, not --surface: that is the card's own colour, and a row
+   that becomes the card under the finger reads as having vanished. */
 .svcCard .row:active {
-  background: var(--surface);
+  background: var(--surface-pressed);
 }
 
 /* The head is a row without the row: a tile, a name, a hint. It borrows

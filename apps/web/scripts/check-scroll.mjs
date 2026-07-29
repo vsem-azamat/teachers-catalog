@@ -61,11 +61,14 @@ const VIEWPORTS = [
  * One screen cannot be reached that way at all. `/offer/prices` opens on
  * Telegram's main button, which no browser has, and it redirects to `/offer`
  * without a choice in router state — so it is entered by pushing that state,
- * the same shape the app pushes. Measuring it matters more than the purity of
- * the route: it is the only screen whose spacing comes from a card rather than
- * from the screen, which is where a spacer hides best. `expect` is what stops
- * a rename of either code from quietly measuring the grid a second time under
- * this screen's name.
+ * the same shape the app pushes. Until it was, the screen was not measured at
+ * any size; being measured is the whole of what this buys. What it catches is
+ * what it catches everywhere else: emptiness under the last thing on the
+ * screen. A gap left between two cards is above the segmented control at the
+ * foot, and no version of this check has ever seen one.
+ *
+ * `expect` is what stops a rename of either service code from quietly
+ * measuring the grid a second time under this screen's name.
  */
 const ROUTES = [
   { path: '/' },
@@ -78,6 +81,9 @@ const ROUTES = [
     path: '/offer',
     into: {
       name: '/offer/prices',
+      // Where to push it. `name` is a label — the click routes call themselves
+      // "helper detail" — and a label is not a URL.
+      path: '/offer/prices',
       // One that takes subjects and one that does not, so both shapes of card
       // are on the screen being measured.
       state: { picked: ['tutoring', 'insurance'] },
@@ -99,6 +105,8 @@ const ROUNDING = 4;
 
 const browser = await chromium.launch();
 const failures = [];
+/** Screens that never came up — a broken check, not a thin database. */
+const unreachable = [];
 const skipped = new Set();
 
 /** Stop before measuring anything if the thing being measured is not there. */
@@ -316,7 +324,7 @@ for (const viewport of VIEWPORTS) {
               history.pushState({ usr, key: 'check-scroll', idx: 1 }, '', path);
               dispatchEvent(new PopStateEvent('popstate', { state: history.state }));
             },
-            [route.into.state, route.into.name],
+            [route.into.state, route.into.path],
           );
           await page.waitForSelector(route.into.expect, { timeout: 5000 });
         } else {
@@ -326,17 +334,16 @@ for (const viewport of VIEWPORTS) {
       } catch {
         opened = false;
       }
-      // A screen entered by state has nothing to be empty of: it did not open
-      // because the state no longer names anything, and that is a broken check
-      // rather than a thin database.
+      // A screen entered by state is not the empty-list case below: nothing
+      // about the database decides whether it comes up, so failing to reach it
+      // means this check has stopped checking. Recorded and carried on with —
+      // the remaining screens and sizes are still worth measuring, and one
+      // broken entry should not take the whole report down with it.
       if (!opened && route.into.state) {
-        console.error(
-          `\n${route.into.name} at ${label}: pushed ${JSON.stringify(route.into.state)}` +
-            ` and ${route.into.expect} never appeared.` +
-            '\nThose service codes are reference data — if one was renamed, rename it here too.',
+        unreachable.push(
+          `${route.into.name} at ${label}: ${route.into.expect} never appeared` +
+            ` after pushing ${JSON.stringify(route.into.state)}`,
         );
-        await browser.close();
-        process.exit(2);
       }
       if (opened) {
         await measure(page, route.into.name, label);
@@ -360,12 +367,22 @@ for (const viewport of VIEWPORTS) {
 
 await browser.close();
 
+if (unreachable.length) {
+  console.error(
+    `\n${unreachable.length} screen(s) never came up:\n  ${unreachable.join('\n  ')}`,
+  );
+  console.error(
+    'A screen entered by router state fails this way when what the state names' +
+      ' no longer exists — a renamed service code, or a rename of the class' +
+      ' `expect` looks for.',
+  );
+}
 if (failures.length) {
   console.error(
     `\n${failures.length} screen(s) scroll to nothing:\n  ${failures.join('\n  ')}`,
   );
-  process.exit(1);
 }
+if (failures.length || unreachable.length) process.exit(1);
 if (skipped.size) {
   console.log(`\nNot measured, nothing to open: ${[...skipped].join(', ')}.`);
 }
