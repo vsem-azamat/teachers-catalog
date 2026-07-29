@@ -61,7 +61,12 @@ async def save_profile(
     _apply_text(helper, spec, lang)
     await _apply_status(session, helper, user, publish=spec.publish)
     await session.flush()
-    await _apply_offers(session, user=user, spec=spec)
+    # Same rule as the text fields, and for the same reason. `offers` defaults
+    # to an empty list, so an unconditional call here deletes everything the
+    # person offers the moment a screen sends anything else on its own — which
+    # is the promise the docstring above already makes.
+    if "offers" in spec.model_fields_set:
+        await _apply_offers(session, user=user, spec=spec)
     return helper
 
 

@@ -10,7 +10,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from students_cz.db.models import HelperProfile, ServiceType, User
+from students_cz.db.models import HelperProfile, Offer, ServiceType, User
 from students_cz.db.models.enums import PublishStatus, UiLang
 from students_cz.schemas import HelperUpsert, OfferIn
 from students_cz.services import errors, helpers
@@ -57,6 +57,74 @@ async def test_the_same_axes_twice_is_named_rather_than_a_constraint_error(
             lang=UiLang.RU,
         )
     assert "duplicate offer" in str(raised.value)
+
+
+async def test_a_save_that_says_nothing_about_offers_keeps_them(
+    session: AsyncSession,
+) -> None:
+    """`offers` follows the same rule as every other field: omitted is not empty.
+
+    The list has a default of `[]`, so a caller that only wanted to change a
+    headline used to delete everything the person offers. Both screens that
+    exist today happen to send the list every time, which is the only reason
+    this has never happened — and the docstring on `save_profile` already
+    promises the opposite.
+    """
+    user = await _person(session, 91104)
+    service_type_id = await session.scalar(
+        select(ServiceType.id).where(ServiceType.code == "writing")
+    )
+    assert service_type_id is not None, "the seed should have this service type"
+
+    await helpers.save_profile(
+        session,
+        user=user,
+        spec=HelperUpsert(
+            offers=[OfferIn(service_type_id=service_type_id, price_amount=4000)]
+        ),
+        lang=UiLang.RU,
+    )
+    await session.flush()
+
+    await helpers.save_profile(
+        session,
+        user=user,
+        spec=HelperUpsert(headline="ČVUT FEL"),
+        lang=UiLang.RU,
+    )
+    await session.flush()
+
+    kept = (await session.scalars(select(Offer).where(Offer.helper_id == user.id))).all()
+    assert [row.service_type_id for row in kept] == [service_type_id]
+
+
+async def test_an_explicitly_empty_offer_list_still_clears_them(
+    session: AsyncSession,
+) -> None:
+    """The other half of the rule: sent-and-empty means "I have none now"."""
+    user = await _person(session, 91105)
+    service_type_id = await session.scalar(
+        select(ServiceType.id).where(ServiceType.code == "writing")
+    )
+    assert service_type_id is not None
+
+    await helpers.save_profile(
+        session,
+        user=user,
+        spec=HelperUpsert(
+            offers=[OfferIn(service_type_id=service_type_id, price_amount=4000)]
+        ),
+        lang=UiLang.RU,
+    )
+    await session.flush()
+
+    await helpers.save_profile(
+        session, user=user, spec=HelperUpsert(offers=[]), lang=UiLang.RU
+    )
+    await session.flush()
+
+    left = (await session.scalars(select(Offer).where(Offer.helper_id == user.id))).all()
+    assert left == []
 
 
 async def test_hiding_a_profile_that_was_published_keeps_it_hidden_not_draft(
