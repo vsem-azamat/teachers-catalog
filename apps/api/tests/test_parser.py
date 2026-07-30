@@ -223,17 +223,19 @@ async def test_an_aside_about_life_does_not_replace_the_subject(session, text):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "text",
+    ("text", "expected"),
     [
         # Single-word study stems used to win these on dictionary order alone:
         # "диплом" made the first thesis writing, "аттестат" made the second
         # nostrification.
-        "присяжный перевод диплома",
-        "нужен перевод аттестата",
-        "i need a bank statement",
+        ("присяжный перевод диплома", "translation"),
+        ("нужен перевод аттестата", "translation"),
+        ("нотариальный перевод диплома", "translation"),
+        ("i need a bank statement", "bank_letter"),
+        ("bank statement for the visa", "bank_letter"),
     ],
 )
-async def test_document_work_survives_the_whole_parse(session, text):
+async def test_document_work_survives_the_whole_parse(session, text, expected):
     """Through `parse`, not through the matcher.
 
     The matcher had this right while `parse` did not: a 0.55 trigram guess at a
@@ -241,7 +243,29 @@ async def test_document_work_survives_the_whole_parse(session, text):
     the private function could not see it.
     """
     parsed = await parse(session, text, "ru", today=TODAY)
-    assert parsed.service_type in {"translation", "bank_letter"}
+    assert parsed.service_type == expected
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text",
+    [
+        "нотариальный перевод диплома",
+        "bank statement for the visa",
+        "нужна страховка, учусь на физике",
+    ],
+)
+async def test_a_guessed_subject_is_dropped_not_the_kind_of_help(session, text):
+    """Both filters are applied together, and these offers have no subject.
+
+    Keeping a 0.55 trigram guess beside the kind of help is a pair that matches
+    nobody, so the count and the preview on the search screen are zero for
+    exactly the queries this change exists to make findable. The guess goes; a
+    named subject is the other rule, two tests up.
+    """
+    parsed = await parse(session, text, "ru", today=TODAY)
+    assert parsed.service_type in SUBJECTLESS
+    assert parsed.subject is None
 
 
 @pytest.mark.asyncio

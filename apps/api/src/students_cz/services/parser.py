@@ -48,16 +48,22 @@ def starts_a_word(haystack: str, needle: str) -> bool:
     return tokenise(needle).rstrip() in haystack
 
 
+class Word(str):
+    """A keyword that has to match a whole word rather than a stem.
+
+    Every other entry below may run into the middle of a word, which is what
+    lets "нострифик" reach "нострификации". For a short ordinary word that is a
+    trap: "визу" is the accusative of "виза" and the first four letters of
+    "визуализация". Written here rather than in a parallel set of strings, so
+    adding a form cannot quietly make it a stem again.
+    """
+
+    __slots__ = ()
+
+
 # Keywords that name a kind of help, across the four interface languages plus
 # the transliterations students actually type. These are matching rules, not
 # display text, so they live in code rather than in the translation catalogue.
-# Keywords that are whole words, not stems. Everything else in the table below
-# may run into the middle of a word, which is what lets "нострифик" reach
-# "нострификации" — and what makes a four-letter word like "визу" a trap.
-WHOLE_WORD_ONLY: frozenset[str] = frozenset(
-    {"виза", "визы", "визу", "визой", "віза", "візи", "візу", "vizum", "viza"}
-)
-
 SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
     "exam_live_help": (
         "на экзамене",
@@ -205,16 +211,16 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         # Stems, not phrases: a multi-word keyword tolerates inflection only on
         # its last word, so "prodlouzeni dlouhodobeho pobytu" — the standard
         # Czech phrase — reached none of the three that used to be listed here.
-        "виза",
-        "визы",
-        "визу",
-        "визой",
-        "візу",
-        "візи",
-        "віза",
+        Word("виза"),
+        Word("визы"),
+        Word("визу"),
+        Word("визой"),
+        Word("візу"),
+        Word("візи"),
+        Word("віза"),
         "посвідка на проживанн",
-        "vizum",
-        "viza",
+        Word("vizum"),
+        Word("viza"),
         "pobyt",
         "residence permit",
         "long term visa",
@@ -330,16 +336,19 @@ async def parse(
     # reading it as housing turned a list of tutors into an empty screen. Read
     # again as if those kinds did not exist.
     #
-    # Only for a synonym hit. A trigram score is a guess, and letting a guess
-    # win here undid the whole reason translation sits above the study kinds:
-    # "присяжный перевод диплома" scores «Академическое письмо» at 0.55, and on
-    # the strength of that the kind of help went back to being thesis writing.
-    if (
-        subjects
-        and subjects[0].matched_on == "synonym"
-        and result.service_type in SUBJECTLESS
-    ):
-        result.service_type, _ = _match_service(norm, ignore=SUBJECTLESS)
+    # Which of the two gives way depends on how sure the subject is. A curated
+    # synonym is a named subject and wins: read the kind of help again as if the
+    # non-study ones did not exist. A trigram score is a guess, and a guess
+    # cannot narrow a kind of help that has no subjects to narrow by — so the
+    # guess goes instead. Keeping both was a guaranteed empty screen, and
+    # keeping the subject over the service undid the reason translation sits
+    # above the study kinds: "присяжный перевод диплома" scores «Академическое
+    # письмо» at 0.55.
+    if subjects and result.service_type in SUBJECTLESS:
+        if subjects[0].matched_on == "synonym":
+            result.service_type, _ = _match_service(norm, ignore=SUBJECTLESS)
+        else:
+            subjects = []
 
     institutions = await find_institutions(session, text, lang, limit=3)
 
@@ -381,12 +390,8 @@ def _match_service(
         if code in ignore:
             continue
         for keyword in keywords:
-            found = (
-                is_whole_word(tokens, keyword)
-                if keyword in WHOLE_WORD_ONLY
-                else starts_a_word(tokens, keyword)
-            )
-            if found:
+            match = is_whole_word if isinstance(keyword, Word) else starts_a_word
+            if match(tokens, keyword):
                 return code, keyword
 
     if any(starts_a_word(tokens, verb) for verb in WEAK_HELP):
