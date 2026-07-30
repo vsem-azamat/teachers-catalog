@@ -14,8 +14,16 @@ import { defineConfig } from '@hey-api/openapi-ts';
  * is not running is a bad build. Everything the generator has not covered yet
  * is hand-written in `src/lib/types.ts`.
  */
+const input = process.env.OPENAPI_URL;
+if (!input) {
+  // No default. Every value one could pick is a URL, and a URL is the thing
+  // that goes wrong here: the generator writes it into the client. `make
+  // contract` sets this to the file it dumped.
+  throw new Error('Set OPENAPI_URL, or run `make contract` from the repository root.');
+}
+
 export default defineConfig({
-  input: process.env.OPENAPI_URL ?? 'http://127.0.0.1:8000/openapi.json',
+  input,
   // Biome is excluded from the generated directory, so leave formatting and
   // linting to it rather than having the generator shell out to a second tool.
   output: './src/lib/generated',

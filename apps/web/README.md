@@ -122,7 +122,7 @@ close the app from the client's menu rather than just backing out of it.
 | `pnpm typecheck`      | `tsc -b`, no emit                                     |
 | `pnpm i18n:extract`   | Scan source for new messages, update the `.po` files  |
 | `pnpm i18n:compile`   | Compile catalogs by hand (the build does not need it) |
-| `pnpm api:generate`   | Regenerate API types from the running API's OpenAPI   |
+| `pnpm api:generate`   | Regenerate API types — via `make contract`, see below  |
 
 ## Layout
 
