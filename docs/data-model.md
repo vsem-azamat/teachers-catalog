@@ -136,6 +136,27 @@ wrong language, misspelled. Three mechanisms handle it, cheapest first:
 Verified against a live database: `prijimacky` scores 1.00 against `Přijímačky`,
 `matematicka analyza` scores 1.00 against `Matematická analýza`.
 
+Two rules keep the trigram half of that from answering confidently about
+something else:
+
+- **A short name matches as a whole word or not at all.** Faculty short names
+  are two and three letters — `FI`, `UK`, `JU` — and trigram similarity puts
+  any word containing those letters above the threshold, so "по физике" found
+  the faculty FI and "uklidit" would find Charles University. Below four
+  characters a short name is compared the way an institution code is: bounded by
+  non-alphanumerics on both sides.
+- **The subject is looked up in what is left after the kind of help has been
+  taken out.** The words that name the kind of help are not part of the subject
+  and they carry trigrams that outrank it: "помощь на экзамене по физике"
+  answered «Чешский язык B1» at 0.59 while «Физика 1» sat at 0.56. If the
+  remainder names no subject, the whole query is tried again — a word can name
+  both, as "нострификация" names the service and the exam.
+
+Every kind of help in the catalog must be reachable in words, in all four
+languages. The five that are not about studying — insurance, a bank statement,
+a document translation, residence paperwork, housing — were offerable and
+unfindable, which is a listing nobody can reach.
+
 Above all this sits the query parser, which turns free text into ids. Because it
 does, the database rarely has to do linguistic work at all — it looks up
 canonical ids and filters. `search_queries` logs every query with the parse, the

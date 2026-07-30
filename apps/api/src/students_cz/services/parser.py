@@ -91,6 +91,85 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "нострифік",
         "атестат",
     ),
+    # Help that is not about studying. These come before the study kinds
+    # because they are unambiguous: nobody writing "страховка" means a tutor,
+    # while the weak verbs at the bottom would happily read "помочь снять
+    # квартиру" as tutoring — and did.
+    "insurance": (
+        "страховк",
+        "страхован",
+        "страхуван",
+        "pojisten",
+        "pojiste",
+        "insurance",
+        "vzp",
+        "pvzp",
+    ),
+    "bank_letter": (
+        "справка из банк",
+        "справку из банк",
+        "выписка со счет",
+        "выписку со счет",
+        "из банка",
+        "довидка з банк",
+        "довидку з банк",
+        "з банку",
+        "vypis z ban",
+        "potvrzeni z ban",
+        "potvrzeni o vedeni",
+        "bank statement",
+        "bank letter",
+        "proof of funds",
+    ),
+    "translation": (
+        "перевод документ",
+        "переводом документ",
+        "судебный перевод",
+        "перевод с печат",
+        "присяжный перевод",
+        "переклад документ",
+        "судовий переклад",
+        "soudni preklad",
+        "uredni preklad",
+        "preklad dokument",
+        "s razitkem",
+        "sworn translation",
+        "certified translation",
+        "official translation",
+    ),
+    "residence": (
+        # "внж" and "вnж" are both typed; the transliteration is handled by the
+        # normaliser, not by listing every spelling.
+        "внж",
+        "вид на жительство",
+        "долгосрочная виза",
+        "продлить визу",
+        "продлить внж",
+        "продовження внж",
+        "посвидка на проживанн",
+        "pobytov",
+        "prodlouzeni pobytu",
+        "povoleni k pobytu",
+        "dlouhodoby pobyt",
+        "residence permit",
+        "long term visa",
+        "long-term visa",
+    ),
+    "housing": (
+        "жиль",
+        "квартир",
+        "общежит",
+        "переезд",
+        "житло",
+        "гуртожит",
+        "bydlen",
+        "ubytovan",
+        "kolej",
+        "housing",
+        "accommodation",
+        "dormitory",
+        "flatshare",
+    ),
     "writing": (
         "написать",
         "написа",
@@ -195,7 +274,25 @@ async def parse(
     norm = normalise(text)
     result = ParsedQuery(raw=text)
 
-    subjects = await find_subjects(session, text, lang, limit=4)
+    # The kind of help first, because the words that name it are not part of the
+    # subject and they bring trigrams of their own: with "помощь на экзамене"
+    # still in the query, «Чешский язык B1» scored 0.59 against a question about
+    # physics while «Физика 1» sat at 0.56.
+    result.service_type, matched_on = _service_match(norm)
+    asked = _without(norm, matched_on) if matched_on else norm
+
+    subjects: list[Match] = []
+    if asked:
+        subjects = await find_subjects(session, asked, lang, limit=4)
+        # The remainder is preferred, not trusted: a query can name a subject in
+        # words the kind of help took with it, and the trigram scorer will
+        # happily find something in whatever is left.
+        if not subjects and asked != norm:
+            subjects = await find_subjects(session, norm, lang, limit=4)
+    # Nothing is left when the kind of help was the whole query — "bank
+    # statement", "нострификация". There is no subject in it to find, and
+    # looking anyway is how "bank statement" came back as Probability and
+    # Statistics: a filter narrower than the question, on a subject nobody named.
     institutions = await find_institutions(session, text, lang, limit=3)
 
     if subjects:
@@ -207,7 +304,6 @@ async def parse(
         result.institution = institutions[0]
         result.alternatives["institution"] = institutions[1:]
 
-    result.service_type = _match_service(norm)
     result.deadline = _match_deadline(norm, today or date.today())
     result.budget_max = _match_budget(norm)
 
@@ -216,23 +312,50 @@ async def parse(
 
 
 def _match_service(norm: str) -> str | None:
-    """First keyword wins, and the dictionary is ordered by specificity.
+    """Which kind of help the text names, if any."""
+    return _service_match(norm)[0]
 
-    "помощь на экзамене" must not be read as plain exam preparation, so
-    exam_live_help is checked before exam_prep and generic tutoring last.
-    Weak verbs are considered only after every specific rule has passed.
+
+def _service_match(norm: str) -> tuple[str | None, str | None]:
+    """The kind of help, and the keyword that decided it.
+
+    First keyword wins, and the dictionary is ordered by specificity. "помощь на
+    экзамене" must not be read as plain exam preparation, so exam_live_help is
+    checked before exam_prep and generic tutoring last. Weak verbs are
+    considered only after every specific rule has passed.
+
+    The keyword comes back because the caller takes it out of the query before
+    looking for a subject. A weak verb yields no keyword: "помоги" says nothing
+    about which kind of help, so there is nothing to remove that would sharpen
+    anything.
     """
     tokens = tokenise(norm)
     for code, keywords in SERVICE_KEYWORDS.items():
         for keyword in keywords:
             if starts_a_word(tokens, keyword):
-                return code
+                return code, keyword
 
     if any(starts_a_word(tokens, verb) for verb in WEAK_HELP):
         if any(starts_a_word(tokens, word) for word in EXAM_MENTION):
-            return None  # an exam is mentioned but not placed in time — ask
-        return "tutoring"
-    return None
+            return None, None  # an exam is mentioned but not placed in time
+        return "tutoring", None
+    return None, None
+
+
+def _without(norm: str, keyword: str) -> str:
+    """`norm` minus the words the keyword touched.
+
+    Whole words, not the keyword's characters: the keywords are stems, so
+    removing "нострифик" from "нострификация" would leave "ация" and hand the
+    subject lookup a fragment to score against.
+    """
+    tokens = tokenise(norm)
+    needle = tokenise(keyword).rstrip()
+    at = tokens.find(needle)
+    if at < 0:
+        return norm
+    end = tokens.find(" ", at + len(needle))
+    return (tokens[:at] + (tokens[end:] if end >= 0 else " ")).strip()
 
 
 def _match_deadline(norm: str, today: date) -> date | None:

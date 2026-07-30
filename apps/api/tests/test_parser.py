@@ -117,3 +117,95 @@ async def test_unmatched_is_reported_not_guessed(session):
     parsed = await parse(session, "asdfgh qwerty", "ru", today=TODAY)
     assert parsed.unmatched is True
     assert parsed.subject is None
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # Help that is not about studying. Offerable since PR #29 and, until
+        # these keywords existed, unfindable in words — a listing nobody could
+        # reach. One phrasing per language per kind, because the catalog is read
+        # in four languages and the parser is not told which one was typed.
+        ("нужна страховка для визы", "insurance"),
+        ("pojisteni na rok", "insurance"),
+        ("insurance for a visa", "insurance"),
+        ("страховка на рік", "insurance"),
+        ("справка из банка", "bank_letter"),
+        ("vypis z banky", "bank_letter"),
+        ("bank statement", "bank_letter"),
+        ("довідка з банку", "bank_letter"),
+        ("перевод документов с печатью", "translation"),
+        ("soudni preklad", "translation"),
+        ("sworn translation", "translation"),
+        ("переклад документів", "translation"),
+        ("продлить ВНЖ", "residence"),
+        ("prodlouzeni pobytu", "residence"),
+        ("residence permit", "residence"),
+        ("продовження ВНЖ", "residence"),
+        ("жильё в Праге", "housing"),
+        ("hledam bydleni", "housing"),
+        ("looking for housing", "housing"),
+        ("житло у Празі", "housing"),
+    ],
+)
+def test_help_that_is_not_about_studying_is_recognised(text, expected):
+    assert _match_service(normalise(text)) == expected
+
+
+@pytest.mark.asyncio
+async def test_a_short_faculty_name_is_not_found_inside_a_word(session):
+    """`FI` is a faculty. It is also the first two letters of "физике".
+
+    Trigram similarity scored that at 0.67 — above the threshold — so a query
+    about physics came back naming a faculty nobody had mentioned.
+    """
+    parsed = await parse(session, "репетитор по физике", "ru", today=TODAY)
+    assert parsed.institution is None
+
+
+@pytest.mark.asyncio
+async def test_a_named_faculty_is_still_found(session):
+    """The rule above must not cost us the faculty when it really is named."""
+    parsed = await parse(session, "матан на ČVUT FIT", "ru", today=TODAY)
+    assert parsed.institution is not None
+
+
+@pytest.mark.asyncio
+async def test_the_subject_is_read_from_what_the_service_left(session):
+    """The words naming the kind of help are not part of the subject.
+
+    They also carry trigrams of their own: with them in the query, «Чешский язык
+    B1» scored 0.59 against a question about physics while «Физика 1» sat at
+    0.56, so the screen answered confidently about the wrong subject.
+    """
+    parsed = await parse(session, "помощь на экзамене по физике", "ru", today=TODAY)
+    assert parsed.service_type == "exam_live_help"
+    assert parsed.subject is not None
+    assert parsed.subject.label.startswith("Физика")
+
+
+@pytest.mark.asyncio
+async def test_a_word_naming_both_the_service_and_the_subject_survives(session):
+    """ "нострификация аттестата" names the kind of help in one word and the
+    subject in the other, and the stem taken out is inside the first.
+
+    Whole words, so what is left is "аттестата" rather than the fragment "ация".
+    """
+    parsed = await parse(session, "нострификация аттестата", "ru", today=TODAY)
+    assert parsed.service_type == "nostrification"
+    assert parsed.subject is not None
+    assert parsed.subject.label == "Нострификационные экзамены"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("text", ["bank statement", "нострификация"])
+async def test_no_subject_is_invented_when_the_service_was_the_whole_query(session, text):
+    """Nothing is left to name a subject, so none is claimed.
+
+    "bank statement" used to come back as Probability and Statistics at 0.61 —
+    a filter narrower than the question, on a subject nobody had named.
+    """
+    parsed = await parse(session, text, "en", today=TODAY)
+    assert parsed.service_type is not None
+    assert parsed.subject is None
+    assert parsed.unmatched is False
