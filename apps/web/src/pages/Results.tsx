@@ -3,26 +3,21 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
-import { PhraseView, PriceUnitLabel } from '@/components/Phrase';
+import { HelperCardView } from '@/components/HelperCard';
 import { TabBar } from '@/components/TabBar';
 import {
-  AvatarView,
-  Card,
   Cards,
   Chips,
   ChipView,
   Empty,
-  Free,
   Label,
-  PriceView,
-  Reason,
   Screen,
   Segmented,
   SkeletonRows,
 } from '@/components/Ui';
 import { hapticSelection } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
-import type { HelperCard, SearchSort } from '@/lib/types';
+import type { SearchSort } from '@/lib/types';
 
 /**
  * The results list.
@@ -145,56 +140,6 @@ export default function ResultsPage() {
       </Screen>
       <TabBar />
     </>
-  );
-}
-
-function HelperCardView({
-  card,
-  locale,
-  onClick,
-}: {
-  card: HelperCard;
-  locale: string;
-  onClick: () => void;
-}) {
-  // "Cheaper but unproven" is the one reason that should not wear the same
-  // confident green dot as the others.
-  const weak = card.reason?.code === 'reason.cheapest_but_unproven';
-
-  return (
-    <Card onClick={onClick}>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <AvatarView avatar={card.avatar} size={40} square />
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 14.5, fontWeight: 680, letterSpacing: '-0.015em' }}>
-            {card.name}
-          </div>
-          {card.affiliation ? (
-            <div style={{ marginTop: 2, fontSize: 12, color: 'var(--muted)' }}>
-              {card.affiliation}
-            </div>
-          ) : null}
-        </div>
-        {card.price ? (
-          <PriceView
-            price={card.price}
-            unitLabel={<PriceUnitLabel unit={card.price.unit} />}
-          />
-        ) : null}
-      </div>
-
-      {card.reason ? (
-        <Reason weak={weak}>
-          <PhraseView phrase={card.reason} locale={locale} />
-        </Reason>
-      ) : null}
-
-      {card.availability ? (
-        <Free>
-          <PhraseView phrase={card.availability} locale={locale} />
-        </Free>
-      ) : null}
-    </Card>
   );
 }
 

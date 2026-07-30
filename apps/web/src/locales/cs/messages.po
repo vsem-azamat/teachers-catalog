@@ -80,6 +80,10 @@ msgstr "Teď ne"
 msgid "Kč"
 msgstr "Kč"
 
+#: src/pages/Ask.tsx
+msgid "страховка на год"
+msgstr "pojištění na rok"
+
 #: src/pages/MyHelper.tsx
 msgid "Скрыть"
 msgstr "Skrýt"
@@ -192,6 +196,10 @@ msgstr "napiš to vlastními slovy, anketu sestavíme sami"
 msgid "Заявку уже закрыли"
 msgstr "Poptávka už je uzavřená"
 
+#: src/pages/Ask.tsx
+msgid "всего {total}"
+msgstr "celkem {total}"
+
 #: src/components/Incoming.tsx
 #: src/pages/Mine.tsx
 #: src/pages/Request.tsx
@@ -207,6 +215,10 @@ msgstr "Profil se uloží, ale v katalogu nebude."
 msgid "Сколько"
 msgstr "Kolik"
 
+#: src/pages/Ask.tsx
+msgid "Показать {total}"
+msgstr "Zobrazit {total}"
+
 #: src/pages/Mine.tsx
 msgid "Мои заявки"
 msgstr "Moje poptávky"
@@ -218,6 +230,10 @@ msgstr "Jsou vidět na tvé stránce."
 #: src/components/Phrase.tsx
 msgid "Не понял запрос. Попробуй назвать предмет — «матан», «čeština B2», «сопромат»."
 msgstr "Nerozuměl jsem dotazu. Zkus napsat předmět — „matana“, „čeština B2“, „sopromat“."
+
+#: src/pages/Ask.tsx
+msgid "Напиши как думаешь. Поймём предмет, вуз, срок и бюджет."
+msgstr "Napiš to tak, jak to máš v hlavě. Poznáme předmět, školu, termín i rozpočet."
 
 #: src/components/Phrase.tsx
 msgid "сдали"
@@ -280,6 +296,10 @@ msgstr "Obojí"
 #~ msgid "опубликована"
 #~ msgstr "zveřejněna"
 
+#: src/pages/Ask.tsx
+msgid "Убери что-нибудь из уточнений выше или напиши иначе."
+msgstr "Odeber něco z upřesnění výše, nebo to napiš jinak."
+
 #: src/pages/OfferPrices.tsx
 msgid "Анкета скрыта — услуги сохранятся, но в каталоге их не будет. Включить видимость можно в анкете."
 msgstr "Profil je skrytý — služby se uloží, ale v katalogu nebudou. Viditelnost zapneš v profilu."
@@ -328,14 +348,18 @@ msgid "И то, и другое"
 msgstr "Obojí"
 
 #: src/pages/Ask.tsx
-msgid "нужен матан на ČVUT, экзамен 14 февраля"
-msgstr "potřebuju matanu na ČVUT, zkouška 14. února"
+#~ msgid "нужен матан на ČVUT, экзамен 14 февраля"
+#~ msgstr "potřebuju matanu na ČVUT, zkouška 14. února"
 
 #: src/components/Phrase.tsx
 #: src/pages/MyHelper.tsx
 #: src/pages/OfferPrices.tsx
 msgid "за час"
 msgstr "za hodinu"
+
+#: src/pages/Ask.tsx
+msgid "матан на ČVUT к 14 февраля, до 600 Kč"
+msgstr "matika na ČVUT do 14. února, do 600 Kč"
 
 #: src/pages/Profile.tsx
 msgid "Предлагать услуги"
@@ -363,6 +387,10 @@ msgstr "Nejdřív zveřejni profil"
 #: src/pages/OfferPrices.tsx
 msgid "за штуку"
 msgstr "za kus"
+
+#: src/pages/Ask.tsx
+msgid "přijímačky на медицину"
+msgstr "přijímačky na medicínu"
 
 #: src/pages/MyHelper.tsx
 msgid "В каталоге"
@@ -417,8 +445,8 @@ msgid "Мои услуги"
 msgstr "Moje služby"
 
 #: src/pages/Ask.tsx
-msgid "Искать всё равно"
-msgstr "Hledat i tak"
+#~ msgid "Искать всё равно"
+#~ msgstr "Hledat i tak"
 
 #: src/components/TabBar.tsx
 msgid "опиши задачу — придут отклики"
@@ -427,6 +455,14 @@ msgstr "popiš zadání — přijdou nabídky"
 #: src/pages/Request.tsx
 msgid "Заявку видят те, кто ведёт этот предмет. Обычно отвечают в течение дня."
 msgstr "Poptávku vidí ti, kdo tenhle předmět učí. Obvykle odpovídají do dne."
+
+#: src/pages/Ask.tsx
+msgid "Кого тут можно найти"
+msgstr "Koho tu najdeš"
+
+#: src/pages/Ask.tsx
+msgid "Кто найдётся"
+msgstr "Koho to najde"
 
 #: src/components/Phrase.tsx
 msgid "Ведёт предмет, но не привязан к этому вузу"
@@ -514,6 +550,7 @@ msgstr "Potřebuju pomoc"
 msgid "Оформление. Нажми, чтобы сменить; удерживай, чтобы вернуть системное"
 msgstr "Vzhled. Klepnutím změníš, podržením vrátíš systémový"
 
+#: src/pages/Ask.tsx
 #: src/pages/Home.tsx
 msgid "Что нужно?"
 msgstr "Co potřebuješ?"
@@ -566,10 +603,18 @@ msgstr "Levnější"
 msgid "Загружаем"
 msgstr "Načítáme"
 
+#: src/pages/Ask.tsx
+msgid "матан ČVUT"
+msgstr "matika ČVUT"
+
 #. placeholder {0}: data.total
 #: src/pages/Results.tsx
 msgid "всего {0}"
 msgstr "celkem {0}"
+
+#: src/pages/Ask.tsx
+msgid "нострификация аттестата"
+msgstr "nostrifikace vysvědčení"
 
 #: src/components/Phrase.tsx
 msgid "Вуз, с которым ты работаешь"
@@ -665,6 +710,10 @@ msgstr "Odeslat"
 msgid "У этого человека нет @username — написать не получится"
 msgstr "Tenhle člověk nemá @username — nedá se mu napsat"
 
+#: src/pages/Ask.tsx
+msgid "Например"
+msgstr "Například"
+
 #: src/components/Phrase.tsx
 #: src/pages/MyHelper.tsx
 #: src/pages/OfferPrices.tsx
@@ -716,6 +765,10 @@ msgstr "Na tuhle poptávku jsi už odpovídal"
 #: src/pages/Helper.tsx
 msgid "У этого человека нет открытого username в Telegram, написать не получится."
 msgstr "Tenhle člověk nemá veřejný username v Telegramu, napsat mu nepůjde."
+
+#: src/pages/Ask.tsx
+msgid "По этому запросу пока никого"
+msgstr "Na tenhle dotaz tu zatím nikdo není"
 
 #. placeholder {0}: formatMoney(price.amount)
 #: src/pages/Helper.tsx
@@ -797,6 +850,10 @@ msgstr "{0, plural, one {Odpovídá zhruba za # minutu} few {Odpovídá zhruba z
 msgid "Ты отказался"
 msgstr "Odmítl jsi"
 
+#: src/pages/Ask.tsx
+msgid "čeština B2"
+msgstr "čeština B2"
+
 #: src/pages/Profile.tsx
 #~ msgid "Как в системе"
 #~ msgstr "Podle systému"
@@ -824,8 +881,8 @@ msgstr "Napsat"
 
 #. placeholder {0}: parsed.matches
 #: src/pages/Ask.tsx
-msgid "Показать {0}"
-msgstr "Zobrazit {0}"
+#~ msgid "Показать {0}"
+#~ msgstr "Zobrazit {0}"
 
 #: src/pages/MyHelper.tsx
 msgid "Моя анкета"
@@ -856,6 +913,7 @@ msgstr "Co učíš, kde studuješ, jak hodiny probíhají. Vlastními slovy."
 msgid "Отклики"
 msgstr "Odpovědi"
 
+#: src/pages/Ask.tsx
 #: src/pages/Results.tsx
 msgid "Ищем…"
 msgstr "Hledáme…"

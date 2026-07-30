@@ -1,24 +1,44 @@
 import { Trans, useLingui } from '@lingui/react/macro';
-import { useMutation } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { CheckIcon, ClockIcon, PlusIcon, SearchIcon } from '@/components/icons';
+import { AppHeader } from '@/components/AppHeader';
+import { HelperCardView } from '@/components/HelperCard';
+import {
+  CheckIcon,
+  ClockIcon,
+  iconForService,
+  PlusIcon,
+  SearchIcon,
+} from '@/components/icons';
 import { ClarifyOptionLabel, formatDay, PhraseView } from '@/components/Phrase';
 import {
+  Cards,
+  Chevron,
   Chips,
   ChipView,
+  Count,
+  Empty,
   Hint,
   Label,
   Row,
   Rows,
   Screen,
+  SkeletonRows,
   Sub,
   Tile,
+  Title,
   ui,
 } from '@/components/Ui';
 import { useMainButton } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
-import type { Chip, ParseResult } from '@/lib/types';
+import type {
+  Chip,
+  ParseResult,
+  SearchParams,
+  SearchResult,
+  ServiceType,
+} from '@/lib/types';
 
 const OPTION_ICON: Record<string, typeof CheckIcon> = {
   exam_prep: CheckIcon,
@@ -26,12 +46,24 @@ const OPTION_ICON: Record<string, typeof CheckIcon> = {
   both: PlusIcon,
 };
 
+/** How many of the results to show before the person has asked for them. */
+const PREVIEW = 2;
+
+/** How many kinds of help to name while the field is still empty. */
+const SHELVES = 3;
+
 /**
  * One field, then what we made of it.
  *
  * This screen exists so the catalog can have a single input instead of a
  * category tree. It shows the parse back as chips the person can remove, and
  * asks at most one question — and only when the answer changes the result.
+ *
+ * It also has to answer, before anything is typed and again after, the question
+ * a bare text field never answers: what comes out of this? Empty, it names what
+ * can be asked for and what the catalog holds. Filled, it shows the count and
+ * the first two people on the screen itself. That count used to exist only on
+ * Telegram's main button, which no browser has.
  */
 export default function AskPage() {
   const navigate = useNavigate();
@@ -73,30 +105,59 @@ export default function AskPage() {
   const kept = (parsed?.chips ?? []).filter((chip) => !dropped.has(chipKey(chip)));
   const ready = kept.length > 0 || Boolean(answer);
 
+  // The clarifying answer is a service code; the id it maps to lives in the
+  // reference list, which every screen shares and which is cached for an hour.
+  const { data: serviceTypes } = useQuery({
+    queryKey: ['service-types'],
+    queryFn: ({ signal }) => api.getServiceTypes(signal),
+    staleTime: 60 * 60 * 1000,
+  });
+
+  // One string, used for the preview and for the navigation, so the two cannot
+  // describe different searches.
+  const query = useMemo(() => toQuery(kept, answer), [kept, answer]);
+  const params = useMemo(() => searchParams(query, serviceTypes), [query, serviceTypes]);
+
+  const preview = useQuery({
+    queryKey: ['ask-preview', params],
+    queryFn: ({ signal }) => api.search({ ...params, limit: PREVIEW }, signal),
+    enabled: ready && params !== null,
+  });
+
+  // The number on the screen is the length of the list behind it, because both
+  // come out of this one request. Taking it from the parse instead would make
+  // the screen right only for as long as the two endpoints agree.
+  const total = preview.data?.total;
+
   useMainButton(
-    ready
+    ready && total
       ? {
-          text:
-            parsed && parsed.matches > 0
-              ? t`Показать ${parsed.matches}`
-              : t`Искать всё равно`,
+          text: t`Показать ${total}`,
           isVisible: true,
           isEnabled: true,
-          isLoaderVisible: parse.isPending,
-          onClick: () => navigate(`/results?${toQuery(kept, answer)}`),
+          isLoaderVisible: parse.isPending || preview.isFetching,
+          onClick: () => navigate(`/results?${query}`),
         }
       : null,
   );
 
   return (
     <Screen>
-      <div className={ui.field} style={{ alignItems: 'flex-start' }}>
+      <AppHeader />
+      <Title>
+        <Trans>Что нужно?</Trans>
+      </Title>
+      <Sub>
+        <Trans>Напиши как думаешь. Поймём предмет, вуз, срок и бюджет.</Trans>
+      </Sub>
+
+      <div className={ui.field} style={{ alignItems: 'flex-start', marginTop: 16 }}>
         <SearchIcon size={18} className={ui.fieldIcon} />
         <textarea
           ref={inputRef}
           value={text}
           onChange={(event) => setText(event.target.value)}
-          placeholder={t`нужен матан на ČVUT, экзамен 14 февраля`}
+          placeholder={t`матан на ČVUT к 14 февраля, до 600 Kč`}
           rows={2}
           style={{
             all: 'unset',
@@ -114,6 +175,8 @@ export default function AskPage() {
           </Sub>
         </div>
       ) : null}
+
+      {text.trim().length < 3 ? <EmptyState onPick={setText} /> : null}
 
       {kept.length > 0 || (parsed?.chips.length ?? 0) > 0 ? (
         <>
@@ -184,7 +247,159 @@ export default function AskPage() {
           </div>
         </>
       ) : null}
+
+      {/* Last, and after the clarifying question rather than before it: the
+          answer to that question changes the list, and a list shown above the
+          thing that narrows it reads as already final. */}
+      {ready ? (
+        <Preview data={preview.data} isPending={preview.isPending} locale={i18n.locale} />
+      ) : null}
     </Screen>
+  );
+}
+
+/**
+ * What to type, and what is here to be found.
+ *
+ * The examples are the cheap half: a person who has just left a screen of
+ * categories needs to be told that this field takes a sentence, not a keyword.
+ * The shelves under them are the honest half — three kinds of help that
+ * actually have someone behind them today.
+ */
+function EmptyState({ onPick }: { onPick: (text: string) => void }) {
+  const navigate = useNavigate();
+  const { t } = useLingui();
+
+  const { data } = useQuery({
+    queryKey: ['home'],
+    queryFn: ({ signal }) => api.getHome(signal),
+  });
+
+  const examples = [
+    t`матан ČVUT`,
+    t`čeština B2`,
+    t`přijímačky на медицину`,
+    t`нострификация аттестата`,
+    t`страховка на год`,
+  ];
+
+  // Only what someone is actually offering. An empty shelf here would be the
+  // screen advertising a thing it cannot deliver, which is the failure this
+  // whole change is about.
+  const shelves = [...(data?.people ?? [])]
+    .filter((section) => section.count > 0)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, SHELVES);
+
+  return (
+    <>
+      <Label>
+        <Trans>Например</Trans>
+      </Label>
+      <Chips>
+        {examples.map((example) => (
+          <ChipView key={example} ghost onClick={() => onPick(example)}>
+            {example}
+          </ChipView>
+        ))}
+      </Chips>
+
+      {shelves.length > 0 ? (
+        <>
+          <Label>
+            <Trans>Кого тут можно найти</Trans>
+          </Label>
+          <Rows>
+            {shelves.map((section) => {
+              const Icon = iconForService(section.code);
+              return (
+                <Row
+                  key={section.code}
+                  onClick={() => navigate(`/results?service=${section.code}`)}
+                  leading={
+                    <Tile tone={section.tone}>
+                      <Icon size={19} />
+                    </Tile>
+                  }
+                  title={section.name}
+                  hint={section.hint}
+                  trailing={
+                    <>
+                      <Count>{section.count}</Count>
+                      <Chevron />
+                    </>
+                  }
+                />
+              );
+            })}
+          </Rows>
+        </>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * The first people the query finds, before the person has asked to see them.
+ *
+ * Two cards, because the point is not the list — it is that there is one, and
+ * what the rows in it look like. Zero is said out loud here rather than left
+ * to a main button reading "искать всё равно".
+ */
+function Preview({
+  data,
+  isPending,
+  locale,
+}: {
+  data: SearchResult | undefined;
+  isPending: boolean;
+  locale: string;
+}) {
+  const navigate = useNavigate();
+
+  if (isPending) {
+    return (
+      <>
+        <Label>
+          <Trans>Ищем…</Trans>
+        </Label>
+        <SkeletonRows count={PREVIEW} />
+      </>
+    );
+  }
+
+  // Nothing at all rather than an error state: the chips above already say what
+  // was understood, and the main button is gone, so the screen is honest about
+  // having nothing to promise.
+  if (!data) return null;
+
+  const { total, results } = data;
+
+  if (total === 0) {
+    return (
+      <Empty
+        title={<Trans>По этому запросу пока никого</Trans>}
+        body={<Trans>Убери что-нибудь из уточнений выше или напиши иначе.</Trans>}
+      />
+    );
+  }
+
+  return (
+    <>
+      <Label aside={<Trans>всего {total}</Trans>}>
+        <Trans>Кто найдётся</Trans>
+      </Label>
+      <Cards>
+        {results.map((card) => (
+          <HelperCardView
+            key={card.user_id}
+            card={card}
+            locale={locale}
+            onClick={() => navigate(`/helper/${card.user_id}`)}
+          />
+        ))}
+      </Cards>
+    </>
   );
 }
 
@@ -212,4 +427,34 @@ function toQuery(chips: Chip[], answer: string | null): string {
   // results screen resolves it, because it already loads the list.
   if (answer && answer !== 'both') params.set('service', answer);
   return params.toString();
+}
+
+/**
+ * The same query string, as the arguments the search endpoint takes.
+ *
+ * Null while a service code is still waiting for the reference list: searching
+ * without it would count everyone who teaches the subject, show that number,
+ * and then hand over to a screen that filters by kind of help.
+ */
+function searchParams(
+  query: string,
+  serviceTypes: ServiceType[] | undefined,
+): SearchParams | null {
+  const params = new URLSearchParams(query);
+  const code = params.get('service');
+  const byCode = code ? serviceTypes?.find((type) => type.code === code)?.id : undefined;
+  if (code && byCode === undefined) return null;
+
+  return {
+    subject_id: numeric(params.get('subject_id')),
+    institution_id: numeric(params.get('institution_id')),
+    service_type_id: numeric(params.get('service_type_id')) ?? byCode,
+    max_price: numeric(params.get('max_price')),
+  };
+}
+
+function numeric(value: string | null): number | undefined {
+  if (!value) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
