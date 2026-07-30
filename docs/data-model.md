@@ -154,12 +154,15 @@ something else:
   search by a subject nobody named. A synonym hit is kept, because a curated
   synonym is not a guess — "курсовая" and "нострификация" are written down
   against real subjects.
-- **A kind of help that never carries a subject is not the answer to a query
-  that names one.** The five non-study kinds have `requires_subject = false` and
-  their `offers` rows have a null subject, while the search applies subject and
-  kind of help together — so the pair matches nobody. "нужен матан, живу в
-  общежитии" is a question about calculus with an aside in it, and reading it as
-  housing turned a list of tutors into an empty screen.
+- **A kind of help from the `life` group is not the answer to a query that
+  names a subject.** Those offers carry no subject at all, while the search
+  applies subject and kind of help together — so the pair matches nobody.
+  "нужен матан, живу в общежитии" is a question about calculus with an aside in
+  it, and reading it as housing turned a list of tutors into an empty screen.
+  The subject has to be *named*, not guessed at: deferring to a trigram score
+  here sent "присяжный перевод диплома" back to being thesis writing on a 0.55
+  match. The group, and not `requires_subject`, is what identifies the set —
+  exam help and nostrification have that false as well and belong outside it.
 
 A kind of help that cannot be named in words cannot be found, in any of the four
 languages. The five that are not about studying — insurance, a bank statement,

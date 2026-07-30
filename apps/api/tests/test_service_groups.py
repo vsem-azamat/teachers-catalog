@@ -164,3 +164,21 @@ def test_seed_and_migrations_agree_on_what_those_types_say() -> None:
     migrated = _migrated_rows()
     seeded = _seeded_rows()
     assert migrated == {code: seeded[code] for code in migrated}
+
+
+def test_subjectless_is_exactly_the_life_group():
+    """The parser's own list of subjectless kinds, against the seed.
+
+    `SUBJECTLESS` is written out in the parser because it reads no tables, and a
+    sixth kind of help in the `life` group would otherwise be added without the
+    rule that protects it — a query naming a subject would come back with that
+    kind beside it, and the two filters together match nobody.
+
+    Not `requires_subject`: exam help and nostrification have that false too and
+    must stay out of this set.
+    """
+    from students_cz.db.seed import SERVICE_TYPES
+    from students_cz.services.parser import SUBJECTLESS
+
+    life = {spec["code"] for spec in SERVICE_TYPES if spec["group"] == "life"}
+    assert life == SUBJECTLESS

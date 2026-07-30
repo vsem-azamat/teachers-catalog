@@ -7,7 +7,7 @@ from students_cz.services.parser import (
     SUBJECTLESS,
     _match_budget,
     _match_deadline,
-    _service_match,
+    _match_service,
     _without,
     parse,
 )
@@ -33,13 +33,13 @@ TODAY = date(2026, 1, 20)
     ],
 )
 def test_service_keywords(text, expected):
-    assert _service_match(normalise(text))[0] == expected
+    assert _match_service(normalise(text))[0] == expected
 
 
 def test_keyword_must_start_a_word():
     """ "osp" is a Scio test; it is also inside "gospodarka"."""
-    assert _service_match(normalise("gospodarka a osnovy"))[0] is None
-    assert _service_match(normalise("готовлюсь к osp"))[0] == "entrance_prep"
+    assert _match_service(normalise("gospodarka a osnovy"))[0] is None
+    assert _match_service(normalise("готовлюсь к osp"))[0] == "entrance_prep"
 
 
 @pytest.mark.parametrize(
@@ -151,7 +151,7 @@ async def test_unmatched_is_reported_not_guessed(session):
     ],
 )
 def test_help_that_is_not_about_studying_is_recognised(text, expected):
-    assert _service_match(normalise(text))[0] == expected
+    assert _match_service(normalise(text))[0] == expected
 
 
 @pytest.mark.asyncio
@@ -221,16 +221,27 @@ async def test_an_aside_about_life_does_not_replace_the_subject(session, text):
     assert parsed.service_type not in SUBJECTLESS
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("text", "expected"),
+    "text",
     [
-        # Single-word study stems used to win these on dictionary order alone.
-        ("присяжный перевод диплома", "translation"),
-        ("нужен перевод аттестата", "translation"),
+        # Single-word study stems used to win these on dictionary order alone:
+        # "диплом" made the first thesis writing, "аттестат" made the second
+        # nostrification.
+        "присяжный перевод диплома",
+        "нужен перевод аттестата",
+        "i need a bank statement",
     ],
 )
-def test_translating_a_document_is_not_writing_or_nostrification(text, expected):
-    assert _service_match(normalise(text))[0] == expected
+async def test_document_work_survives_the_whole_parse(session, text):
+    """Through `parse`, not through the matcher.
+
+    The matcher had this right while `parse` did not: a 0.55 trigram guess at a
+    subject sent the kind of help back to being thesis writing, and a test on
+    the private function could not see it.
+    """
+    parsed = await parse(session, text, "ru", today=TODAY)
+    assert parsed.service_type in {"translation", "bank_letter"}
 
 
 @pytest.mark.asyncio

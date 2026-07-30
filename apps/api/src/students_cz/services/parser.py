@@ -191,9 +191,13 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "визы",
         "визу",
         "визой",
+        "візу",
+        "візи",
+        "віза",
         "посвідка на проживанн",
+        "vizum",
+        "viza",
         "pobyt",
-        "dlouhodob",
         "povoleni k pobyt",
         "residence permit",
         "long term visa",
@@ -213,17 +217,19 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
     ),
 }
 
-# The kinds of help that never carry a subject: `service_types.requires_subject`
-# is false for all five, and `offers` rows in the non-study group have a null
-# subject. Named here because the parser has to know it without loading the
-# table — see the rule in `parse`.
+# The kinds of help in the `life` group — the ones that are not about studying
+# and carry no subject at all. Not "requires_subject is false", which is also
+# true of exam help and nostrification and would be the wrong set: it is the
+# group. Written out because the parser reads no tables, and pinned to the seed
+# by test_subjectless_is_exactly_the_life_group so a sixth one cannot be added
+# without this list noticing.
 SUBJECTLESS = frozenset(
     {"insurance", "bank_letter", "translation", "residence", "housing"}
 )
 
 # "помочь с X" is the commonest phrasing there is, but on its own it says
 # nothing about *which* kind of help. It counts as tutoring only when the text
-# gives no other clue — see _service_match.
+# gives no other clue — see _match_service.
 WEAK_HELP: tuple[str, ...] = ("помо", "pomo", "help", "допомо", "нужен", "потрібн")
 
 # Words that put an exam in the picture without saying whether the help is
@@ -288,7 +294,7 @@ async def parse(
     norm = normalise(text)
     result = ParsedQuery(raw=text)
 
-    result.service_type, keyword = _service_match(norm)
+    result.service_type, keyword = _match_service(norm)
 
     subjects = await find_subjects(session, text, lang, limit=4)
     # When the words naming the kind of help were the whole query, there is no
@@ -301,13 +307,22 @@ async def parse(
         subjects = [match for match in subjects if match.matched_on == "synonym"]
 
     # A kind of help that never carries a subject cannot be the answer to a
-    # query that names one. `catalog.search` ANDs the two, and no offer in the
+    # query that *names* one. `catalog.search` ANDs the two, and no offer in the
     # non-study group has a subject, so the pair matches nobody: "нужен матан,
     # живу в общежитии" is a question about calculus with an aside in it, and
     # reading it as housing turned a list of tutors into an empty screen. Read
     # again as if those kinds did not exist.
-    if subjects and result.service_type in SUBJECTLESS:
-        result.service_type, _ = _service_match(norm, ignore=SUBJECTLESS)
+    #
+    # Only for a synonym hit. A trigram score is a guess, and letting a guess
+    # win here undid the whole reason translation sits above the study kinds:
+    # "присяжный перевод диплома" scores «Академическое письмо» at 0.55, and on
+    # the strength of that the kind of help went back to being thesis writing.
+    if (
+        subjects
+        and subjects[0].matched_on == "synonym"
+        and result.service_type in SUBJECTLESS
+    ):
+        result.service_type, _ = _match_service(norm, ignore=SUBJECTLESS)
 
     institutions = await find_institutions(session, text, lang, limit=3)
 
@@ -327,7 +342,7 @@ async def parse(
     return result
 
 
-def _service_match(
+def _match_service(
     norm: str, *, ignore: frozenset[str] = frozenset()
 ) -> tuple[str | None, str | None]:
     """The kind of help, and the keyword that decided it.
