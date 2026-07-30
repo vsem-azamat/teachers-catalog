@@ -299,12 +299,20 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
   // example is there to show the shape of a query, and the shapes are true even
   // where nobody offers that yet. The shelves are the half that promises supply,
   // and those are counted.
+  //
+  // What an example must do is parse to what it says. Two of these have been
+  // replaced for failing that: «страховка на год» parsed to nothing at all, and
+  // «přijímačky на медицину» answered with the technical-university subject at
+  // full confidence, because the parser reads the first word and has nothing to
+  // say about medicine. Check a new one against /search/parse before adding it —
+  // an example that misreads itself is a demonstration of the failure this
+  // screen exists to remove.
   const examples = [
     t`матан ČVUT`,
     t`čeština B2`,
-    t`přijímačky на медицину`,
+    t`помощь на экзамене по матану`,
     t`нострификация аттестата`,
-    t`курсовая по экономике`,
+    t`курсовая работа`,
   ];
 
   // Only what someone is actually offering. An empty shelf here would be the

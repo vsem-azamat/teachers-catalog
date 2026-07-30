@@ -14,8 +14,8 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<12 || n%100>14) ? 1 : 2);\n"
 
 #: src/pages/Ask.tsx
-msgid "курсовая по экономике"
-msgstr "курсова з економіки"
+#~ msgid "курсовая по экономике"
+#~ msgstr "курсова з економіки"
 
 #: src/components/Incoming.tsx
 msgid "Заведи в Telegram публичный @username — иначе тебе не ответят"
@@ -389,8 +389,8 @@ msgid "за штуку"
 msgstr "за штуку"
 
 #: src/pages/Ask.tsx
-msgid "přijímačky на медицину"
-msgstr "přijímačky на медицину"
+#~ msgid "přijímačky на медицину"
+#~ msgstr "přijímačky на медицину"
 
 #: src/pages/MyHelper.tsx
 msgid "В каталоге"
@@ -621,6 +621,10 @@ msgstr "нострифікація атестата"
 msgid "Вуз, с которым ты работаешь"
 msgstr "Виш, з яким ти працюєш"
 
+#: src/pages/Ask.tsx
+msgid "помощь на экзамене по матану"
+msgstr "допомога на іспиті з матану"
+
 #: src/pages/Offer.tsx
 msgid "Выбери, чем можешь помочь"
 msgstr "Обери, чим можеш допомогти"
@@ -838,6 +842,10 @@ msgstr "Зараз безкоштовно. Коли людей стане біл
 #: src/pages/Life.tsx
 msgid "Не про учёбу"
 msgstr "Не про навчання"
+
+#: src/pages/Ask.tsx
+msgid "курсовая работа"
+msgstr "курсова робота"
 
 #: src/components/Phrase.tsx
 msgid "Дешевле остальных, но этот экзамен не вёл"
