@@ -229,7 +229,6 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         Word("viza"),
         "pobyt",
         "residence permit",
-        "long term visa",
         Word("visa"),
         Word("visas"),
     ),

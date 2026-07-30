@@ -229,8 +229,9 @@ _INSTITUTION_SQL = text(
                    --
                    -- Two and not three: Czech declines the abbreviation itself,
                    -- and "na FELu", "na FITu", "na MFFce" are how people write
-                   -- it. Cutting at three characters cost all 57 three-letter
-                   -- faculties every inflected form they had, and bought
+                   -- it. Cutting at three characters cost the 69 institutions
+                   -- with a three-character short name every inflected form
+                   -- they had — 60 of them faculties — and bought
                    -- nothing — every false positive worth killing here is two
                    -- letters long.
                    --

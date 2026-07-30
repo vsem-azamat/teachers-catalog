@@ -145,8 +145,9 @@ something else:
   find Charles University. Those are compared against the query's tokens, the
   same whole-word test the synonym branch uses. Three letters stay on the
   trigram path deliberately: Czech declines the abbreviation itself — "na FELu",
-  "na MFFce" — and the whole-word rule would cost all 57 three-letter faculties
-  every inflected form they have. The two-letter names do lose theirs: "na UKu"
+  "na MFFce" — and the whole-word rule would cost every one of the 69
+  institutions with a three-character short name, 60 of them faculties, the
+  inflected forms they have. The two-letter names do lose theirs: "na UKu"
   no longer resolves. That is the trade — a missing institution filter shows a
   wider list than was asked for, a wrong one narrows the catalog to a faculty
   nobody named.
