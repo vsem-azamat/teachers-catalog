@@ -164,24 +164,16 @@ async def test_a_short_faculty_name_is_not_found_inside_a_word(session):
 
 
 @pytest.mark.asyncio
-async def test_a_named_faculty_is_still_found(session):
-    """The rule above must not cost us the faculty when it really is named."""
-    parsed = await parse(session, "матан на ČVUT FIT", "ru", today=TODAY)
-    assert parsed.institution is not None
+async def test_a_named_short_faculty_is_still_found(session):
+    """The rule above must not cost us the faculty when it really is named.
 
-
-@pytest.mark.asyncio
-async def test_the_subject_is_read_from_what_the_service_left(session):
-    """The words naming the kind of help are not part of the subject.
-
-    They also carry trigrams of their own: with them in the query, «Чешский язык
-    B1» scored 0.59 against a question about physics while «Физика 1» sat at
-    0.56, so the screen answered confidently about the wrong subject.
+    "FIT" alone and not "ČVUT FIT": the second would pass through the
+    institution-code branch whatever the short-name rule does, which makes it no
+    test of the rule at all.
     """
-    parsed = await parse(session, "помощь на экзамене по физике", "ru", today=TODAY)
-    assert parsed.service_type == "exam_live_help"
-    assert parsed.subject is not None
-    assert parsed.subject.label.startswith("Физика")
+    parsed = await parse(session, "матан на FIT", "ru", today=TODAY)
+    assert parsed.institution is not None
+    assert parsed.institution.label == "FIT"
 
 
 @pytest.mark.asyncio
@@ -198,14 +190,34 @@ async def test_a_word_naming_both_the_service_and_the_subject_survives(session):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("text", ["bank statement", "нострификация"])
-async def test_no_subject_is_invented_when_the_service_was_the_whole_query(session, text):
-    """Nothing is left to name a subject, so none is claimed.
+async def test_no_subject_is_guessed_when_the_service_was_the_whole_query(session):
+    """Nothing is left to name a subject, so none is guessed at.
 
-    "bank statement" used to come back as Probability and Statistics at 0.61 —
-    a filter narrower than the question, on a subject nobody had named.
+    "bank statement" came back as Probability and Statistics at 0.61 — a filter
+    narrower than the question, on a subject nobody had named.
     """
-    parsed = await parse(session, text, "en", today=TODAY)
-    assert parsed.service_type is not None
+    parsed = await parse(session, "bank statement", "en", today=TODAY)
+    assert parsed.service_type == "bank_letter"
     assert parsed.subject is None
     assert parsed.unmatched is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("курсовая", "Академическое письмо и дипломная работа"),
+        ("нострификация", "Нострификационные экзамены"),
+    ],
+)
+async def test_a_certain_subject_survives_being_the_whole_query(session, text, expected):
+    """The rule above drops guesses, not curated names.
+
+    These words are synonyms somebody wrote down for exactly this subject, which
+    is not the scorer finding something in noise. Dropping them too would lose a
+    certainty in order to avoid a maybe.
+    """
+    parsed = await parse(session, text, "ru", today=TODAY)
+    assert parsed.subject is not None
+    assert parsed.subject.matched_on == "synonym"
+    assert parsed.subject.label == expected

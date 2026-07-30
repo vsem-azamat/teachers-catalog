@@ -91,85 +91,6 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "нострифік",
         "атестат",
     ),
-    # Help that is not about studying. These come before the study kinds
-    # because they are unambiguous: nobody writing "страховка" means a tutor,
-    # while the weak verbs at the bottom would happily read "помочь снять
-    # квартиру" as tutoring — and did.
-    "insurance": (
-        "страховк",
-        "страхован",
-        "страхуван",
-        "pojisten",
-        "pojiste",
-        "insurance",
-        "vzp",
-        "pvzp",
-    ),
-    "bank_letter": (
-        "справка из банк",
-        "справку из банк",
-        "выписка со счет",
-        "выписку со счет",
-        "из банка",
-        "довидка з банк",
-        "довидку з банк",
-        "з банку",
-        "vypis z ban",
-        "potvrzeni z ban",
-        "potvrzeni o vedeni",
-        "bank statement",
-        "bank letter",
-        "proof of funds",
-    ),
-    "translation": (
-        "перевод документ",
-        "переводом документ",
-        "судебный перевод",
-        "перевод с печат",
-        "присяжный перевод",
-        "переклад документ",
-        "судовий переклад",
-        "soudni preklad",
-        "uredni preklad",
-        "preklad dokument",
-        "s razitkem",
-        "sworn translation",
-        "certified translation",
-        "official translation",
-    ),
-    "residence": (
-        # "внж" and "вnж" are both typed; the transliteration is handled by the
-        # normaliser, not by listing every spelling.
-        "внж",
-        "вид на жительство",
-        "долгосрочная виза",
-        "продлить визу",
-        "продлить внж",
-        "продовження внж",
-        "посвидка на проживанн",
-        "pobytov",
-        "prodlouzeni pobytu",
-        "povoleni k pobytu",
-        "dlouhodoby pobyt",
-        "residence permit",
-        "long term visa",
-        "long-term visa",
-    ),
-    "housing": (
-        "жиль",
-        "квартир",
-        "общежит",
-        "переезд",
-        "житло",
-        "гуртожит",
-        "bydlen",
-        "ubytovan",
-        "kolej",
-        "housing",
-        "accommodation",
-        "dormitory",
-        "flatshare",
-    ),
     "writing": (
         "написать",
         "написа",
@@ -204,6 +125,76 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "пояснити",
         "підтягнути",
         *(),  # weak verbs follow, see WEAK_HELP
+    ),
+    # Help that is not about studying. Last, and after tutoring: an incidental
+    # mention of where somebody lives must not outrank an explicit study word,
+    # and "нужен репетитор, живу в общежитии" did become housing when these sat
+    # first. They still come before the weak verbs below, which is what makes
+    # "помочь снять квартиру" housing rather than tutoring.
+    "insurance": (
+        "страховк",
+        "страхован",
+        "страхуван",
+        "pojiste",
+        "insurance",
+    ),
+    "bank_letter": (
+        "справка из банк",
+        "справку из банк",
+        "выписка со счет",
+        "выписку со счет",
+        "из банка",
+        "довідка з банк",
+        "довідку з банк",
+        "з банку",
+        "vypis z ban",
+        "potvrzeni z ban",
+        "potvrzeni o vedeni",
+        "bank statement",
+        "bank letter",
+        "proof of funds",
+    ),
+    "translation": (
+        "перевод документ",
+        "переводом документ",
+        "судебный перевод",
+        "перевод с печат",
+        "присяжный перевод",
+        "переклад документ",
+        "судовий переклад",
+        "soudni preklad",
+        "uredni preklad",
+        "preklad dokument",
+        "s razitkem",
+        "sworn translation",
+        "certified translation",
+        "official translation",
+    ),
+    "residence": (
+        "внж",
+        "вид на жительство",
+        "долгосрочная виза",
+        "продлить визу",
+        "посвідка на проживанн",
+        "pobytov",
+        "prodlouzeni pobytu",
+        "povoleni k pobytu",
+        "dlouhodoby pobyt",
+        "residence permit",
+        "long term visa",
+    ),
+    "housing": (
+        "жиль",
+        "квартир",
+        "общежит",
+        "переезд",
+        "житло",
+        "гуртожит",
+        "bydlen",
+        "ubytovan",
+        "na koleji",
+        "housing",
+        "dormitory",
     ),
 }
 
@@ -274,25 +265,17 @@ async def parse(
     norm = normalise(text)
     result = ParsedQuery(raw=text)
 
-    # The kind of help first, because the words that name it are not part of the
-    # subject and they bring trigrams of their own: with "помощь на экзамене"
-    # still in the query, «Чешский язык B1» scored 0.59 against a question about
-    # physics while «Физика 1» sat at 0.56.
     result.service_type, matched_on = _service_match(norm)
-    asked = _without(norm, matched_on) if matched_on else norm
 
-    subjects: list[Match] = []
-    if asked:
-        subjects = await find_subjects(session, asked, lang, limit=4)
-        # The remainder is preferred, not trusted: a query can name a subject in
-        # words the kind of help took with it, and the trigram scorer will
-        # happily find something in whatever is left.
-        if not subjects and asked != norm:
-            subjects = await find_subjects(session, norm, lang, limit=4)
-    # Nothing is left when the kind of help was the whole query — "bank
-    # statement", "нострификация". There is no subject in it to find, and
-    # looking anyway is how "bank statement" came back as Probability and
-    # Statistics: a filter narrower than the question, on a subject nobody named.
+    subjects = await find_subjects(session, text, lang, limit=4)
+    # When the words naming the kind of help were the whole query, there is no
+    # subject in it to find, and a trigram guess is the scorer answering a
+    # question nobody asked: "bank statement" came back as Probability and
+    # Statistics at 0.61. A synonym hit survives, because that is not a guess —
+    # "курсовая" and "нострификация" are curated names for real subjects, and
+    # dropping them would lose a certainty to protect against a maybe.
+    if matched_on and not _without(norm, matched_on):
+        subjects = [match for match in subjects if match.matched_on == "synonym"]
     institutions = await find_institutions(session, text, lang, limit=3)
 
     if subjects:

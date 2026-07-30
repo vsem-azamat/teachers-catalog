@@ -317,7 +317,11 @@ async def find_institutions(
             id=r.id,
             label=r.label,
             score=float(r.score),
-            matched_on="code" if r.score >= 1.0 else "name",
+            # "exact" rather than "code": since short names are matched as
+            # whole words, a 1.0 can come from the code or from a short name,
+            # and only the SQL knows which. Neither is a guess, which is all
+            # this field is read for.
+            matched_on="exact" if r.score >= 1.0 else "name",
         )
         for r in rows
     ]

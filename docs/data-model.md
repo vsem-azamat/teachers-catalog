@@ -143,19 +143,21 @@ something else:
   are two and three letters — `FI`, `UK`, `JU` — and trigram similarity puts
   any word containing those letters above the threshold, so "по физике" found
   the faculty FI and "uklidit" would find Charles University. Below four
-  characters a short name is compared the way an institution code is: bounded by
-  non-alphanumerics on both sides.
-- **The subject is looked up in what is left after the kind of help has been
-  taken out.** The words that name the kind of help are not part of the subject
-  and they carry trigrams that outrank it: "помощь на экзамене по физике"
-  answered «Чешский язык B1» at 0.59 while «Физика 1» sat at 0.56. If the
-  remainder names no subject, the whole query is tried again — a word can name
-  both, as "нострификация" names the service and the exam.
+  characters a short name is compared against the query's tokens, the same
+  whole-word test the synonym branch uses.
+- **When the words naming the kind of help were the whole query, only a certain
+  subject survives.** There is no subject left in the text to find, so a trigram
+  score is the scorer answering a question nobody asked: "bank statement" came
+  back as `Probability and Statistics` at 0.61, which would then filter the
+  search by a subject nobody named. A synonym hit is kept, because a curated
+  synonym is not a guess — "курсовая" and "нострификация" are written down
+  against real subjects.
 
-Every kind of help in the catalog must be reachable in words, in all four
+A kind of help that cannot be named in words cannot be found, in any of the four
 languages. The five that are not about studying — insurance, a bank statement,
 a document translation, residence paperwork, housing — were offerable and
-unfindable, which is a listing nobody can reach.
+unfindable, which is a listing nobody can reach. `language_tutoring` still has
+no keywords of its own and is reachable only as plain tutoring.
 
 Above all this sits the query parser, which turns free text into ids. Because it
 does, the database rarely has to do linguistic work at all — it looks up
