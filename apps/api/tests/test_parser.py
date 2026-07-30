@@ -289,3 +289,33 @@ async def test_a_certain_subject_survives_being_the_whole_query(session, text, e
     assert parsed.subject is not None
     assert parsed.subject.matched_on == "synonym"
     assert parsed.subject.label == expected
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # A word, not a stem: "визу" is the accusative of "виза" and the first
+        # four letters of "визуализация". Read as a stem it turned a question
+        # about data visualisation into a residence-permit one, and since the
+        # search applies both filters together the screen went empty.
+        ("нужна виза в Чехию", "residence"),
+        ("визуализация данных", None),
+        ("визуальное программирование", None),
+    ],
+)
+async def test_a_visa_is_a_word_and_not_a_beginning(session, text, expected):
+    parsed = await parse(session, text, "ru", today=TODAY)
+    assert parsed.service_type == expected
+
+
+@pytest.mark.asyncio
+async def test_a_stamped_bank_paper_is_not_a_translation(session):
+    """The stamp is a modifier, not the kind of document.
+
+    Translation is checked before the study kinds, and "s razitkem" sitting in
+    it shadowed bank_letter's own phrases — so the standard stamped bank
+    statement for a Czech visa came back as a document translation.
+    """
+    parsed = await parse(session, "vypis z banky s razitkem", "cs", today=TODAY)
+    assert parsed.service_type == "bank_letter"

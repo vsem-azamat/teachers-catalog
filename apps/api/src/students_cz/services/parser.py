@@ -26,6 +26,17 @@ def tokenise(value: str) -> str:
     return f" {_NON_WORD.sub(' ', normalise(value)).strip()} "
 
 
+def is_whole_word(haystack: str, needle: str) -> bool:
+    """Does `needle` appear in `haystack` as a word of its own?
+
+    For keywords that are words rather than stems. "визу" is the accusative of
+    "виза" and also the first four letters of "визуализация", and
+    `starts_a_word` deliberately lets a match run into the middle of a word —
+    which read "визуализация данных" as a residence-permit question.
+    """
+    return tokenise(needle) in haystack
+
+
 def starts_a_word(haystack: str, needle: str) -> bool:
     """Does `needle` begin at a word boundary in `haystack`?
 
@@ -40,6 +51,13 @@ def starts_a_word(haystack: str, needle: str) -> bool:
 # Keywords that name a kind of help, across the four interface languages plus
 # the transliterations students actually type. These are matching rules, not
 # display text, so they live in code rather than in the translation catalogue.
+# Keywords that are whole words, not stems. Everything else in the table below
+# may run into the middle of a word, which is what lets "нострифик" reach
+# "нострификации" — and what makes a four-letter word like "визу" a trap.
+WHOLE_WORD_ONLY: frozenset[str] = frozenset(
+    {"виза", "визы", "визу", "визой", "віза", "візи", "візу", "vizum", "viza"}
+)
+
 SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
     "exam_live_help": (
         "на экзамене",
@@ -90,6 +108,7 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
     "translation": (
         "перевод документ",
         "перевод атт",
+        "переклад атест",
         "перевод дипл",
         "нотариальный перевод",
         "переводом документ",
@@ -102,7 +121,6 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "soudni preklad",
         "uredni preklad",
         "preklad dokument",
-        "s razitkem",
         "sworn translation",
         "certified translation",
         "official translation",
@@ -198,7 +216,6 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "vizum",
         "viza",
         "pobyt",
-        "povoleni k pobyt",
         "residence permit",
         "long term visa",
     ),
@@ -364,7 +381,12 @@ def _match_service(
         if code in ignore:
             continue
         for keyword in keywords:
-            if starts_a_word(tokens, keyword):
+            found = (
+                is_whole_word(tokens, keyword)
+                if keyword in WHOLE_WORD_ONLY
+                else starts_a_word(tokens, keyword)
+            )
+            if found:
                 return code, keyword
 
     if any(starts_a_word(tokens, verb) for verb in WEAK_HELP):

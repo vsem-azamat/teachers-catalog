@@ -233,6 +233,13 @@ _INSTITUTION_SQL = text(
                    -- faculties every inflected form they had, and bought
                    -- nothing — every false positive worth killing here is two
                    -- letters long.
+                   --
+                   -- The two-letter names pay that price instead: "na UKu" and
+                   -- "na FIu" used to resolve at 0.67 and now resolve to
+                   -- nothing. That is the trade, taken deliberately. A missing
+                   -- institution filter shows a wider list than the person
+                   -- asked for; a wrong one silently narrows the catalog to a
+                   -- faculty nobody named, which is what "по физике" did.
                    COALESCE(MAX(CASE WHEN length(i.short_name) < 3 AND (
                             strpos(q.tokens, ' ' || {_NORM.format(expr="i.short_name")}
                                    || ' ') > 0
@@ -324,10 +331,10 @@ async def find_institutions(
             id=r.id,
             label=r.label,
             score=float(r.score),
-            # "exact" rather than "code": since short names are matched as
-            # whole words, a 1.0 can come from the code or from a short name,
-            # and only the SQL knows which. Neither is a guess, which is all
-            # this field is read for.
+            # "exact" rather than "code": a 1.0 can come from the code, from a
+            # whole-word short name, or from a full name the query reproduced
+            # exactly, and which of the three is not carried back. What the
+            # field is read for is whether the match was a guess.
             matched_on="exact" if r.score >= 1.0 else "name",
         )
         for r in rows

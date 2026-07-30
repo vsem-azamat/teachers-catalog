@@ -24,6 +24,7 @@ from sqlalchemy import select
 from students_cz.db.models import ServiceType
 from students_cz.db.models.enums import ServiceGroup
 from students_cz.db.seed import SERVICE_TYPES
+from students_cz.services.parser import SUBJECTLESS
 
 VERSIONS = Path(__file__).resolve().parents[1] / "src/students_cz/db/migrations/versions"
 
@@ -177,8 +178,5 @@ def test_subjectless_is_exactly_the_life_group():
     Not `requires_subject`: exam help and nostrification have that false too and
     must stay out of this set.
     """
-    from students_cz.db.seed import SERVICE_TYPES
-    from students_cz.services.parser import SUBJECTLESS
-
     life = {spec["code"] for spec in SERVICE_TYPES if spec["group"] == "life"}
     assert life == SUBJECTLESS
