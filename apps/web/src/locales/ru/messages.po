@@ -13,6 +13,10 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<12 || n%100>14) ? 1 : 2);\n"
 
+#: src/pages/Ask.tsx
+msgid "курсовая по экономике"
+msgstr "курсовая по экономике"
+
 #: src/components/Incoming.tsx
 msgid "Заведи в Telegram публичный @username — иначе тебе не ответят"
 msgstr "Заведи в Telegram публичный @username — иначе тебе не ответят"
@@ -81,8 +85,8 @@ msgid "Kč"
 msgstr "Kč"
 
 #: src/pages/Ask.tsx
-msgid "страховка на год"
-msgstr "страховка на год"
+#~ msgid "страховка на год"
+#~ msgstr "страховка на год"
 
 #: src/pages/MyHelper.tsx
 msgid "Скрыть"
@@ -791,6 +795,7 @@ msgstr "Работает именно с этим вузом"
 msgid "Открыть в Telegram"
 msgstr "Открыть в Telegram"
 
+#: src/pages/Ask.tsx
 #: src/pages/Results.tsx
 msgid "Проверь соединение и попробуй ещё раз."
 msgstr "Проверь соединение и попробуй ещё раз."
@@ -853,6 +858,10 @@ msgstr "Ты отказался"
 #: src/pages/Ask.tsx
 msgid "čeština B2"
 msgstr "čeština B2"
+
+#: src/pages/Ask.tsx
+msgid "Не получилось посчитать"
+msgstr "Не получилось посчитать"
 
 #: src/pages/Profile.tsx
 #~ msgid "Как в системе"

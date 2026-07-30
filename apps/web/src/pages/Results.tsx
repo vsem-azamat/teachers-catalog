@@ -1,6 +1,6 @@
 import { Trans, useLingui } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { HelperCardView } from '@/components/HelperCard';
@@ -15,6 +15,7 @@ import {
   Segmented,
   SkeletonRows,
 } from '@/components/Ui';
+import { useSearchFilters } from '@/hooks/useSearchFilters';
 import { hapticSelection } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
 import type { SearchSort } from '@/lib/types';
@@ -32,40 +33,18 @@ export default function ResultsPage() {
   const { t, i18n } = useLingui();
   const [sort, setSort] = useState<SearchSort>('relevance');
 
-  const filters = useMemo(
-    () => ({
-      subject_id: numeric(params.get('subject_id')),
-      institution_id: numeric(params.get('institution_id')),
-      service_type_id: numeric(params.get('service_type_id')),
-      max_price: numeric(params.get('max_price')),
-      sort,
-    }),
-    [params, sort],
-  );
-
-  // The clarifying answer arrives as a service code; the id it maps to lives
-  // in the reference list this screen would load anyway.
-  const serviceCode = params.get('service');
-  const { data: serviceTypes } = useQuery({
-    queryKey: ['service-types'],
-    queryFn: ({ signal }) => api.getServiceTypes(signal),
-    enabled: Boolean(serviceCode) && !filters.service_type_id,
-    staleTime: 60 * 60 * 1000,
-  });
-  const serviceTypeId =
-    filters.service_type_id ??
-    serviceTypes?.find((type) => type.code === serviceCode)?.id;
-
-  const waitingForServiceId = Boolean(serviceCode) && serviceTypeId === undefined;
+  // The same reading of the query string the search screen used to count and
+  // preview this list, so the number it showed is the number that arrives here.
+  const { filters, isError: filtersFailed } = useSearchFilters(params);
 
   const { data, isPending, isError } = useQuery({
-    queryKey: ['search', { ...filters, service_type_id: serviceTypeId }],
-    queryFn: ({ signal }) =>
-      api.search({ ...filters, service_type_id: serviceTypeId }, signal),
-    enabled: !waitingForServiceId,
+    queryKey: ['search', { ...filters, sort }],
+    queryFn: ({ signal }) => api.search({ ...filters, sort }, signal),
+    enabled: filters !== null,
   });
 
-  const loading = isPending || waitingForServiceId;
+  const loading = isPending && !filtersFailed;
+  const failed = isError || filtersFailed;
 
   return (
     <>
@@ -106,7 +85,7 @@ export default function ResultsPage() {
             </Label>
             <SkeletonRows count={4} />
           </>
-        ) : isError ? (
+        ) : failed || !data ? (
           <Empty
             title={<Trans>Не получилось загрузить</Trans>}
             body={<Trans>Проверь соединение и попробуй ещё раз.</Trans>}
@@ -141,10 +120,4 @@ export default function ResultsPage() {
       <TabBar />
     </>
   );
-}
-
-function numeric(value: string | null): number | undefined {
-  if (!value) return undefined;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
 }

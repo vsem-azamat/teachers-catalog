@@ -30,21 +30,25 @@ import {
   Title,
   ui,
 } from '@/components/Ui';
+import { useSearchFilters } from '@/hooks/useSearchFilters';
 import { useMainButton } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
-import type {
-  Chip,
-  ParseResult,
-  SearchParams,
-  SearchResult,
-  ServiceType,
-} from '@/lib/types';
+import type { Chip, ParseResult, SearchResult } from '@/lib/types';
 
 const OPTION_ICON: Record<string, typeof CheckIcon> = {
   exam_prep: CheckIcon,
   exam_live_help: ClockIcon,
   both: PlusIcon,
 };
+
+/**
+ * How much text counts as a query.
+ *
+ * Shared by the parse and by the empty state below it, which must agree about
+ * when a query has begun: two literals would let the examples disappear while
+ * nothing had been asked yet.
+ */
+const MIN_QUERY = 3;
 
 /** How many of the results to show before the person has asked for them. */
 const PREVIEW = 2;
@@ -90,7 +94,7 @@ export default function AskPage() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: see above
   useEffect(() => {
     const value = text.trim();
-    if (value.length < 3) {
+    if (value.length < MIN_QUERY) {
       setParsed(null);
       return;
     }
@@ -105,23 +109,15 @@ export default function AskPage() {
   const kept = (parsed?.chips ?? []).filter((chip) => !dropped.has(chipKey(chip)));
   const ready = kept.length > 0 || Boolean(answer);
 
-  // The clarifying answer is a service code; the id it maps to lives in the
-  // reference list, which every screen shares and which is cached for an hour.
-  const { data: serviceTypes } = useQuery({
-    queryKey: ['service-types'],
-    queryFn: ({ signal }) => api.getServiceTypes(signal),
-    staleTime: 60 * 60 * 1000,
-  });
-
-  // One string, used for the preview and for the navigation, so the two cannot
-  // describe different searches.
+  // One string, used for the preview, for the filters and for the navigation,
+  // so none of the three can describe a different search.
   const query = useMemo(() => toQuery(kept, answer), [kept, answer]);
-  const params = useMemo(() => searchParams(query, serviceTypes), [query, serviceTypes]);
+  const { filters, isError: filtersFailed } = useSearchFilters(query);
 
   const preview = useQuery({
-    queryKey: ['ask-preview', params],
-    queryFn: ({ signal }) => api.search({ ...params, limit: PREVIEW }, signal),
-    enabled: ready && params !== null,
+    queryKey: ['ask-preview', filters],
+    queryFn: ({ signal }) => api.search({ ...filters, limit: PREVIEW }, signal),
+    enabled: ready && filters !== null,
   });
 
   // The number on the screen is the length of the list behind it, because both
@@ -130,6 +126,10 @@ export default function AskPage() {
   const total = preview.data?.total;
 
   useMainButton(
+    // Only once the count is the count. While a changed query is in flight the
+    // button goes away rather than keeping the previous number under new chips:
+    // a stale number on a button that promises it is the failure this screen was
+    // rebuilt to fix.
     ready && total
       ? {
           text: t`Показать ${total}`,
@@ -176,7 +176,7 @@ export default function AskPage() {
         </div>
       ) : null}
 
-      {text.trim().length < 3 ? <EmptyState onPick={setText} /> : null}
+      {text.trim().length < MIN_QUERY ? <EmptyState onPick={setText} /> : null}
 
       {kept.length > 0 || (parsed?.chips.length ?? 0) > 0 ? (
         <>
@@ -252,7 +252,12 @@ export default function AskPage() {
           answer to that question changes the list, and a list shown above the
           thing that narrows it reads as already final. */}
       {ready ? (
-        <Preview data={preview.data} isPending={preview.isPending} locale={i18n.locale} />
+        <Preview
+          data={preview.data}
+          isPending={preview.isPending}
+          isError={preview.isError || filtersFailed}
+          locale={i18n.locale}
+        />
       ) : null}
     </Screen>
   );
@@ -280,7 +285,7 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
     t`čeština B2`,
     t`přijímačky на медицину`,
     t`нострификация аттестата`,
-    t`страховка на год`,
+    t`курсовая по экономике`,
   ];
 
   // Only what someone is actually offering. An empty shelf here would be the
@@ -349,13 +354,27 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
 function Preview({
   data,
   isPending,
+  isError,
   locale,
 }: {
   data: SearchResult | undefined;
   isPending: boolean;
+  isError: boolean;
   locale: string;
 }) {
   const navigate = useNavigate();
+
+  // Before the skeleton: a failed lookup of the reference list leaves the
+  // request disabled and therefore pending for ever, so an error checked second
+  // would never be reached.
+  if (isError) {
+    return (
+      <Empty
+        title={<Trans>Не получилось посчитать</Trans>}
+        body={<Trans>Проверь соединение и попробуй ещё раз.</Trans>}
+      />
+    );
+  }
 
   if (isPending) {
     return (
@@ -368,9 +387,6 @@ function Preview({
     );
   }
 
-  // Nothing at all rather than an error state: the chips above already say what
-  // was understood, and the main button is gone, so the screen is honest about
-  // having nothing to promise.
   if (!data) return null;
 
   const { total, results } = data;
@@ -427,34 +443,4 @@ function toQuery(chips: Chip[], answer: string | null): string {
   // results screen resolves it, because it already loads the list.
   if (answer && answer !== 'both') params.set('service', answer);
   return params.toString();
-}
-
-/**
- * The same query string, as the arguments the search endpoint takes.
- *
- * Null while a service code is still waiting for the reference list: searching
- * without it would count everyone who teaches the subject, show that number,
- * and then hand over to a screen that filters by kind of help.
- */
-function searchParams(
-  query: string,
-  serviceTypes: ServiceType[] | undefined,
-): SearchParams | null {
-  const params = new URLSearchParams(query);
-  const code = params.get('service');
-  const byCode = code ? serviceTypes?.find((type) => type.code === code)?.id : undefined;
-  if (code && byCode === undefined) return null;
-
-  return {
-    subject_id: numeric(params.get('subject_id')),
-    institution_id: numeric(params.get('institution_id')),
-    service_type_id: numeric(params.get('service_type_id')) ?? byCode,
-    max_price: numeric(params.get('max_price')),
-  };
-}
-
-function numeric(value: string | null): number | undefined {
-  if (!value) return undefined;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
 }
