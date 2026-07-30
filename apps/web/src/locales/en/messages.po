@@ -623,7 +623,7 @@ msgstr "A school you work with"
 
 #: src/pages/Ask.tsx
 msgid "помощь на экзамене по матану"
-msgstr "help at the calculus exam"
+msgstr "calculus tutor"
 
 #: src/pages/Offer.tsx
 msgid "Выбери, чем можешь помочь"
@@ -845,7 +845,7 @@ msgstr "Not about school"
 
 #: src/pages/Ask.tsx
 msgid "курсовая работа"
-msgstr "a term paper"
+msgstr "bachelor thesis"
 
 #: src/components/Phrase.tsx
 msgid "Дешевле остальных, но этот экзамен не вёл"

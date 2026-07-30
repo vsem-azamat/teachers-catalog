@@ -300,13 +300,20 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
   // where nobody offers that yet. The shelves are the half that promises supply,
   // and those are counted.
   //
-  // What an example must do is parse to what it says. Two of these have been
+  // What an example must do is parse to what it says. Four of these have been
   // replaced for failing that: «страховка на год» parsed to nothing at all, and
   // «přijímačky на медицину» answered with the technical-university subject at
   // full confidence, because the parser reads the first word and has nothing to
-  // say about medicine. Check a new one against /search/parse before adding it —
-  // an example that misreads itself is a demonstration of the failure this
-  // screen exists to remove.
+  // say about medicine.
+  //
+  // The same bar applies to each **translation**, and it is not met by
+  // translating the words: the parser matches against subject names in the
+  // reader's language, so the Czech «matika» found linear algebra where the
+  // Russian «матан» finds calculus, and the English «a term paper» found
+  // mechanics. Every example, in all four catalogs, was checked by posting it to
+  // /search/parse as a user of that language. Do that before changing one — an
+  // example that misreads itself is a demonstration of the failure this screen
+  // exists to remove.
   const examples = [
     t`матан ČVUT`,
     t`čeština B2`,
@@ -469,8 +476,9 @@ function toQuery(chips: Chip[], answer: string | null): string {
     if (chip.kind === 'service_type') params.set('service_type_id', String(chip.value));
     if (chip.kind === 'budget') params.set('max_price', String(chip.value));
   }
-  // The answer to the clarifying question is a service type by name; the
-  // results screen resolves it, because it already loads the list.
+  // The answer to the clarifying question is a service type by name. Resolving
+  // it to an id belongs to `useSearchFilters`, which both this screen and the
+  // results screen read the string through.
   if (answer && answer !== 'both') params.set('service', answer);
   return params.toString();
 }

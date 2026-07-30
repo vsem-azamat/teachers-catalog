@@ -359,7 +359,7 @@ msgstr "za hodinu"
 
 #: src/pages/Ask.tsx
 msgid "матан на ČVUT к 14 февраля, до 600 Kč"
-msgstr "matika na ČVUT do 14. února, do 600 Kč"
+msgstr "matan na ČVUT do 14. února, do 600 Kč"
 
 #: src/pages/Profile.tsx
 msgid "Предлагать услуги"
@@ -605,7 +605,7 @@ msgstr "Načítáme"
 
 #: src/pages/Ask.tsx
 msgid "матан ČVUT"
-msgstr "matika ČVUT"
+msgstr "matan ČVUT"
 
 #. placeholder {0}: data.total
 #: src/pages/Ask.tsx
@@ -623,7 +623,7 @@ msgstr "Škola, se kterou pracuješ"
 
 #: src/pages/Ask.tsx
 msgid "помощь на экзамене по матану"
-msgstr "pomoc u zkoušky z matiky"
+msgstr "pomoc u zkoušky z matanu"
 
 #: src/pages/Offer.tsx
 msgid "Выбери, чем можешь помочь"
