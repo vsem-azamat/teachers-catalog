@@ -2,23 +2,20 @@ import { Trans, useLingui } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { AppHeader } from '@/components/AppHeader';
-import { iconForService, SearchIcon } from '@/components/icons';
+import { SearchIcon } from '@/components/icons';
 import { ServiceGrid } from '@/components/ServiceGrid';
 import { TabBar } from '@/components/TabBar';
 import {
   AvatarStack,
   Count,
-  Label,
   Row,
   Rows,
   Screen,
   SkeletonRows,
-  Tile,
   Title,
   ui,
 } from '@/components/Ui';
 import { api } from '@/lib/api';
-import type { HomeSection } from '@/lib/types';
 
 /**
  * The first screen.
@@ -85,38 +82,18 @@ export default function HomePage() {
               }
             />
 
-            {data.things.length > 0 ? (
-              <>
-                <Label>
-                  <Trans>Вещи</Trans>
-                </Label>
-                <Rows>
-                  {data.things.map((section) => (
-                    <Row
-                      key={section.code}
-                      onClick={() => navigate(`/results?category=${section.code}`)}
-                      leading={
-                        <Tile tone={section.tone}>
-                          <SectionIcon section={section} />
-                        </Tile>
-                      }
-                      title={section.name}
-                      hint={section.hint}
-                      trailing={section.count ? <Count>{section.count}</Count> : null}
-                    />
-                  ))}
-                </Rows>
-              </>
-            ) : null}
+            {/* Things — gear to rent, textbooks to buy — are not seeded, so
+                `/home` always answers with an empty list and the block that
+                drew them never rendered. It navigated to `/results?category=`,
+                which the results screen does not read: the day somebody seeds a
+                category, those rows would have opened a list of *people*
+                unfiltered. Deleted rather than left with a dead link, because
+                the screen that lists things does not exist yet either, and it
+                will be written against a real one. */}
           </>
         )}
       </Screen>
       <TabBar />
     </>
   );
-}
-
-function SectionIcon({ section }: { section: HomeSection }) {
-  const Icon = iconForService(section.code);
-  return <Icon size={19} />;
 }

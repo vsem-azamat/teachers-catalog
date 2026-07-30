@@ -139,8 +139,8 @@ msgstr "Це не наші послуги. Комісію ми отримуєм�
 #~ msgstr "Які предмети"
 
 #: src/pages/Home.tsx
-msgid "Вещи"
-msgstr "Речі"
+#~ msgid "Вещи"
+#~ msgstr "Речі"
 
 #: src/pages/MyHelper.tsx
 msgid "Всё можно менять когда угодно. Пустые поля просто не показываем."

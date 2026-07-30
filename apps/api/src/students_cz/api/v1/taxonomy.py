@@ -28,6 +28,7 @@ from students_cz.schemas import (
     SubjectOut,
 )
 from students_cz.services.catalog import tone_for
+from students_cz.services.lookup import find_subjects
 from students_cz.services.naming import translated
 
 router = APIRouter()
@@ -102,8 +103,6 @@ async def subjects(
     work. Without it, one level of the tree is returned.
     """
     if q:
-        from students_cz.services.lookup import find_subjects
-
         matches = await find_subjects(session, q, lang, limit=limit, threshold=0.4)
         ids = [m.id for m in matches]
         if not ids:

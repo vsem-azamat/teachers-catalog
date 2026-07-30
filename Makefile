@@ -107,5 +107,16 @@ format:  ## Reformat both apps
 	cd $(API) && uv run ruff check --fix src tests && uv run ruff format src tests
 	cd $(WEB) && pnpm format
 
+.PHONY: contract
+contract:  ## Check the committed client still matches the API's OpenAPI document
+	cd $(API) && uv run python -m students_cz.openapi > /tmp/students-cz-openapi.json
+	cd $(WEB) && OPENAPI_URL=/tmp/students-cz-openapi.json pnpm api:generate
+	@git diff --quiet -- $(WEB)/src/lib/generated || { \
+	  echo; \
+	  echo "The generated client is out of date. Commit what api:generate just wrote."; \
+	  git --no-pager diff --stat -- $(WEB)/src/lib/generated; \
+	  exit 1; \
+	}
+
 .PHONY: check
-check: lint test  ## Everything CI would run
+check: lint test contract  ## Everything CI would run

@@ -139,8 +139,8 @@ msgstr "Tohle nejsou naše služby. Provizi bereme od partnera, od studenta nic.
 #~ msgstr "Jaké předměty"
 
 #: src/pages/Home.tsx
-msgid "Вещи"
-msgstr "Věci"
+#~ msgid "Вещи"
+#~ msgstr "Věci"
 
 #: src/pages/MyHelper.tsx
 msgid "Всё можно менять когда угодно. Пустые поля просто не показываем."
