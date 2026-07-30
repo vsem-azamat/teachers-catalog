@@ -147,10 +147,10 @@ something else:
   trigram path deliberately: Czech declines the abbreviation itself — "na FELu",
   "na MFFce" — and the whole-word rule would cost every one of the 69
   institutions with a three-character short name, 60 of them faculties, the
-  inflected forms they have. The two-letter names do lose theirs: "na UKu"
-  no longer resolves. That is the trade — a missing institution filter shows a
-  wider list than was asked for, a wrong one narrows the catalog to a faculty
-  nobody named.
+  inflected forms they have. The two-letter names pay that price instead: an
+  inflected "na UKu" resolves to nothing. That is the trade — a missing
+  institution filter shows a wider list than was asked for, a wrong one narrows
+  the catalog to a faculty nobody named.
 - **When the words naming the kind of help were the whole query, only a certain
   subject survives.** There is no subject left in the text to find, so a trigram
   score is the scorer answering a question nobody asked: "bank statement" came
