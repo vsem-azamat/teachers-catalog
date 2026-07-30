@@ -23,10 +23,12 @@ export function useSearchFilters(query: string | URLSearchParams): {
   filters: SearchParams | null;
   isError: boolean;
 } {
-  const params = useMemo(
-    () => (typeof query === 'string' ? new URLSearchParams(query) : query),
-    [query],
-  );
+  // The string is the input, whichever shape it arrived in: one caller builds a
+  // fresh URLSearchParams on every render, and that object is a new identity
+  // each time even when nothing about the query changed.
+  const key = typeof query === 'string' ? query : query.toString();
+  const params = useMemo(() => new URLSearchParams(key), [key]);
+
   const code = params.get('service');
   // An explicit id in the query string is already the answer, so a code beside
   // it is nothing to wait for. Without this a link carrying both would block on
@@ -40,22 +42,17 @@ export function useSearchFilters(query: string | URLSearchParams): {
     enabled: lookup !== null,
   });
 
-  // Depends on the string rather than on the URLSearchParams object, which is a
-  // new identity on every render of a screen that builds one.
-  const key = params.toString();
-
   const filters = useMemo(() => {
-    const read = new URLSearchParams(key);
     const byCode = lookup ? data?.find((type) => type.code === lookup)?.id : undefined;
     if (lookup && byCode === undefined) return null;
 
     return {
-      subject_id: numeric(read.get('subject_id')),
-      institution_id: numeric(read.get('institution_id')),
-      service_type_id: numeric(read.get('service_type_id')) ?? byCode,
-      max_price: numeric(read.get('max_price')),
+      subject_id: numeric(params.get('subject_id')),
+      institution_id: numeric(params.get('institution_id')),
+      service_type_id: numeric(params.get('service_type_id')) ?? byCode,
+      max_price: numeric(params.get('max_price')),
     };
-  }, [key, lookup, data]);
+  }, [params, lookup, data]);
 
   // Only when this hook is the one that asked. `['service-types']` is a key
   // several screens share, so an unguarded flag would hand a failure caused by

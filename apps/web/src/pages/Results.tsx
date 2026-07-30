@@ -37,14 +37,21 @@ export default function ResultsPage() {
   // preview this list, so the number it showed is the number that arrives here.
   const { filters, isError: filtersFailed } = useSearchFilters(params);
 
+  // `filters` and not `{...filters}`: spread onto an object, a null — the
+  // service code has not been resolved yet — becomes the same key as a search
+  // with no filters at all. A warm cache from an unfiltered visit would then be
+  // handed over as this query's answer, and the screen would show the whole
+  // catalog under one person's query before quietly swapping it out.
   const { data, isPending, isError } = useQuery({
-    queryKey: ['search', { ...filters, sort }],
+    queryKey: ['search', filters, sort],
     queryFn: ({ signal }) => api.search({ ...filters, sort }, signal),
     enabled: filters !== null,
   });
 
-  const loading = isPending && !filtersFailed;
+  // Unknown filters are still loading, not loaded. The error takes precedence,
+  // or a failed lookup would keep the skeleton up for ever.
   const failed = isError || filtersFailed;
+  const loading = (isPending || filters === null) && !failed;
 
   return (
     <>

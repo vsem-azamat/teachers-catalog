@@ -14,7 +14,6 @@ import {
 import { ClarifyOptionLabel, formatDay, PhraseView } from '@/components/Phrase';
 import {
   Cards,
-  Chevron,
   Chips,
   ChipView,
   Count,
@@ -337,12 +336,10 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
                   }
                   title={section.name}
                   hint={section.hint}
-                  trailing={
-                    <>
-                      <Count>{section.count}</Count>
-                      <Chevron />
-                    </>
-                  }
+                  // A count and no chevron, which is what the same shelf
+                  // wears on the home screen. One row in two places has to
+                  // look like one row.
+                  trailing={<Count>{section.count}</Count>}
                 />
               );
             })}
@@ -411,6 +408,11 @@ function Preview({
 
   return (
     <>
+      {/* `data.total` rather than the `total` destructured above, deliberately:
+          Lingui keys a message by its placeholders, and the member expression
+          gives `всего {0}` — the message the results screen already has. A bare
+          `total` would give `всего {total}` and split one sentence into two
+          catalog entries to translate in four files. */}
       <Label aside={<Trans>всего {data.total}</Trans>}>
         <Trans>Кто найдётся</Trans>
       </Label>
