@@ -184,14 +184,22 @@ choice the user makes by hand is stored in `localStorage` and outranks it.
 
 ### API types
 
-`src/lib/types.ts` is written by hand and must be kept in step with
-`apps/api/src/students_cz/schemas.py`. To replace it with generated types, run
-the API and then:
+`src/lib/generated/` holds types generated from the API's OpenAPI document, and
+it is **committed**. `src/lib/types.ts` still declares the rest of the wire by
+hand and must be kept in step with `apps/api/src/students_cz/schemas.py`; a type
+moves across as the screen using it is touched.
+
+To regenerate, run the API and then:
 
 ```sh
 pnpm api:generate
 ```
 
-Output lands in `src/lib/generated/`, which is gitignored and excluded from
-Biome. This is not wired into `pnpm build` on purpose — a build that fails
-because a backend is not running is a bad build.
+Commit what it writes. `make contract`, from the repository root, is what CI
+runs: it dumps the document without a server, regenerates, and fails if the
+committed copy differs — so a schema changed without regenerating stops being
+something only the next runtime error tells you about.
+
+Generation is not wired into `pnpm build` on purpose — a build that fails
+because a backend is not running is a bad build. The directory is excluded from
+Biome, since the generator owns its formatting.

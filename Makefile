@@ -123,8 +123,14 @@ contract:  ## Check the committed client still matches the API's OpenAPI documen
 	}
 	cd $(WEB) && OPENAPI_URL=$(OPENAPI_DUMP) pnpm api:generate
 	@# --porcelain and not `git diff`: a generated file that is new is untracked,
-	@# and `git diff` cannot see those at all.
-	@test -z "$$(git status --porcelain -- $(WEB)/src/lib/generated)" || { \
+	@# and `git diff` cannot see those at all. Kept in a variable so a git that
+	@# failed — no repository, a dubious-ownership refusal, no git at all — is
+	@# not read as an empty answer, which is the same string a clean tree gives.
+	@changed=$$(git status --porcelain -- $(WEB)/src/lib/generated) || { \
+	  echo "git status failed; the contract check compared nothing."; \
+	  exit 1; \
+	}; \
+	test -z "$$changed" || { \
 	  echo; \
 	  echo "The generated client is out of date. Commit what api:generate just wrote."; \
 	  git --no-pager status --short -- $(WEB)/src/lib/generated; \
