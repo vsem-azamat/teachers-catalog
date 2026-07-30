@@ -110,13 +110,6 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
     # "присяжный перевод диплома" was answered as thesis writing on the strength
     # of the word "диплом", and "перевод аттестата" as nostrification, and the
     # only thing that fixes those is order.
-    #
-    # Most of these are two-word document phrases that no study query contains.
-    # The last three are not, and they cost something: "translation studies
-    # tutor" reads as a document translation. Taken deliberately — a foreign
-    # student in Czechia asking for "a translation" wants a stamped document far
-    # more often than a seminar on translation theory, and that field is not in
-    # the catalog at all.
     "translation": (
         # Stems for the noun in each language, because a multi-word keyword
         # tolerates inflection only on its last word — so "присяжного перевода
