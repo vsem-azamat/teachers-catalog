@@ -118,29 +118,23 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
     # more often than a seminar on translation theory, and that field is not in
     # the catalog at all.
     "translation": (
-        "перевод документ",
-        "перевод атт",
-        "переклад атест",
-        "перевод дипл",
-        "нотариальный перевод",
-        "переводом документ",
-        "судебный перевод",
-        "перевод с печат",
-        "присяжный перевод",
-        "переклад документ",
-        "переклад атт",
-        "судовий переклад",
-        "soudni preklad",
-        "uredni preklad",
-        "preklad dokument",
-        "sworn translation",
-        "certified translation",
-        "official translation",
-        # The plainest English phrasings, and the seed's own English label.
+        # Stems for the noun in each language, because a multi-word keyword
+        # tolerates inflection only on its last word — so "присяжного перевода
+        # диплома", the commonest way to ask, reached none of the phrases that
+        # used to be listed here and fell through to thesis writing on "диплом".
+        # No subject in the catalog is named after translation, in any language,
+        # so the stems cost nothing a phrase would have saved.
+        "перевод",
+        "переклад",
+        "preklad",
+        "prekladu",
         Word("translation"),
         Word("translations"),
         "translate",
         "translating",
+        "sworn translation",
+        "certified translation",
+        "official translation",
     ),
     "nostrification": (
         "нострифик",
@@ -223,7 +217,8 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
     ),
     "residence": (
         "внж",
-        "вид на жительство",
+        # A stem, so the genitive "вида на жительство" is reached too.
+        "жительств",
         # Words for the visa, and a stem for the stay. A multi-word keyword
         # tolerates inflection only on its last word, so the three phrases that
         # used to be here reached none of "prodlouzeni dlouhodobeho pobytu" —
@@ -235,7 +230,7 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         Word("візу"),
         Word("візи"),
         Word("віза"),
-        "посвідка на проживанн",
+        "посвідк",
         Word("vizum"),
         Word("viza"),
         "pobyt",

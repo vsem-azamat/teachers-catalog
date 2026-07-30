@@ -157,15 +157,26 @@ something else:
   search by a subject nobody named. A synonym hit is kept, because a curated
   synonym is not a guess — "курсовая" and "нострификация" are written down
   against real subjects.
-- **A kind of help from the `life` group is not the answer to a query that
-  names a subject.** Those offers carry no subject at all, while the search
-  applies subject and kind of help together — so the pair matches nobody.
-  "нужен матан, живу в общежитии" is a question about calculus with an aside in
-  it, and reading it as housing turned a list of tutors into an empty screen.
-  The subject has to be *named*, not guessed at: deferring to a trigram score
-  here sent "присяжный перевод диплома" back to being thesis writing on a 0.55
-  match. The group, and not `requires_subject`, is what identifies the set —
-  exam help and nostrification have that false as well and belong outside it.
+- **A subject and a kind of help that carries none cannot both survive.** The
+  `life` group's offers have no subject at all, while the search applies subject
+  and kind of help together — so the pair matches nobody, and one of the two has
+  to go. Which one depends on whether the kind of help could have been mentioned
+  in passing:
+
+  Insurance, a bank statement, residence and housing are ordinary words that
+  turn up as asides. Beside a *named* subject — a curated synonym, or a name the
+  query reproduced exactly — the subject is the question and the aside is not:
+  "нужен матан, живу в общежитии" is about calculus, and reading it as housing
+  turned a list of tutors into an empty screen. Beside a *guessed* subject the
+  guess goes instead, because a score of 0.55 cannot narrow a kind of help that
+  has no subjects to narrow by.
+
+  A document translation is the exception, and always wins: nobody writes
+  "присяжный перевод диплома" in passing, so when that phrase appears it is the
+  request, and any subject beside it is dropped whether it was named or not.
+
+  The group, and not `requires_subject`, is what identifies this set — exam help
+  and nostrification have that false as well and belong outside it.
 
 A kind of help that cannot be named in words cannot be found, in any of the four
 languages. The five that are not about studying — insurance, a bank statement,

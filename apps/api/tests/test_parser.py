@@ -412,3 +412,21 @@ async def test_a_document_phrase_is_the_request_even_beside_a_named_subject(
     """
     parsed = await parse(session, text, "ru", today=TODAY)
     assert parsed.service_type == "translation"
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # The genitive is how these are actually asked, and a multi-word keyword
+        # tolerates inflection only on its last word — so the phrases that used
+        # to be here reached none of them, and the first fell through to thesis
+        # writing on "диплом".
+        ("присяжного перевода диплома", "translation"),
+        ("нотариального перевода документов", "translation"),
+        ("soudniho prekladu", "translation"),
+        ("продление вида на жительство", "residence"),
+        ("продовження посвідки на проживання", "residence"),
+    ],
+)
+def test_the_genitive_reaches_the_same_kind_as_the_nominative(text, expected):
+    assert _match_service(normalise(text))[0] == expected
