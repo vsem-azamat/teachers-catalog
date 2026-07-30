@@ -170,8 +170,9 @@ function detailOf(payload: unknown): string | undefined {
 
 // ── endpoints ───────────────────────────────────────────────────────────
 //
-// Written by hand for now. `pnpm api:generate` will eventually produce these
-// from the OpenAPI document; until then keep the signatures in step with
+// Written by hand, and not by the generator: `openapi-ts.config.ts` declares
+// only the typescript plugin, so `lib/generated` holds types and no request
+// functions at all. Keep these in step with
 // apps/api/src/students_cz/api/v1/.
 
 export const api = {

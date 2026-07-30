@@ -19,10 +19,10 @@ from students_cz.main import app
 
 def main() -> int:
     # Exactly what `/openapi.json` serves, key order included. Sorting here
-    # would be tidier and wrong: the generator emits declarations in document
-    # order, so a sorted dump produces a different client from the one a
-    # developer gets by pointing `pnpm api:generate` at a running API — and the
-    # check would then fail for everyone who followed the documented workflow.
+    # would be tidier and would silently rewrite the committed client the first
+    # time anybody ran the check: the generator emits declarations in document
+    # order, so the whole file reshuffles for a reason that has nothing to do
+    # with the API.
     json.dump(app.openapi(), sys.stdout, indent=2, ensure_ascii=False)
     sys.stdout.write("\n")
     return 0

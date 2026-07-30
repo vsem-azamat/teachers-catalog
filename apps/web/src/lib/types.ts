@@ -1,9 +1,9 @@
 /**
  * Hand-written mirrors of the API's Pydantic schemas.
  *
- * These are a stopgap. `pnpm api:generate` will replace them with types
- * generated from the live OpenAPI document (see `openapi-ts.config.ts`), at
- * which point this file should shrink to whatever the generator cannot express.
+ * These are a stopgap. `make contract` generates types from the API's OpenAPI
+ * document into `lib/generated`, and this file shrinks as they move across —
+ * see the note on `ServiceType` below for how that happens.
  *
  * Two conventions carried over from the API and worth remembering:
  *
@@ -62,7 +62,7 @@ export type { Avatar };
 /**
  * Taken from the contract, not written out again.
  *
- * `pnpm api:generate` regenerates `lib/generated` from the API's OpenAPI
+ * `make contract` regenerates `lib/generated` from the API's OpenAPI
  * document, and these two carry `group`, which is an enum on the server. Going
  * through the generated type is what makes a mistyped group a compile error
  * here instead of an empty heading at runtime; a hand-written `string` would

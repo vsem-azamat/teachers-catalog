@@ -121,7 +121,7 @@ jobs:
     # The client in apps/web/src/lib/generated is generated from the API's own
     # OpenAPI document and committed, so the two can disagree. They did not
     # disagree yet only because nothing looked: a schema changed without running
-    # `pnpm api:generate` types the client against an endpoint that is no longer
+    # `make contract` types the client against an endpoint that is no longer
     # there, and every other check in this repository passes.
     #
     # Its own job rather than a step inside `web`, because it needs both

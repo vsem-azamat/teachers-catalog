@@ -197,12 +197,12 @@ same target is what CI runs, and it fails when the committed copy differs — so
 schema changed without regenerating stops being something only the next runtime
 error tells you about.
 
-Do not generate from a running API. `pnpm api:generate` on its own fetches a
-URL, and the generator writes that URL into the client as a literal type —
-`ClientOptions.baseUrl: 'http://127.0.0.1:8010'` instead of the URL-independent
-form. The result is a client carrying whichever machine produced it, and one the
-contract check rejects. Reading the document from a file has no URL to bake in,
-which is why `make contract` dumps it.
+Do not generate from a running API. Given a URL, the generator writes it into
+the client as a literal type — `ClientOptions.baseUrl: 'http://127.0.0.1:8010'`
+instead of the URL-independent form — so the result carries whichever machine
+produced it, and the contract check rejects it. Reading the document from a file
+has no URL to bake in, which is why `make contract` dumps it. There is no
+default input for that reason: `pnpm api:generate` on its own says so and stops.
 
 Generation is not wired into `pnpm build` on purpose — a build that fails
 because a backend is not running is a bad build. The directory is excluded from
