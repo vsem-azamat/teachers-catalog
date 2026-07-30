@@ -183,7 +183,8 @@ async def test_an_inflected_three_letter_faculty_still_matches(session):
     """Czech declines the abbreviation itself: nobody writes "na FEL".
 
     The whole-word rule is deliberately two letters wide and not three. At three
-    it took every inflected form off all 57 three-letter faculties.
+    it took every inflected form off the 69 institutions whose short name is
+    three characters, 60 of them faculties.
     """
     parsed = await parse(session, "doucovani matematiky na FELu", "cs", today=TODAY)
     assert parsed.institution is not None
