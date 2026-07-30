@@ -82,6 +82,31 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "osp",
         "nastupni",
     ),
+    # Above the study kinds, unlike the rest of the non-study block below: every
+    # keyword here is a two-word document phrase, so nothing a study query says
+    # can trip it — while "присяжный перевод диплома" was answered as thesis
+    # writing on the strength of the word "диплом", and "перевод аттестата" as
+    # nostrification.
+    "translation": (
+        "перевод документ",
+        "перевод атт",
+        "перевод дипл",
+        "нотариальный перевод",
+        "переводом документ",
+        "судебный перевод",
+        "перевод с печат",
+        "присяжный перевод",
+        "переклад документ",
+        "переклад атт",
+        "судовий переклад",
+        "soudni preklad",
+        "uredni preklad",
+        "preklad dokument",
+        "s razitkem",
+        "sworn translation",
+        "certified translation",
+        "official translation",
+    ),
     "nostrification": (
         "нострифик",
         "nostrifik",
@@ -135,7 +160,7 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "страховк",
         "страхован",
         "страхуван",
-        "pojiste",
+        "pojist",
         "insurance",
     ),
     "bank_letter": (
@@ -148,38 +173,28 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "довідку з банк",
         "з банку",
         "vypis z ban",
+        "vypis z uct",
         "potvrzeni z ban",
         "potvrzeni o vedeni",
+        "zustatk",
         "bank statement",
         "bank letter",
         "proof of funds",
     ),
-    "translation": (
-        "перевод документ",
-        "переводом документ",
-        "судебный перевод",
-        "перевод с печат",
-        "присяжный перевод",
-        "переклад документ",
-        "судовий переклад",
-        "soudni preklad",
-        "uredni preklad",
-        "preklad dokument",
-        "s razitkem",
-        "sworn translation",
-        "certified translation",
-        "official translation",
-    ),
     "residence": (
         "внж",
         "вид на жительство",
-        "долгосрочная виза",
-        "продлить визу",
+        # Stems, not phrases: a multi-word keyword tolerates inflection only on
+        # its last word, so "prodlouzeni dlouhodobeho pobytu" — the standard
+        # Czech phrase — reached none of the three that used to be listed here.
+        "виза",
+        "визы",
+        "визу",
+        "визой",
         "посвідка на проживанн",
-        "pobytov",
-        "prodlouzeni pobytu",
-        "povoleni k pobytu",
-        "dlouhodoby pobyt",
+        "pobyt",
+        "dlouhodob",
+        "povoleni k pobyt",
         "residence permit",
         "long term visa",
     ),
@@ -198,9 +213,17 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
     ),
 }
 
+# The kinds of help that never carry a subject: `service_types.requires_subject`
+# is false for all five, and `offers` rows in the non-study group have a null
+# subject. Named here because the parser has to know it without loading the
+# table — see the rule in `parse`.
+SUBJECTLESS = frozenset(
+    {"insurance", "bank_letter", "translation", "residence", "housing"}
+)
+
 # "помочь с X" is the commonest phrasing there is, but on its own it says
 # nothing about *which* kind of help. It counts as tutoring only when the text
-# gives no other clue — see _match_service.
+# gives no other clue — see _service_match.
 WEAK_HELP: tuple[str, ...] = ("помо", "pomo", "help", "допомо", "нужен", "потрібн")
 
 # Words that put an exam in the picture without saying whether the help is
@@ -265,7 +288,7 @@ async def parse(
     norm = normalise(text)
     result = ParsedQuery(raw=text)
 
-    result.service_type, matched_on = _service_match(norm)
+    result.service_type, keyword = _service_match(norm)
 
     subjects = await find_subjects(session, text, lang, limit=4)
     # When the words naming the kind of help were the whole query, there is no
@@ -274,8 +297,18 @@ async def parse(
     # Statistics at 0.61. A synonym hit survives, because that is not a guess —
     # "курсовая" and "нострификация" are curated names for real subjects, and
     # dropping them would lose a certainty to protect against a maybe.
-    if matched_on and not _without(norm, matched_on):
+    if keyword and not _without(norm, keyword):
         subjects = [match for match in subjects if match.matched_on == "synonym"]
+
+    # A kind of help that never carries a subject cannot be the answer to a
+    # query that names one. `catalog.search` ANDs the two, and no offer in the
+    # non-study group has a subject, so the pair matches nobody: "нужен матан,
+    # живу в общежитии" is a question about calculus with an aside in it, and
+    # reading it as housing turned a list of tutors into an empty screen. Read
+    # again as if those kinds did not exist.
+    if subjects and result.service_type in SUBJECTLESS:
+        result.service_type, _ = _service_match(norm, ignore=SUBJECTLESS)
+
     institutions = await find_institutions(session, text, lang, limit=3)
 
     if subjects:
@@ -294,12 +327,9 @@ async def parse(
     return result
 
 
-def _match_service(norm: str) -> str | None:
-    """Which kind of help the text names, if any."""
-    return _service_match(norm)[0]
-
-
-def _service_match(norm: str) -> tuple[str | None, str | None]:
+def _service_match(
+    norm: str, *, ignore: frozenset[str] = frozenset()
+) -> tuple[str | None, str | None]:
     """The kind of help, and the keyword that decided it.
 
     First keyword wins, and the dictionary is ordered by specificity. "помощь на
@@ -307,13 +337,17 @@ def _service_match(norm: str) -> tuple[str | None, str | None]:
     checked before exam_prep and generic tutoring last. Weak verbs are
     considered only after every specific rule has passed.
 
-    The keyword comes back because the caller takes it out of the query before
-    looking for a subject. A weak verb yields no keyword: "помоги" says nothing
-    about which kind of help, so there is nothing to remove that would sharpen
-    anything.
+    The keyword comes back so the caller can ask whether anything else was in the
+    query at all. A weak verb yields none: "помоги" names no kind of help by
+    itself, so there is nothing to say it took the whole sentence.
+
+    `ignore` re-reads the same text as if some kinds did not exist — see
+    SUBJECTLESS at the call site.
     """
     tokens = tokenise(norm)
     for code, keywords in SERVICE_KEYWORDS.items():
+        if code in ignore:
+            continue
         for keyword in keywords:
             if starts_a_word(tokens, keyword):
                 return code, keyword
@@ -329,8 +363,8 @@ def _without(norm: str, keyword: str) -> str:
     """`norm` minus the words the keyword touched.
 
     Whole words, not the keyword's characters: the keywords are stems, so
-    removing "нострифик" from "нострификация" would leave "ация" and hand the
-    subject lookup a fragment to score against.
+    removing "нострифик" from "нострификация" would leave "ация", and the caller
+    is asking whether anything is left — a fragment would answer yes.
     """
     tokens = tokenise(norm)
     needle = tokenise(keyword).rstrip()

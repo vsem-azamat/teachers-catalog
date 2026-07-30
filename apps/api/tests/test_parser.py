@@ -4,9 +4,11 @@ import pytest
 
 from students_cz.services.lookup import normalise
 from students_cz.services.parser import (
+    SUBJECTLESS,
     _match_budget,
     _match_deadline,
-    _match_service,
+    _service_match,
+    _without,
     parse,
 )
 
@@ -31,13 +33,13 @@ TODAY = date(2026, 1, 20)
     ],
 )
 def test_service_keywords(text, expected):
-    assert _match_service(normalise(text)) == expected
+    assert _service_match(normalise(text))[0] == expected
 
 
 def test_keyword_must_start_a_word():
     """ "osp" is a Scio test; it is also inside "gospodarka"."""
-    assert _match_service(normalise("gospodarka a osnovy")) is None
-    assert _match_service(normalise("готовлюсь к osp")) == "entrance_prep"
+    assert _service_match(normalise("gospodarka a osnovy"))[0] is None
+    assert _service_match(normalise("готовлюсь к osp"))[0] == "entrance_prep"
 
 
 @pytest.mark.parametrize(
@@ -149,7 +151,7 @@ async def test_unmatched_is_reported_not_guessed(session):
     ],
 )
 def test_help_that_is_not_about_studying_is_recognised(text, expected):
-    assert _match_service(normalise(text)) == expected
+    assert _service_match(normalise(text))[0] == expected
 
 
 @pytest.mark.asyncio
@@ -164,16 +166,71 @@ async def test_a_short_faculty_name_is_not_found_inside_a_word(session):
 
 
 @pytest.mark.asyncio
-async def test_a_named_short_faculty_is_still_found(session):
+async def test_a_named_two_letter_faculty_is_still_found(session):
     """The rule above must not cost us the faculty when it really is named.
 
-    "FIT" alone and not "ČVUT FIT": the second would pass through the
-    institution-code branch whatever the short-name rule does, which makes it no
-    test of the rule at all.
+    Two letters, and no university beside it: "ČVUT FI" would pass through the
+    institution-code branch whatever the short-name rule does, and a three-letter
+    name goes back to trigram matching, so neither would test the rule.
     """
-    parsed = await parse(session, "матан на FIT", "ru", today=TODAY)
+    parsed = await parse(session, "матан на FI", "ru", today=TODAY)
     assert parsed.institution is not None
-    assert parsed.institution.label == "FIT"
+    assert parsed.institution.label == "FI"
+
+
+@pytest.mark.asyncio
+async def test_an_inflected_three_letter_faculty_still_matches(session):
+    """Czech declines the abbreviation itself: nobody writes "na FEL".
+
+    The whole-word rule is deliberately two letters wide and not three. At three
+    it took every inflected form off all 57 three-letter faculties.
+    """
+    parsed = await parse(session, "doucovani matematiky na FELu", "cs", today=TODAY)
+    assert parsed.institution is not None
+    assert parsed.institution.label == "FEL"
+
+
+def test_a_keyword_takes_whole_words_with_it():
+    """What is left has to be words, or the caller cannot ask if anything is.
+
+    The keywords are stems: taking the characters of "нострифик" out of
+    "нострификация" leaves "ация", which is not nothing and is not a word either.
+    """
+    assert _without(normalise("нострификация"), "нострифик") == ""
+    assert _without(normalise("нострификация аттестата"), "нострифик") == "аттестата"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text",
+    [
+        "нужен матан, живу в общежитии",
+        "матан, снимаю квартиру на Виноградах",
+    ],
+)
+async def test_an_aside_about_life_does_not_replace_the_subject(session, text):
+    """Both filters are applied together, and no such offer has a subject.
+
+    Reading these as housing produced subject + housing, which `catalog.search`
+    ANDs into a pair matching nobody — a list of calculus tutors became an empty
+    screen.
+    """
+    parsed = await parse(session, text, "ru", today=TODAY)
+    assert parsed.subject is not None
+    assert parsed.subject.label == "Математический анализ"
+    assert parsed.service_type not in SUBJECTLESS
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # Single-word study stems used to win these on dictionary order alone.
+        ("присяжный перевод диплома", "translation"),
+        ("нужен перевод аттестата", "translation"),
+    ],
+)
+def test_translating_a_document_is_not_writing_or_nostrification(text, expected):
+    assert _service_match(normalise(text))[0] == expected
 
 
 @pytest.mark.asyncio

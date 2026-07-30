@@ -219,14 +219,21 @@ _INSTITUTION_SQL = text(
                                         || replace(inst.code, '_', '[ _-]?')
                                         || '([^a-z0-9]|$)')
                         THEN 1.0 ELSE 0.0 END,
-                   -- A short faculty name is a whole word or it is nothing.
-                   -- "FI", "UK" and "JU" are two letters, and trigram
+                   -- A two-letter faculty name is a whole word or it is
+                   -- nothing. "FI", "UK" and "JU" are two letters, and trigram
                    -- similarity puts any word containing them over the
                    -- threshold: "по физике" came back naming the faculty FI at
                    -- 0.67. Matched against the query's tokens, the same way
                    -- subject synonyms are two functions up, so there is one
                    -- idea of "whole word" here and no second regex to escape.
-                   COALESCE(MAX(CASE WHEN length(i.short_name) < 4 AND (
+                   --
+                   -- Two and not three: Czech declines the abbreviation itself,
+                   -- and "na FELu", "na FITu", "na MFFce" are how people write
+                   -- it. Cutting at three characters cost all 57 three-letter
+                   -- faculties every inflected form they had, and bought
+                   -- nothing — every false positive worth killing here is two
+                   -- letters long.
+                   COALESCE(MAX(CASE WHEN length(i.short_name) < 3 AND (
                             strpos(q.tokens, ' ' || {_NORM.format(expr="i.short_name")}
                                    || ' ') > 0
                          OR strpos(q.latin_tokens,
@@ -236,11 +243,11 @@ _INSTITUTION_SQL = text(
                    COALESCE(MAX(word_similarity(
                        immutable_unaccent(lower(i.name)), q.raw)), 0.0),
                    -- Long enough for a trigram score to mean something.
-                   COALESCE(MAX(CASE WHEN length(i.short_name) >= 4
+                   COALESCE(MAX(CASE WHEN length(i.short_name) >= 3
                        THEN word_similarity(
                            immutable_unaccent(lower(i.short_name)), q.raw)
                        END), 0.0),
-                   COALESCE(MAX(CASE WHEN length(i.short_name) >= 4
+                   COALESCE(MAX(CASE WHEN length(i.short_name) >= 3
                        THEN word_similarity(
                            immutable_unaccent(lower(i.short_name)), q.latin)
                        END), 0.0)

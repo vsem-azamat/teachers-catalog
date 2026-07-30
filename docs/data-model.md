@@ -136,15 +136,17 @@ wrong language, misspelled. Three mechanisms handle it, cheapest first:
 Verified against a live database: `prijimacky` scores 1.00 against `Přijímačky`,
 `matematicka analyza` scores 1.00 against `Matematická analýza`.
 
-Two rules keep the trigram half of that from answering confidently about
+Three rules keep the trigram half of that from answering confidently about
 something else:
 
-- **A short name matches as a whole word or not at all.** Faculty short names
-  are two and three letters — `FI`, `UK`, `JU` — and trigram similarity puts
-  any word containing those letters above the threshold, so "по физике" found
-  the faculty FI and "uklidit" would find Charles University. Below four
-  characters a short name is compared against the query's tokens, the same
-  whole-word test the synonym branch uses.
+- **A two-letter short name matches as a whole word or not at all.** `FI`, `UK`
+  and `JU` are two letters, and trigram similarity puts any word containing them
+  above the threshold, so "по физике" found the faculty FI and "uklidit" would
+  find Charles University. Those are compared against the query's tokens, the
+  same whole-word test the synonym branch uses. Three letters stay on the
+  trigram path deliberately: Czech declines the abbreviation itself — "na FELu",
+  "na MFFce" — and the whole-word rule would cost all 57 three-letter faculties
+  every inflected form they have.
 - **When the words naming the kind of help were the whole query, only a certain
   subject survives.** There is no subject left in the text to find, so a trigram
   score is the scorer answering a question nobody asked: "bank statement" came
@@ -152,6 +154,12 @@ something else:
   search by a subject nobody named. A synonym hit is kept, because a curated
   synonym is not a guess — "курсовая" and "нострификация" are written down
   against real subjects.
+- **A kind of help that never carries a subject is not the answer to a query
+  that names one.** The five non-study kinds have `requires_subject = false` and
+  their `offers` rows have a null subject, while the search applies subject and
+  kind of help together — so the pair matches nobody. "нужен матан, живу в
+  общежитии" is a question about calculus with an aside in it, and reading it as
+  housing turned a list of tutors into an empty screen.
 
 A kind of help that cannot be named in words cannot be found, in any of the four
 languages. The five that are not about studying — insurance, a bank statement,
