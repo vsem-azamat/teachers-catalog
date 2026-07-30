@@ -139,7 +139,7 @@ time was the alternative and it is worse: it needs the API process up, so the
 web build fails when a backend is not running. Committing it means the two can
 disagree, which is what the check is for — a schema changed without running
 `pnpm api:generate` types the client against an endpoint that no longer exists,
-and every check in this repository passes.
+and nothing else in this repository notices.
 
 ## One engine, one pool
 
