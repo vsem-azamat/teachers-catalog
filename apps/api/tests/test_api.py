@@ -202,6 +202,59 @@ async def test_clarify_is_asked_only_when_it_narrows(client):
     assert unnamed["clarify"]["code"] == "clarify.when"
 
 
+async def test_parse_counts_only_what_the_search_will_show(
+    client, helper_factory, session
+):
+    """The number promised is the number delivered.
+
+    The screen shows a budget chip and then a count. Computing that count
+    without the budget promises people who will not be in the list, and writes
+    the same wrong number into `search_queries.results_count`, which is read as
+    the ranked list of what the catalog is missing.
+    """
+    from sqlalchemy import select
+
+    from students_cz.db.models import Subject
+
+    await helper_factory(tg_id=91021, first_name="Cheap", price=400)
+    await helper_factory(tg_id=91022, first_name="Dear", price=900)
+    await session.flush()
+
+    body = (
+        await client.post(
+            "/api/v1/search/parse",
+            json={"text": "матан до 500 крон"},
+            headers=auth_header(90121),
+        )
+    ).json()
+
+    budget = [c for c in body["chips"] if c["kind"] == "budget"]
+    assert budget and budget[0]["value"] == 500, body["chips"]
+
+    # Against the search itself rather than a literal, because the seed brings
+    # its own helpers on this subject and any fixed number would be a statement
+    # about the seed. What is being pinned is that the two agree.
+    subject = await session.scalar(
+        select(Subject).where(Subject.slug == "matematicka-analyza")
+    )
+    params = {"subject_id": subject.id}
+    listed = (
+        await client.get(
+            "/api/v1/search",
+            params={**params, "max_price": 500},
+            headers=auth_header(90121),
+        )
+    ).json()
+    assert body["matches"] == listed["total"]
+
+    # And the filter has to be doing something, or the assertion above would
+    # hold just as well with the bug in place. `Dear` costs 900.
+    everyone = (
+        await client.get("/api/v1/search", params=params, headers=auth_header(90121))
+    ).json()
+    assert listed["total"] < everyone["total"]
+
+
 async def test_search_finds_a_published_helper(client, helper_factory, session):
     await helper_factory(tg_id=91001, first_name="Marek", deals=8)
     await session.flush()

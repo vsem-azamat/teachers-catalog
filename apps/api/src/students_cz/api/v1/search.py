@@ -99,6 +99,10 @@ async def parse_query(
             )
         )
 
+    # Every filter the parse produced, the budget included. The screen shows a
+    # chip for it and then this number; leaving it out counts people the next
+    # screen will not list, and writes that same number into `search_queries`,
+    # where a result for a query nobody ran is worse than no row at all.
     total, _ = await catalog.search(
         session,
         lang,
@@ -106,6 +110,7 @@ async def parse_query(
         subject_id=parsed.subject.id if parsed.subject else None,
         institution_id=parsed.institution.id if parsed.institution else None,
         service_type_id=service_type_id,
+        max_price=parsed.budget_max,
         limit=1,
     )
 

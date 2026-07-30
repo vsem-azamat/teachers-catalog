@@ -144,6 +144,12 @@ zero results are a ranked list of what the catalog is missing; raw text paired
 with the parse is training data for making the parser better. It is the cheapest
 table in the schema and the most valuable.
 
+That count is computed with every filter the parse produced, the budget
+included — the same filters the search behind it applies. A count that ignores
+one of them is wrong in both directions at once: it promises the reader a
+number the next screen will not deliver, and it records a result for a query
+nobody ran, which is the one thing the zero-result list must not contain.
+
 ## Services, things, materials
 
 Three tables because three sets of rules:
