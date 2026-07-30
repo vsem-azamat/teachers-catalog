@@ -28,12 +28,16 @@ export function useSearchFilters(query: string | URLSearchParams): {
     [query],
   );
   const code = params.get('service');
+  // An explicit id in the query string is already the answer, so a code beside
+  // it is nothing to wait for. Without this a link carrying both would block on
+  // a lookup it does not need, and fail with it.
+  const lookup = code && !params.get('service_type_id') ? code : null;
 
   const { data, isError } = useQuery({
     queryKey: ['service-types'],
     queryFn: ({ signal }) => api.getServiceTypes(signal),
     staleTime: 60 * 60 * 1000,
-    enabled: Boolean(code),
+    enabled: lookup !== null,
   });
 
   // Depends on the string rather than on the URLSearchParams object, which is a
@@ -42,8 +46,8 @@ export function useSearchFilters(query: string | URLSearchParams): {
 
   const filters = useMemo(() => {
     const read = new URLSearchParams(key);
-    const byCode = code ? data?.find((type) => type.code === code)?.id : undefined;
-    if (code && byCode === undefined) return null;
+    const byCode = lookup ? data?.find((type) => type.code === lookup)?.id : undefined;
+    if (lookup && byCode === undefined) return null;
 
     return {
       subject_id: numeric(read.get('subject_id')),
@@ -51,9 +55,13 @@ export function useSearchFilters(query: string | URLSearchParams): {
       service_type_id: numeric(read.get('service_type_id')) ?? byCode,
       max_price: numeric(read.get('max_price')),
     };
-  }, [key, code, data]);
+  }, [key, lookup, data]);
 
-  return { filters, isError };
+  // Only when this hook is the one that asked. `['service-types']` is a key
+  // several screens share, so an unguarded flag would hand a failure caused by
+  // the offer screen to a search that needs no reference data at all — and both
+  // screens would report a failure while their own request had succeeded.
+  return { filters, isError: isError && lookup !== null };
 }
 
 function numeric(value: string | null): number | undefined {

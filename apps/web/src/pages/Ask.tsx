@@ -107,11 +107,16 @@ export default function AskPage() {
   }, []);
 
   const kept = (parsed?.chips ?? []).filter((chip) => !dropped.has(chipKey(chip)));
-  const ready = kept.length > 0 || Boolean(answer);
 
   // One string, used for the preview, for the filters and for the navigation,
   // so none of the three can describe a different search.
   const query = useMemo(() => toQuery(kept, answer), [kept, answer]);
+
+  // Empty when nothing the parse understood is something the search can filter
+  // on — a lone deadline is the real case, since there is no date filter to send
+  // it to. Counting that would count the whole catalog and put the number under
+  // a chip that had no part in it.
+  const ready = query !== '';
   const { filters, isError: filtersFailed } = useSearchFilters(query);
 
   const preview = useQuery({
@@ -280,6 +285,10 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
     queryFn: ({ signal }) => api.getHome(signal),
   });
 
+  // Not filtered by what the catalog holds, unlike the shelves below: an
+  // example is there to show the shape of a query, and the shapes are true even
+  // where nobody offers that yet. The shelves are the half that promises supply,
+  // and those are counted.
   const examples = [
     t`матан ČVUT`,
     t`čeština B2`,
@@ -402,7 +411,7 @@ function Preview({
 
   return (
     <>
-      <Label aside={<Trans>всего {total}</Trans>}>
+      <Label aside={<Trans>всего {data.total}</Trans>}>
         <Trans>Кто найдётся</Trans>
       </Label>
       <Cards>
