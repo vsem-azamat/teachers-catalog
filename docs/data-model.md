@@ -144,6 +144,19 @@ zero results are a ranked list of what the catalog is missing; raw text paired
 with the parse is training data for making the parser better. It is the cheapest
 table in the schema and the most valuable.
 
+That count — returned to the caller as `matches` and stored as
+`results_count` — is computed with every parsed filter the search can apply:
+subject, institution, kind of help and budget. Dropping one of them records a
+result for a query nobody ran, which is the one thing the zero-result list must
+not contain, and hands the same wrong number to anyone who shows it.
+
+The deadline is the parsed value with nowhere to go: it becomes a chip and is
+logged in the parse, but the search has no date filter, so a query that says
+nothing except a date counts the whole catalog. The screen does not show that
+number — it shows a count only when something is being filtered — but the logged
+`results_count` is still the size of the catalog rather than an answer, so
+date-only rows do not belong in the zero-result list either way.
+
 ## Services, things, materials
 
 Three tables because three sets of rules:

@@ -1,28 +1,24 @@
 import { Trans, useLingui } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
-import { PhraseView, PriceUnitLabel } from '@/components/Phrase';
+import { HelperCardView } from '@/components/HelperCard';
 import { TabBar } from '@/components/TabBar';
 import {
-  AvatarView,
-  Card,
   Cards,
   Chips,
   ChipView,
   Empty,
-  Free,
   Label,
-  PriceView,
-  Reason,
   Screen,
   Segmented,
   SkeletonRows,
 } from '@/components/Ui';
+import { useSearchFilters } from '@/hooks/useSearchFilters';
 import { hapticSelection } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
-import type { HelperCard, SearchSort } from '@/lib/types';
+import type { SearchSort } from '@/lib/types';
 
 /**
  * The results list.
@@ -37,40 +33,25 @@ export default function ResultsPage() {
   const { t, i18n } = useLingui();
   const [sort, setSort] = useState<SearchSort>('relevance');
 
-  const filters = useMemo(
-    () => ({
-      subject_id: numeric(params.get('subject_id')),
-      institution_id: numeric(params.get('institution_id')),
-      service_type_id: numeric(params.get('service_type_id')),
-      max_price: numeric(params.get('max_price')),
-      sort,
-    }),
-    [params, sort],
-  );
+  // The same reading of the query string the search screen used to count and
+  // preview this list, so the number it showed is the number that arrives here.
+  const { filters, isError: filtersFailed } = useSearchFilters(params);
 
-  // The clarifying answer arrives as a service code; the id it maps to lives
-  // in the reference list this screen would load anyway.
-  const serviceCode = params.get('service');
-  const { data: serviceTypes } = useQuery({
-    queryKey: ['service-types'],
-    queryFn: ({ signal }) => api.getServiceTypes(signal),
-    enabled: Boolean(serviceCode) && !filters.service_type_id,
-    staleTime: 60 * 60 * 1000,
-  });
-  const serviceTypeId =
-    filters.service_type_id ??
-    serviceTypes?.find((type) => type.code === serviceCode)?.id;
-
-  const waitingForServiceId = Boolean(serviceCode) && serviceTypeId === undefined;
-
+  // `filters` and not `{...filters}`: spread onto an object, a null — the
+  // service code has not been resolved yet — becomes the same key as a search
+  // with no filters at all. A warm cache from an unfiltered visit would then be
+  // handed over as this query's answer, and the screen would show the whole
+  // catalog under one person's query before quietly swapping it out.
   const { data, isPending, isError } = useQuery({
-    queryKey: ['search', { ...filters, service_type_id: serviceTypeId }],
-    queryFn: ({ signal }) =>
-      api.search({ ...filters, service_type_id: serviceTypeId }, signal),
-    enabled: !waitingForServiceId,
+    queryKey: ['search', filters, sort],
+    queryFn: ({ signal }) => api.search({ ...filters, sort }, signal),
+    enabled: filters !== null,
   });
 
-  const loading = isPending || waitingForServiceId;
+  // Unknown filters are still loading, not loaded. The error takes precedence,
+  // or a failed lookup would keep the skeleton up for ever.
+  const failed = isError || filtersFailed;
+  const loading = (isPending || filters === null) && !failed;
 
   return (
     <>
@@ -111,7 +92,7 @@ export default function ResultsPage() {
             </Label>
             <SkeletonRows count={4} />
           </>
-        ) : isError ? (
+        ) : failed || !data ? (
           <Empty
             title={<Trans>Не получилось загрузить</Trans>}
             body={<Trans>Проверь соединение и попробуй ещё раз.</Trans>}
@@ -146,60 +127,4 @@ export default function ResultsPage() {
       <TabBar />
     </>
   );
-}
-
-function HelperCardView({
-  card,
-  locale,
-  onClick,
-}: {
-  card: HelperCard;
-  locale: string;
-  onClick: () => void;
-}) {
-  // "Cheaper but unproven" is the one reason that should not wear the same
-  // confident green dot as the others.
-  const weak = card.reason?.code === 'reason.cheapest_but_unproven';
-
-  return (
-    <Card onClick={onClick}>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <AvatarView avatar={card.avatar} size={40} square />
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 14.5, fontWeight: 680, letterSpacing: '-0.015em' }}>
-            {card.name}
-          </div>
-          {card.affiliation ? (
-            <div style={{ marginTop: 2, fontSize: 12, color: 'var(--muted)' }}>
-              {card.affiliation}
-            </div>
-          ) : null}
-        </div>
-        {card.price ? (
-          <PriceView
-            price={card.price}
-            unitLabel={<PriceUnitLabel unit={card.price.unit} />}
-          />
-        ) : null}
-      </div>
-
-      {card.reason ? (
-        <Reason weak={weak}>
-          <PhraseView phrase={card.reason} locale={locale} />
-        </Reason>
-      ) : null}
-
-      {card.availability ? (
-        <Free>
-          <PhraseView phrase={card.availability} locale={locale} />
-        </Free>
-      ) : null}
-    </Card>
-  );
-}
-
-function numeric(value: string | null): number | undefined {
-  if (!value) return undefined;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
 }
