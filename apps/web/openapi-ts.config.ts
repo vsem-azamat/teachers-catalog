@@ -1,12 +1,18 @@
 import { defineConfig } from '@hey-api/openapi-ts';
 
 /**
- * Generates a typed client from the running API.
+ * Generates a typed client from the API's OpenAPI document.
  *
- * Not wired into `pnpm build` on purpose: the generator needs the API process
- * up, and a build that fails because a backend is not running is a bad build.
- * Run `pnpm api:generate` by hand after changing the API, and commit the
- * result. Until that happens, `src/lib/types.ts` is written by hand.
+ * Run it through `make contract` from the repository root, which dumps the
+ * document to a file first and then checks the result against what is
+ * committed. Pointing this at a running API instead works, and writes that
+ * server's address into the client as a literal `ClientOptions.baseUrl` — a
+ * client that carries whichever machine generated it, and that the contract
+ * check rejects. A file has no URL to bake in.
+ *
+ * Not wired into `pnpm build` on purpose: a build that fails because a backend
+ * is not running is a bad build. Everything the generator has not covered yet
+ * is hand-written in `src/lib/types.ts`.
  */
 export default defineConfig({
   input: process.env.OPENAPI_URL ?? 'http://127.0.0.1:8000/openapi.json',

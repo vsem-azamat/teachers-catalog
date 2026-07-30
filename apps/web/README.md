@@ -31,11 +31,13 @@ pnpm install
 pnpm dev
 ```
 
-The API is expected at `http://127.0.0.1:8000`; `/api` and `/healthz` are
-proxied there, so calls from the browser stay same-origin. Start it separately:
+The API is expected at `http://127.0.0.1:8010` — see the note in
+`vite.config.ts` about what holds 8000 — and `/api`, `/healthz` and `/tg` are
+proxied there, so calls from the browser stay same-origin. Start it separately,
+or with `make api` from the repository root:
 
 ```sh
-cd ../api && uv run uvicorn students_cz.main:app --reload
+cd ../api && uv run uvicorn students_cz.main:app --reload --port 8010
 ```
 
 ### HTTPS is not optional
@@ -189,16 +191,18 @@ it is **committed**. `src/lib/types.ts` still declares the rest of the wire by
 hand and must be kept in step with `apps/api/src/students_cz/schemas.py`; a type
 moves across as the screen using it is touched.
 
-To regenerate, run the API and then:
+To regenerate, run `make contract` from the repository root and commit what it
+writes. It needs no server: the document is dumped straight from the app. The
+same target is what CI runs, and it fails when the committed copy differs — so a
+schema changed without regenerating stops being something only the next runtime
+error tells you about.
 
-```sh
-pnpm api:generate
-```
-
-Commit what it writes. `make contract`, from the repository root, is what CI
-runs: it dumps the document without a server, regenerates, and fails if the
-committed copy differs — so a schema changed without regenerating stops being
-something only the next runtime error tells you about.
+Do not generate from a running API. `pnpm api:generate` on its own fetches a
+URL, and the generator writes that URL into the client as a literal type —
+`ClientOptions.baseUrl: 'http://127.0.0.1:8010'` instead of the URL-independent
+form. The result is a client carrying whichever machine produced it, and one the
+contract check rejects. Reading the document from a file has no URL to bake in,
+which is why `make contract` dumps it.
 
 Generation is not wired into `pnpm build` on purpose — a build that fails
 because a backend is not running is a bad build. The directory is excluded from

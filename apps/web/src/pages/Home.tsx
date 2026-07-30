@@ -62,10 +62,10 @@ export default function HomePage() {
             />
           </Rows>
         ) : (
-          // Grouped, with a heading per shelf. There is no wide first cell:
-          // with seven tiles in two columns the last one sat alone in its row
-          // and a wide one fixed that, and with twelve tiles under three
-          // headings it would create the orphan it was there to fix.
+          // Grouped, with a heading per shelf. An odd-sized group widens its
+          // first tile, which is what keeps the last one from sitting alone in
+          // its row — and the only cell with room for three overlapping faces,
+          // which is what the trailing callback below leans on.
           <ServiceGrid
             items={data.people}
             onPick={(section) => navigate(`/results?service=${section.code}`)}

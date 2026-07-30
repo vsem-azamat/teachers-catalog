@@ -138,8 +138,11 @@ document to check that the committed copy still matches. Generating at build
 time was the alternative and it is worse: it needs the API process up, so the
 web build fails when a backend is not running. Committing it means the two can
 disagree, which is what the check is for — a schema changed without running
-`pnpm api:generate` types the client against an endpoint that no longer exists,
-and nothing else in this repository notices.
+`make contract` types the client against an endpoint that no longer exists, and
+nothing else in this repository notices. That target dumps the document to a
+file rather than fetching it: given a URL, the generator writes that URL into
+the client as a literal type, so a client generated against somebody's laptop
+carries their address.
 
 The check covers what has moved across, and that is not yet the whole client.
 `apps/web/src/lib/types.ts` still declares most of the wire types by hand and
