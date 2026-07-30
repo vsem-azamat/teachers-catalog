@@ -99,10 +99,12 @@ async def parse_query(
             )
         )
 
-    # Every filter the parse produced, the budget included. The screen shows a
-    # chip for it and then this number; leaving it out counts people the next
-    # screen will not list, and writes that same number into `search_queries`,
-    # where a result for a query nobody ran is worse than no row at all.
+    # Every parsed filter the search can apply, the budget included. Leaving one
+    # out counts people this query does not reach, and writes that number into
+    # `search_queries`, where a result for a query nobody ran is worse than no
+    # row at all. The deadline is the exception that cannot be honoured: there is
+    # no date filter to pass it to, so a query saying nothing but a date counts
+    # the whole catalog — see docs/data-model.md.
     total, _ = await catalog.search(
         session,
         lang,

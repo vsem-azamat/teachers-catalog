@@ -144,11 +144,11 @@ zero results are a ranked list of what the catalog is missing; raw text paired
 with the parse is training data for making the parser better. It is the cheapest
 table in the schema and the most valuable.
 
-That count is computed with every parsed filter the search can apply — subject,
-institution, kind of help and budget. Dropping one of them is wrong in both
-directions at once: it promises the reader a number the next screen will not
-deliver, and it records a result for a query nobody ran, which is the one thing
-the zero-result list must not contain.
+That count — returned to the caller as `matches` and stored as
+`results_count` — is computed with every parsed filter the search can apply:
+subject, institution, kind of help and budget. Dropping one of them records a
+result for a query nobody ran, which is the one thing the zero-result list must
+not contain, and hands the same wrong number to anyone who shows it.
 
 The deadline is the parsed value with nowhere to go: it becomes a chip and is
 logged in the parse, but the search has no date filter, so a query that says

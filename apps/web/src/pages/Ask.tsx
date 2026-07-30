@@ -116,6 +116,10 @@ export default function AskPage() {
   // it to. Counting that would count the whole catalog and put the number under
   // a chip that had no part in it.
   const ready = query !== '';
+
+  // Understood something, but nothing to search on. Saying nothing here would be
+  // a dead end: chips on the screen, no count, no button, no explanation.
+  const stuck = !ready && kept.length > 0;
   const { filters, isError: filtersFailed } = useSearchFilters(query);
 
   const preview = useQuery({
@@ -255,6 +259,13 @@ export default function AskPage() {
       {/* Last, and after the clarifying question rather than before it: the
           answer to that question changes the list, and a list shown above the
           thing that narrows it reads as already final. */}
+      {stuck ? (
+        <Empty
+          title={<Trans>По этому пока не найти</Trans>}
+          body={<Trans>Добавь предмет — по одному сроку искать нечего.</Trans>}
+        />
+      ) : null}
+
       {ready ? (
         <Preview
           data={preview.data}
