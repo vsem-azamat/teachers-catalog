@@ -343,3 +343,48 @@ async def test_a_stamped_bank_paper_is_not_a_translation(session):
     """
     parsed = await parse(session, "vypis z banky s razitkem", "cs", today=TODAY)
     assert parsed.service_type == "bank_letter"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Чешский язык B1, нужна виза",
+        "Математический анализ, живу в общежитии",
+    ],
+)
+async def test_a_subject_typed_out_in_full_is_named(session, text):
+    """A name the query reproduces exactly scores 1.0 and reports "name".
+
+    The first spelling of "was the subject named" asked for a *synonym*, so a
+    subject somebody had typed out in full was thrown away as a guess and the
+    search filtered by insurance or housing instead.
+    """
+    parsed = await parse(session, text, "ru", today=TODAY)
+    assert parsed.subject is not None
+    assert parsed.subject.score == 1.0
+    assert parsed.service_type not in SUBJECTLESS
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # Words rather than stems, because the stems reached into subjects:
+        # "pojist" prefixes "pojistna matematika" (actuarial mathematics) and
+        # "страхован" prefixes the genitive in "экономика страхования".
+        ("нужно страхование", "insurance"),
+        ("pojistna matematika", None),
+        ("экономика страхования", None),
+        # And "zustat" is "to stay", so the bank balance is spelled out.
+        ("zustatek na ucte", "bank_letter"),
+        ("chci zustat v Praze", None),
+        # English could not say two of these five in the plainest way.
+        ("i need a visa", "residence"),
+        ("student visa", "residence"),
+        ("visualisation of data", None),
+        ("document translation", "translation"),
+        ("translate my diploma", "translation"),
+    ],
+)
+def test_the_plainest_phrasing_reaches_the_right_kind(text, expected):
+    assert _match_service(normalise(text))[0] == expected

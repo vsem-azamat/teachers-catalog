@@ -130,6 +130,10 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "sworn translation",
         "certified translation",
         "official translation",
+        # The plainest English phrasings, and the seed's own English label.
+        Word("translation"),
+        "translate",
+        "translating",
     ),
     "nostrification": (
         "нострифик",
@@ -182,9 +186,13 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
     # "помочь снять квартиру" housing rather than tutoring.
     "insurance": (
         "страховк",
-        "страхован",
-        "страхуван",
-        "pojist",
+        # Words, not stems: the genitive "страхования" belongs to a subject —
+        # "экономика страхования" — and "pojistna matematika" is actuarial
+        # mathematics, which the stem "pojist" read as somebody wanting a policy.
+        Word("страхование"),
+        Word("страхування"),
+        "pojisten",
+        "pojistk",
         "insurance",
     ),
     "bank_letter": (
@@ -198,9 +206,10 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "з банку",
         "vypis z ban",
         "vypis z uct",
+        "zustatek",
         "potvrzeni z ban",
         "potvrzeni o vedeni",
-        "zustatk",
+        "zustatku",
         "bank statement",
         "bank letter",
         "proof of funds",
@@ -224,6 +233,8 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "pobyt",
         "residence permit",
         "long term visa",
+        Word("visa"),
+        Word("visas"),
     ),
     "housing": (
         "жиль",
@@ -327,7 +338,7 @@ async def parse(
     # "курсовая" and "нострификация" are curated names for real subjects, and
     # dropping them would lose a certainty to protect against a maybe.
     if keyword and not _without(norm, keyword):
-        subjects = [match for match in subjects if match.matched_on == "synonym"]
+        subjects = [match for match in subjects if _is_named(match)]
 
     # A kind of help that never carries a subject cannot be the answer to a
     # query that *names* one. `catalog.search` ANDs the two, and no offer in the
@@ -336,8 +347,8 @@ async def parse(
     # reading it as housing turned a list of tutors into an empty screen. Read
     # again as if those kinds did not exist.
     #
-    # Which of the two gives way depends on how sure the subject is. A curated
-    # synonym is a named subject and wins: read the kind of help again as if the
+    # Which of the two gives way depends on whether the subject was named. A
+    # named subject wins: read the kind of help again as if the
     # non-study ones did not exist. A trigram score is a guess, and a guess
     # cannot narrow a kind of help that has no subjects to narrow by — so the
     # guess goes instead. Keeping both was a guaranteed empty screen, and
@@ -345,7 +356,7 @@ async def parse(
     # above the study kinds: "присяжный перевод диплома" scores «Академическое
     # письмо» at 0.55.
     if subjects and result.service_type in SUBJECTLESS:
-        if subjects[0].matched_on == "synonym":
+        if _is_named(subjects[0]):
             result.service_type, _ = _match_service(norm, ignore=SUBJECTLESS)
         else:
             subjects = []
@@ -399,6 +410,22 @@ def _match_service(
             return None, None  # an exam is mentioned but not placed in time
         return "tutoring", None
     return None, None
+
+
+def _is_named(match: Match) -> bool:
+    """Did the query name this subject, rather than score against it?
+
+    A 1.0 is either a curated synonym or a name the query reproduced exactly.
+    Everything below it is the trigram scorer's opinion — the external-code
+    branch stops at 0.95 and the synonym-similarity branch at 0.92, so the line
+    is exactly where certainty is.
+
+    `matched_on == "synonym"` was the first spelling of this and it was too
+    narrow: "Чешский язык B1, нужна виза" names the subject in full, scores 1.0,
+    and reports `name` — so the subject the person typed out was thrown away as
+    a guess.
+    """
+    return match.score >= 1.0
 
 
 def _without(norm: str, keyword: str) -> str:
