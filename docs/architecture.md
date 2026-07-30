@@ -132,7 +132,7 @@ Screens are assembled server-side — the client renders what it is given rather
 than joining data itself — so a schema often mirrors a screen, and that is
 intended.
 
-**The client's copy of that contract is generated and committed**, into
+**What the client has generated from that contract is committed**, into
 `apps/web/src/lib/generated`, and CI regenerates it from the API's own OpenAPI
 document to check that the committed copy still matches. Generating at build
 time was the alternative and it is worse: it needs the API process up, so the
@@ -140,6 +140,12 @@ web build fails when a backend is not running. Committing it means the two can
 disagree, which is what the check is for — a schema changed without running
 `pnpm api:generate` types the client against an endpoint that no longer exists,
 and nothing else in this repository notices.
+
+The check covers what has moved across, and that is not yet the whole client.
+`apps/web/src/lib/types.ts` still declares most of the wire types by hand and
+says so; each moves to the generated module as the screen using it is touched,
+and until one has, nothing compares it to the API. So a green contract check
+means the generated types are current, not that every type the app uses is.
 
 ## One engine, one pool
 

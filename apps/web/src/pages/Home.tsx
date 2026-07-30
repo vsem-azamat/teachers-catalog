@@ -62,26 +62,24 @@ export default function HomePage() {
             />
           </Rows>
         ) : (
-          <>
-            {/* Grouped, with a heading per shelf. There used to be a wide
-                first cell, because seven tiles in two columns left the last one
-                alone in its row; there are twelve now and three headings, so
-                the wide cell would create the orphan it was there to fix. */}
-            <ServiceGrid
-              items={data.people}
-              onPick={(section) => navigate(`/results?service=${section.code}`)}
-              renderTrailing={(section, wide) =>
-                // Faces only in the wide cell. A narrow tile has room for a
-                // number or for three overlapping circles, and the number is
-                // the one that says something a person cannot already guess.
-                wide && section.avatars.length ? (
-                  <AvatarStack avatars={section.avatars} />
-                ) : section.count ? (
-                  <Count>{section.count}</Count>
-                ) : null
-              }
-            />
-          </>
+          // Grouped, with a heading per shelf. There is no wide first cell:
+          // with seven tiles in two columns the last one sat alone in its row
+          // and a wide one fixed that, and with twelve tiles under three
+          // headings it would create the orphan it was there to fix.
+          <ServiceGrid
+            items={data.people}
+            onPick={(section) => navigate(`/results?service=${section.code}`)}
+            renderTrailing={(section, wide) =>
+              // Faces only in the wide cell. A narrow tile has room for a
+              // number or for three overlapping circles, and the number is
+              // the one that says something a person cannot already guess.
+              wide && section.avatars.length ? (
+                <AvatarStack avatars={section.avatars} />
+              ) : section.count ? (
+                <Count>{section.count}</Count>
+              ) : null
+            }
+          />
         )}
       </Screen>
       <TabBar />
