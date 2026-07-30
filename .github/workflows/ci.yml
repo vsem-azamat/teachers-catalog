@@ -117,6 +117,44 @@ jobs:
           docker run --rm -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" \
             caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
 
+  contract:
+    # The client in apps/web/src/lib/generated is generated from the API's own
+    # OpenAPI document and committed, so the two can disagree. They did not
+    # disagree yet only because nothing looked: a schema changed without running
+    # `make contract` types the client against an endpoint that is no longer
+    # there, and every other check in this repository passes.
+    #
+    # Its own job rather than a step inside `web`, because it needs both
+    # toolchains and because the name is the error message.
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: apps/web/package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+
+      - name: Install
+        run: |
+          cd apps/api && uv sync --locked
+          cd ../web && pnpm install --frozen-lockfile
+
+      - name: The committed client must match the API
+        # No database and no server: the document is declared at import time,
+        # and the lifespan that needs one never runs.
+        run: make contract
+
   web:
     runs-on: ubuntu-latest
     defaults:

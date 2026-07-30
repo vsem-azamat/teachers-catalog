@@ -114,8 +114,10 @@ async def home_sections(
         for index, st in enumerate(service_types)
     ]
 
-    # Things are not seeded yet; the section stays empty rather than absent so
-    # the client layout does not change shape once it fills.
+    # Things — gear to rent, textbooks to buy — are a planned kind of listing
+    # with no rows and no screen. The key stays in the response so that adding
+    # them is a change to this function and a new screen, rather than also a
+    # change to the shape of what every client already parses.
     return people, []
 
 

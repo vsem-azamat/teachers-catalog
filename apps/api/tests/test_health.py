@@ -72,13 +72,22 @@ async def test_a_webhook_telegram_does_not_have_is_not_reported_as_ok(
     exactly the half-failure this endpoint exists to surface.
     """
     body = await _healthz(app_with(WebhookBot("")))
-    assert body["webhook"] != "ok"
+    assert body["webhook"].startswith("missing:")
     assert body["status"] == "ok", "a deaf bot must not take the catalog down"
 
 
-async def test_a_webhook_pointing_elsewhere_is_not_reported_as_ok(app_with) -> None:
-    body = await _healthz(app_with(WebhookBot("https://someone-else.example/tg")))
-    assert body["webhook"] != "ok"
+async def test_a_webhook_pointing_elsewhere_says_where(app_with) -> None:
+    """Not just "not ok" — the address it went to.
+
+    Something outside this deployment clears the production webhook every few
+    minutes and, on at least one occasion, pointed it somewhere else. The URL in
+    this string is the only evidence of who did it that reaches an operator, and
+    an assertion on `!= "ok"` holds just as well after somebody shortens the
+    message to "elsewhere".
+    """
+    stolen = "https://someone-else.example/tg"
+    body = await _healthz(app_with(WebhookBot(stolen)))
+    assert body["webhook"] == f"elsewhere: {stolen}"
 
 
 async def test_the_webhook_telegram_confirms_is_reported_as_ok(

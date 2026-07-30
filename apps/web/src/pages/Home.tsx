@@ -2,23 +2,20 @@ import { Trans, useLingui } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { AppHeader } from '@/components/AppHeader';
-import { iconForService, SearchIcon } from '@/components/icons';
+import { SearchIcon } from '@/components/icons';
 import { ServiceGrid } from '@/components/ServiceGrid';
 import { TabBar } from '@/components/TabBar';
 import {
   AvatarStack,
   Count,
-  Label,
   Row,
   Rows,
   Screen,
   SkeletonRows,
-  Tile,
   Title,
   ui,
 } from '@/components/Ui';
 import { api } from '@/lib/api';
-import type { HomeSection } from '@/lib/types';
 
 /**
  * The first screen.
@@ -65,58 +62,27 @@ export default function HomePage() {
             />
           </Rows>
         ) : (
-          <>
-            {/* Grouped, with a heading per shelf. There used to be a wide
-                first cell, because seven tiles in two columns left the last one
-                alone in its row; there are twelve now and three headings, so
-                the wide cell would create the orphan it was there to fix. */}
-            <ServiceGrid
-              items={data.people}
-              onPick={(section) => navigate(`/results?service=${section.code}`)}
-              renderTrailing={(section, wide) =>
-                // Faces only in the wide cell. A narrow tile has room for a
-                // number or for three overlapping circles, and the number is
-                // the one that says something a person cannot already guess.
-                wide && section.avatars.length ? (
-                  <AvatarStack avatars={section.avatars} />
-                ) : section.count ? (
-                  <Count>{section.count}</Count>
-                ) : null
-              }
-            />
-
-            {data.things.length > 0 ? (
-              <>
-                <Label>
-                  <Trans>Вещи</Trans>
-                </Label>
-                <Rows>
-                  {data.things.map((section) => (
-                    <Row
-                      key={section.code}
-                      onClick={() => navigate(`/results?category=${section.code}`)}
-                      leading={
-                        <Tile tone={section.tone}>
-                          <SectionIcon section={section} />
-                        </Tile>
-                      }
-                      title={section.name}
-                      hint={section.hint}
-                      trailing={section.count ? <Count>{section.count}</Count> : null}
-                    />
-                  ))}
-                </Rows>
-              </>
-            ) : null}
-          </>
+          // Grouped, with a heading per shelf. An odd-sized group widens its
+          // first tile, which is what keeps the last one from sitting alone in
+          // its row — and the only cell with room for three overlapping faces,
+          // which is what the trailing callback below leans on.
+          <ServiceGrid
+            items={data.people}
+            onPick={(section) => navigate(`/results?service=${section.code}`)}
+            renderTrailing={(section, wide) =>
+              // Faces only in the wide cell. A narrow tile has room for a
+              // number or for three overlapping circles, and the number is
+              // the one that says something a person cannot already guess.
+              wide && section.avatars.length ? (
+                <AvatarStack avatars={section.avatars} />
+              ) : section.count ? (
+                <Count>{section.count}</Count>
+              ) : null
+            }
+          />
         )}
       </Screen>
       <TabBar />
     </>
   );
-}
-
-function SectionIcon({ section }: { section: HomeSection }) {
-  const Icon = iconForService(section.code);
-  return <Icon size={19} />;
 }

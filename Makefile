@@ -107,5 +107,35 @@ format:  ## Reformat both apps
 	cd $(API) && uv run ruff check --fix src tests && uv run ruff format src tests
 	cd $(WEB) && pnpm format
 
+# Named per user: /tmp is shared, and a file owned by somebody else fails in a
+# way that reads as a broken check rather than a full disk.
+OPENAPI_DUMP := $(or $(TMPDIR),/tmp)/students-cz-openapi-$(shell id -u).json
+
+.PHONY: contract
+contract:  ## Check the committed client still matches the API's OpenAPI document
+	cd $(API) && uv run python -m students_cz.openapi > $(OPENAPI_DUMP)
+	@# openapi-ts exits 0 without writing anything when its input is missing or
+	@# empty, and a generator that quietly did nothing leaves a stale client
+	@# looking identical to itself. Check the document before trusting the diff.
+	@grep -q '"openapi"' $(OPENAPI_DUMP) || { \
+	  echo "The OpenAPI dump is empty or not a document: $(OPENAPI_DUMP)"; \
+	  exit 1; \
+	}
+	cd $(WEB) && OPENAPI_URL=$(OPENAPI_DUMP) pnpm api:generate
+	@# --porcelain and not `git diff`: a generated file that is new is untracked,
+	@# and `git diff` cannot see those at all. Kept in a variable so a git that
+	@# failed — no repository, a dubious-ownership refusal, no git at all — is
+	@# not read as an empty answer, which is the same string a clean tree gives.
+	@changed=$$(git status --porcelain -- $(WEB)/src/lib/generated) || { \
+	  echo "git status failed; the contract check compared nothing."; \
+	  exit 1; \
+	}; \
+	test -z "$$changed" || { \
+	  echo; \
+	  echo "The generated client is out of date. Commit what api:generate just wrote."; \
+	  git --no-pager status --short -- $(WEB)/src/lib/generated; \
+	  exit 1; \
+	}
+
 .PHONY: check
-check: lint test  ## Everything CI would run
+check: lint test contract  ## Everything CI would run
