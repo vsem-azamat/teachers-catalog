@@ -106,11 +106,17 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "osp",
         "nastupni",
     ),
-    # Above the study kinds, unlike the rest of the non-study block below: every
-    # keyword here is a two-word document phrase, so nothing a study query says
-    # can trip it — while "присяжный перевод диплома" was answered as thesis
-    # writing on the strength of the word "диплом", and "перевод аттестата" as
-    # nostrification.
+    # Above the study kinds, unlike the rest of the non-study block below.
+    # "присяжный перевод диплома" was answered as thesis writing on the strength
+    # of the word "диплом", and "перевод аттестата" as nostrification, and the
+    # only thing that fixes those is order.
+    #
+    # Most of these are two-word document phrases that no study query contains.
+    # The last three are not, and they cost something: "translation studies
+    # tutor" reads as a document translation. Taken deliberately — a foreign
+    # student in Czechia asking for "a translation" wants a stamped document far
+    # more often than a seminar on translation theory, and that field is not in
+    # the catalog at all.
     "translation": (
         "перевод документ",
         "перевод атт",
@@ -132,6 +138,7 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "official translation",
         # The plainest English phrasings, and the seed's own English label.
         Word("translation"),
+        Word("translations"),
         "translate",
         "translating",
     ),
@@ -217,9 +224,10 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
     "residence": (
         "внж",
         "вид на жительство",
-        # Stems, not phrases: a multi-word keyword tolerates inflection only on
-        # its last word, so "prodlouzeni dlouhodobeho pobytu" — the standard
-        # Czech phrase — reached none of the three that used to be listed here.
+        # Words for the visa, and a stem for the stay. A multi-word keyword
+        # tolerates inflection only on its last word, so the three phrases that
+        # used to be here reached none of "prodlouzeni dlouhodobeho pobytu" —
+        # the standard Czech phrasing — which "pobyt" does.
         Word("виза"),
         Word("визы"),
         Word("визу"),
@@ -260,6 +268,14 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
 SUBJECTLESS = frozenset(
     {"insurance", "bank_letter", "translation", "residence", "housing"}
 )
+
+# The four of those whose keywords are ordinary words that turn up as asides —
+# where somebody lives, what they are insured for. A subject named beside one of
+# these is the question, and the aside is not. `translation` is deliberately not
+# here: "присяжный перевод диплома" is not something anybody writes in passing,
+# so when it appears the document is the request and a subject beside it is not
+# one this kind of help can be filtered by.
+ASIDES = SUBJECTLESS - {"translation"}
 
 # "помочь с X" is the commonest phrasing there is, but on its own it says
 # nothing about *which* kind of help. It counts as tutoring only when the text
@@ -347,8 +363,9 @@ async def parse(
     # reading it as housing turned a list of tutors into an empty screen. Read
     # again as if those kinds did not exist.
     #
-    # Which of the two gives way depends on whether the subject was named. A
-    # named subject wins: read the kind of help again as if the
+    # Which of the two gives way depends on whether the subject was named, and on
+    # whether the kind of help could have been an aside. A named subject beside
+    # an aside wins: read the kind of help again as if the
     # non-study ones did not exist. A trigram score is a guess, and a guess
     # cannot narrow a kind of help that has no subjects to narrow by — so the
     # guess goes instead. Keeping both was a guaranteed empty screen, and
@@ -356,7 +373,7 @@ async def parse(
     # above the study kinds: "присяжный перевод диплома" scores «Академическое
     # письмо» at 0.55.
     if subjects and result.service_type in SUBJECTLESS:
-        if _is_named(subjects[0]):
+        if _is_named(subjects[0]) and result.service_type in ASIDES:
             result.service_type, _ = _match_service(norm, ignore=SUBJECTLESS)
         else:
             subjects = []

@@ -388,3 +388,27 @@ async def test_a_subject_typed_out_in_full_is_named(session, text):
 )
 def test_the_plainest_phrasing_reaches_the_right_kind(text, expected):
     assert _match_service(normalise(text))[0] == expected
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text",
+    [
+        "перевод диплома, матан",
+        "присяжный перевод диплома по матану",
+        "перевод аттестата, линал",
+        "document translations",
+    ],
+)
+async def test_a_document_phrase_is_the_request_even_beside_a_named_subject(
+    session, text
+):
+    """Translation is not an aside, so a named subject does not displace it.
+
+    The rule that lets a named subject win re-reads the text with the non-study
+    kinds removed — and with translation among them the study stem it was
+    ordered above won again, so "перевод диплома, матан" came back as thesis
+    writing. Nobody writes "присяжный перевод диплома" in passing.
+    """
+    parsed = await parse(session, text, "ru", today=TODAY)
+    assert parsed.service_type == "translation"
