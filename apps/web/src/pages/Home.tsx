@@ -81,15 +81,6 @@ export default function HomePage() {
                 ) : null
               }
             />
-
-            {/* Things — gear to rent, textbooks to buy — are not seeded, so
-                `/home` always answers with an empty list and the block that
-                drew them never rendered. It navigated to `/results?category=`,
-                which the results screen does not read: the day somebody seeds a
-                category, those rows would have opened a list of *people*
-                unfiltered. Deleted rather than left with a dead link, because
-                the screen that lists things does not exist yet either, and it
-                will be written against a real one. */}
           </>
         )}
       </Screen>
