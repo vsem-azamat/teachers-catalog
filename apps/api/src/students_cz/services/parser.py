@@ -127,14 +127,15 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "перевод",
         "переклад",
         "preklad",
-        "prekladu",
+        # The English four are what make this block reach past documents:
+        # "translation studies tutor" reads as a document translation. Taken
+        # deliberately — a foreign student in Czechia asking about "translation"
+        # wants a stamped paper far more often than a seminar on translation
+        # theory, and that field is not in the catalog at all.
         Word("translation"),
         Word("translations"),
         "translate",
         "translating",
-        "sworn translation",
-        "certified translation",
-        "official translation",
     ),
     "nostrification": (
         "нострифик",
