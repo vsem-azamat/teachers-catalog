@@ -199,7 +199,11 @@ _INSTITUTION_SQL = text(
     f"""
     WITH q AS (
         SELECT {_NORM.format(expr="CAST(:qnorm AS text)")} AS raw,
-               {_NORM.format(expr="CAST(:qlat AS text)")} AS latin
+               {_NORM.format(expr="CAST(:qlat AS text)")} AS latin,
+               {_TOKENS.format(expr=_NORM.format(expr="CAST(:qnorm AS text)"))}
+                   AS tokens,
+               {_TOKENS.format(expr=_NORM.format(expr="CAST(:qlat AS text)"))}
+                   AS latin_tokens
     )
     SELECT n.id, n.label, n.score
       FROM (
@@ -215,12 +219,46 @@ _INSTITUTION_SQL = text(
                                         || replace(inst.code, '_', '[ _-]?')
                                         || '([^a-z0-9]|$)')
                         THEN 1.0 ELSE 0.0 END,
+                   -- A two-letter faculty name is a whole word or it is
+                   -- nothing. "FI", "UK" and "JU" are two letters, and trigram
+                   -- similarity puts any word containing them over the
+                   -- threshold: "по физике" came back naming the faculty FI at
+                   -- 0.67. Matched against the query's tokens, the same way
+                   -- subject synonyms are two functions up, so there is one
+                   -- idea of "whole word" here and no second regex to escape.
+                   --
+                   -- Two and not three: Czech declines the abbreviation itself,
+                   -- and "na FELu", "na FITu", "na MFFce" are how people write
+                   -- it. Cutting at three characters cost the 69 institutions
+                   -- with a three-character short name every inflected form
+                   -- they had — 60 of them faculties — and bought
+                   -- nothing — every false positive worth killing here is two
+                   -- letters long.
+                   --
+                   -- The two-letter names pay that price instead: "na UKu" and
+                   -- "na FIu" used to resolve at 0.67 and now resolve to
+                   -- nothing. That is the trade, taken deliberately. A missing
+                   -- institution filter shows a wider list than the person
+                   -- asked for; a wrong one silently narrows the catalog to a
+                   -- faculty nobody named, which is what "по физике" did.
+                   COALESCE(MAX(CASE WHEN length(i.short_name) < 3 AND (
+                            strpos(q.tokens, ' ' || {_NORM.format(expr="i.short_name")}
+                                   || ' ') > 0
+                         OR strpos(q.latin_tokens,
+                                   ' ' || {_NORM.format(expr="i.short_name")}
+                                   || ' ') > 0)
+                       THEN 1.0 ELSE 0.0 END), 0.0),
                    COALESCE(MAX(word_similarity(
                        immutable_unaccent(lower(i.name)), q.raw)), 0.0),
-                   COALESCE(MAX(word_similarity(
-                       immutable_unaccent(lower(i.short_name)), q.raw)), 0.0),
-                   COALESCE(MAX(word_similarity(
-                       immutable_unaccent(lower(i.short_name)), q.latin)), 0.0)
+                   -- Long enough for a trigram score to mean something.
+                   COALESCE(MAX(CASE WHEN length(i.short_name) >= 3
+                       THEN word_similarity(
+                           immutable_unaccent(lower(i.short_name)), q.raw)
+                       END), 0.0),
+                   COALESCE(MAX(CASE WHEN length(i.short_name) >= 3
+                       THEN word_similarity(
+                           immutable_unaccent(lower(i.short_name)), q.latin)
+                       END), 0.0)
                ) AS score
           FROM institutions inst
           CROSS JOIN q
@@ -233,7 +271,8 @@ _INSTITUTION_SQL = text(
           ) any_name ON TRUE
          WHERE inst.is_active
          GROUP BY inst.id, inst.code, pref.short_name, pref.name,
-                  any_name.short_name, any_name.name, q.raw, q.latin
+                  any_name.short_name, any_name.name,
+                  q.raw, q.latin, q.tokens, q.latin_tokens
       ) n
      WHERE n.score >= :threshold
      ORDER BY n.score DESC
@@ -293,7 +332,11 @@ async def find_institutions(
             id=r.id,
             label=r.label,
             score=float(r.score),
-            matched_on="code" if r.score >= 1.0 else "name",
+            # "exact" rather than "code": a 1.0 can come from the code, from a
+            # whole-word short name, or from a full name the query reproduced
+            # exactly, and which of the three is not carried back. What the
+            # field is read for is whether the match was a guess.
+            matched_on="exact" if r.score >= 1.0 else "name",
         )
         for r in rows
     ]

@@ -136,6 +136,55 @@ wrong language, misspelled. Three mechanisms handle it, cheapest first:
 Verified against a live database: `prijimacky` scores 1.00 against `Přijímačky`,
 `matematicka analyza` scores 1.00 against `Matematická analýza`.
 
+Three rules keep the trigram half of that from answering confidently about
+something else:
+
+- **A two-letter short name matches as a whole word or not at all.** `FI`, `UK`
+  and `JU` are two letters, and trigram similarity puts any word containing them
+  above the threshold, so "по физике" found the faculty FI and "uklidit" would
+  find Charles University. Those are compared against the query's tokens, the
+  same whole-word test the synonym branch uses. Three letters stay on the
+  trigram path deliberately: Czech declines the abbreviation itself — "na FELu",
+  "na MFFce" — and the whole-word rule would cost every one of the 69
+  institutions with a three-character short name, 60 of them faculties, the
+  inflected forms they have. The two-letter names pay that price instead: an
+  inflected "na UKu" resolves to nothing. That is the trade — a missing
+  institution filter shows a wider list than was asked for, a wrong one narrows
+  the catalog to a faculty nobody named.
+- **When the words naming the kind of help were the whole query, only a certain
+  subject survives.** There is no subject left in the text to find, so a trigram
+  score is the scorer answering a question nobody asked: "bank statement" came
+  back as `Probability and Statistics` at 0.61, which would then filter the
+  search by a subject nobody named. A synonym hit is kept, because a curated
+  synonym is not a guess — "курсовая" and "нострификация" are written down
+  against real subjects.
+- **A subject and a kind of help that carries none cannot both survive.** The
+  `life` group's offers have no subject at all, while the search applies subject
+  and kind of help together — so the pair matches nobody, and one of the two has
+  to go. Which one depends on whether the kind of help could have been mentioned
+  in passing:
+
+  Insurance, a bank statement, residence and housing are ordinary words that
+  turn up as asides. Beside a *named* subject — a curated synonym, or a name the
+  query reproduced exactly — the subject is the question and the aside is not:
+  "нужен матан, живу в общежитии" is about calculus, and reading it as housing
+  turned a list of tutors into an empty screen. Beside a *guessed* subject the
+  guess goes instead, because a score of 0.55 cannot narrow a kind of help that
+  has no subjects to narrow by.
+
+  A document translation is the exception, and always wins: nobody writes
+  "присяжный перевод диплома" in passing, so when that phrase appears it is the
+  request, and any subject beside it is dropped whether it was named or not.
+
+  The group, and not `requires_subject`, is what identifies this set — exam help
+  and nostrification have that false as well and belong outside it.
+
+A kind of help that cannot be named in words cannot be found, in any of the four
+languages. The five that are not about studying — insurance, a bank statement,
+a document translation, residence paperwork, housing — were offerable and
+unfindable, which is a listing nobody can reach. `language_tutoring` still has
+no keywords of its own and is reachable only as plain tutoring.
+
 Above all this sits the query parser, which turns free text into ids. Because it
 does, the database rarely has to do linguistic work at all — it looks up
 canonical ids and filters. `search_queries` logs every query with the parse, the
