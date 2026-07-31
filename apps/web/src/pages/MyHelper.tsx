@@ -438,6 +438,8 @@ interface Draft {
   subject_name: string | null;
   institution_id: number | null;
   institution_name: string | null;
+  option_ids: number[];
+  note: string | null;
   price: string;
   unit: PriceUnit;
   langs: string[];
@@ -455,6 +457,8 @@ function toDraft(offer: MyOffer): Draft {
     subject_name: offer.subject_name,
     institution_id: offer.institution_id,
     institution_name: offer.institution_name,
+    option_ids: offer.option_ids,
+    note: offer.note,
     // Rounded, because the field holds digits: an older row saved as 550.5
     // would otherwise render a decimal point the input then refuses to accept.
     price: offer.price_amount == null ? '' : String(Math.round(offer.price_amount)),
@@ -473,5 +477,10 @@ function toOffer(row: Draft): OfferInput {
     price_amount: row.price ? Number(row.price) : null,
     price_unit: row.unit,
     langs: row.langs,
+    // Carried straight back: this screen does not edit a checklist, and the
+    // server would keep it anyway, but sending what we hold means one save
+    // never depends on the other end remembering.
+    option_ids: row.option_ids,
+    note: row.note,
   };
 }

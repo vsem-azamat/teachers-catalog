@@ -190,16 +190,23 @@ async def _apply_offers(
         offer.price_amount = offer_spec.price_amount
         offer.price_unit = offer_spec.price_unit
         offer.langs = offer_spec.langs or list(user.spoken_langs)
-        # Only the options that belong to this kind of help. A stale client
-        # holding yesterday's checklist would otherwise attach insurance's lines
-        # to a bank statement, and nothing downstream would notice: the array
-        # references nothing, so the labels would simply read as somebody else's.
-        offer.option_ids = [
-            option_id
-            for option_id in offer_spec.option_ids
-            if option_id in options_by_service.get(offer_spec.service_type_id, set())
-        ]
-        offer.note = (offer_spec.note or "").strip() or None
+        # Said nothing, changed nothing — the same rule `work_format` follows
+        # below, and for the same reason: the profile screen sends offers
+        # without a checklist because it does not edit one, and a default of
+        # `[]` here would erase what the prices screen wrote.
+        if "option_ids" in offer_spec.model_fields_set:
+            # Only the options belonging to this kind of help. A stale client
+            # holding yesterday's checklist would otherwise attach insurance's
+            # lines to a bank statement, and nothing downstream would notice:
+            # the array references nothing, so the labels would simply read as
+            # somebody else's.
+            offer.option_ids = [
+                option_id
+                for option_id in offer_spec.option_ids
+                if option_id in options_by_service.get(offer_spec.service_type_id, set())
+            ]
+        if "note" in offer_spec.model_fields_set:
+            offer.note = (offer_spec.note or "").strip() or None
         # Same rule: a caller that said nothing about the format is not saying
         # every offer is now "either way". A row being created still needs one,
         # and the profile's is the only answer that cannot contradict it — the

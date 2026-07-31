@@ -3,7 +3,6 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { openTelegramLink } from '@tma.js/sdk-react';
 import { useParams } from 'react-router';
 import { AppHeader } from '@/components/AppHeader';
-
 import { PriceUnitLabel, StatLabel } from '@/components/Phrase';
 import {
   AvatarView,
@@ -23,6 +22,7 @@ import {
 } from '@/components/Ui';
 import { hapticSuccess, useMainButton } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
+import { groupRuns } from '@/lib/groups';
 import type { HelperDetail } from '@/lib/types';
 
 /**
@@ -161,10 +161,16 @@ export default function HelperPage() {
       {/* What an errand actually covers, in our words, and then in theirs. A
           chip saying "Insurance" is the same chip for everybody offering it;
           these lines are the difference between two people. */}
-      {data.offers
-        .filter((offer) => offer.options.length > 0 || offer.note)
-        .map((offer) => (
-          <div key={`covers-${offer.id}`}>
+      {groupRuns(
+        data.offers.filter((offer) => offer.options.length > 0 || offer.note),
+        // By kind of help, not by row: the screen that writes these puts the
+        // same checklist on every row of a service, so two subjects would
+        // otherwise print the same paragraph twice.
+        (offer) => offer.service_type,
+      )
+        .flatMap(({ id, items }) => (items[0] ? [{ id, offer: items[0] }] : []))
+        .map(({ id, offer }) => (
+          <div key={`covers-${id}`}>
             <Label>{offer.service_type_name}</Label>
             {offer.options.length > 0 ? (
               <ul className={ui.covers}>

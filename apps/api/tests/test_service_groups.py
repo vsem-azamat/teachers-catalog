@@ -66,13 +66,16 @@ def _migrated_rows() -> dict[str, dict[str, Any]]:
     return rows
 
 
-def _module(path: Path, name: str) -> Any:
-    """One constant out of one migration file, or None if it has none."""
+def _constant(path: Path, name: str, default: Any = None) -> Any:
+    """One constant out of one migration file, or `default` if it has none.
+
+    Loaded by path rather than imported: `versions` is not a package.
+    """
     spec = importlib.util.spec_from_file_location(f"_migration_{path.stem}", path)
     assert spec is not None and spec.loader is not None, f"cannot load {path}"
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return getattr(module, name, None)
+    return getattr(module, name, default)
 
 
 def _load(path: Path) -> list[dict[str, Any]]:
@@ -87,12 +90,7 @@ def _load(path: Path) -> list[dict[str, Any]]:
     a row naming a service type and changing nothing about it is a mistake worth
     a failure rather than a silent skip.
     """
-    spec = importlib.util.spec_from_file_location(f"_migration_{path.stem}", path)
-    assert spec is not None and spec.loader is not None, f"cannot load {path}"
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-
-    rows = list(getattr(module, "SERVICE_TYPES", []))
+    rows = list(_constant(path, "SERVICE_TYPES", []))
     for row in rows:
         assert "code" in row, f"{path.name}: a SERVICE_TYPES row is missing ['code']"
         assert set(row) - {"code"}, (
@@ -115,7 +113,6 @@ def _migrated_groups() -> dict[str, str]:
     landing on the same day and disagreeing about the same code would be
     resolved arbitrarily. They would also be a mistake worth catching by hand.
 
-    Loaded by path rather than imported: `versions` is not a package.
     """
     groups: dict[str, str] = {}
     for path in sorted(VERSIONS.glob("*.py")):
@@ -262,13 +259,18 @@ def test_seed_and_migration_agree_about_forms():
     assert migrated == {spec["code"]: spec["form"] for spec in SERVICE_TYPES}
 
 
-def _migrated_options() -> dict[str, list[str]]:
-    """Which options each service type's migration creates."""
-    options: dict[str, list[str]] = {}
+def _migrated_options() -> dict[str, list[tuple]]:
+    """Each service type's checklist as the migrations write it — labels too.
+
+    Codes alone would leave a hundred translated strings duplicated between the
+    seed and the migration with nothing comparing them, which is the exact
+    failure this module exists to prevent: a label corrected in the seed alone
+    never reaches production.
+    """
+    options: dict[str, list[tuple]] = {}
     for path in sorted(VERSIONS.glob("*.py")):
-        module_options = _module(path, "SERVICE_OPTIONS")
-        for code, rows in (module_options or {}).items():
-            options[code] = [row[0] for row in rows]
+        for code, rows in _constant(path, "SERVICE_OPTIONS", {}).items():
+            options[code] = [tuple(row) for row in rows]
     return options
 
 
@@ -293,7 +295,9 @@ def test_seed_and_migration_agree_about_options() -> None:
     """
     from students_cz.db.seed import SERVICE_OPTIONS
 
-    seeded = {code: [row[0] for row in rows] for code, rows in SERVICE_OPTIONS.items()}
+    seeded = {
+        code: [tuple(row) for row in rows] for code, rows in SERVICE_OPTIONS.items()
+    }
     migrated = _migrated_options()
     assert migrated, "no migration creates a checklist"
     assert migrated == seeded
@@ -301,13 +305,23 @@ def test_seed_and_migration_agree_about_options() -> None:
 
 @pytest.mark.asyncio
 async def test_the_checklist_reaches_the_database(session) -> None:
-    from students_cz.db.models import ServiceOption
+    from students_cz.db.models import ServiceOption, ServiceType
     from students_cz.db.seed import SERVICE_OPTIONS
 
     rows = (await session.scalars(select(ServiceOption))).all()
     assert rows, "reference data is not loaded — run `make seed`"
-    by_type: dict[int, list[str]] = {}
+
+    codes = {
+        service.id: service.code
+        for service in (await session.scalars(select(ServiceType))).all()
+    }
+    stored: dict[str, set[str]] = {}
     for row in rows:
-        by_type.setdefault(row.service_type_id, []).append(row.code)
-    total = sum(len(codes) for codes in by_type.values())
-    assert total == sum(len(rows) for rows in SERVICE_OPTIONS.values())
+        stored.setdefault(codes[row.service_type_id], set()).add(row.code)
+
+    # Per service type, not a total: a count alone passes with all twenty-five
+    # attached to the wrong kind of help, which is the mis-association the rest
+    # of this change goes to some trouble to prevent.
+    assert stored == {
+        code: {row[0] for row in rows} for code, rows in SERVICE_OPTIONS.items()
+    }

@@ -965,3 +965,53 @@ async def test_a_checklist_line_from_another_service_is_dropped(client, session)
 
     mine = (await client.get("/api/v1/helper", headers=headers)).json()
     assert mine["offers"][0]["option_ids"] == []
+
+
+async def test_a_save_that_says_nothing_about_the_checklist_keeps_it(client, session):
+    """The profile screen does not edit a checklist, so it must not erase one.
+
+    It sends offers without `option_ids` or `note`; a default of `[]` here would
+    wipe what the prices screen wrote, silently, on an unrelated save.
+    """
+    from sqlalchemy import select
+
+    from students_cz.db.models import ServiceOption, ServiceType
+
+    insurance = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "insurance")
+    )
+    option = await session.scalar(
+        select(ServiceOption).where(ServiceOption.service_type_id == insurance.id)
+    )
+
+    headers = auth_header(90503)
+    await client.put(
+        "/api/v1/helper",
+        json={
+            "publish": True,
+            "offers": [
+                {
+                    "service_type_id": insurance.id,
+                    "option_ids": [option.id],
+                    "note": "Оформляю за день.",
+                }
+            ],
+        },
+        headers=headers,
+    )
+
+    # The shape the profile screen sends: prices and languages, nothing else.
+    again = await client.put(
+        "/api/v1/helper",
+        json={
+            "publish": True,
+            "offers": [{"service_type_id": insurance.id, "price_amount": 900}],
+        },
+        headers=headers,
+    )
+    assert again.status_code == 200, again.text
+
+    mine = (await client.get("/api/v1/helper", headers=headers)).json()
+    assert mine["offers"][0]["option_ids"] == [option.id]
+    assert mine["offers"][0]["note"] == "Оформляю за день."
+    assert mine["offers"][0]["price_amount"] == 900

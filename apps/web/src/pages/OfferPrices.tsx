@@ -673,6 +673,8 @@ function keep(offer: MyOffer): OfferInput {
     price_amount: offer.price_amount,
     price_unit: offer.price_unit,
     langs: offer.langs,
+    option_ids: offer.option_ids,
+    note: offer.note,
   };
 }
 
