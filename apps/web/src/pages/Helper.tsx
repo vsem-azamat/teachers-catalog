@@ -19,6 +19,7 @@ import {
   Screen,
   SkeletonRows,
   Sub,
+  ui,
 } from '@/components/Ui';
 import { hapticSuccess, useMainButton } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
@@ -156,6 +157,29 @@ export default function HelperPage() {
           </Chips>
         </>
       ) : null}
+
+      {/* What an errand actually covers, in our words, and then in theirs. A
+          chip saying "Insurance" is the same chip for everybody offering it;
+          these lines are the difference between two people. */}
+      {data.offers
+        .filter((offer) => offer.options.length > 0 || offer.note)
+        .map((offer) => (
+          <div key={`covers-${offer.id}`}>
+            <Label>{offer.service_type_name}</Label>
+            {offer.options.length > 0 ? (
+              <ul className={ui.covers}>
+                {offer.options.map((label) => (
+                  <li key={label}>{label}</li>
+                ))}
+              </ul>
+            ) : null}
+            {offer.note ? (
+              <div style={{ marginTop: offer.options.length > 0 ? 8 : 0 }}>
+                <Sub>{offer.note}</Sub>
+              </div>
+            ) : null}
+          </div>
+        ))}
 
       {data.about ? (
         <>

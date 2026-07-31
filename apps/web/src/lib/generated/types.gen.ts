@@ -549,6 +549,14 @@ export type MyOfferOut = {
      * Langs
      */
     langs?: Array<string>;
+    /**
+     * Option Ids
+     */
+    option_ids: Array<number>;
+    /**
+     * Note
+     */
+    note: string | null;
 };
 
 /**
@@ -576,6 +584,14 @@ export type OfferIn = {
      * Langs
      */
     langs?: Array<string>;
+    /**
+     * Option Ids
+     */
+    option_ids?: Array<number>;
+    /**
+     * Note
+     */
+    note?: string | null;
 };
 
 /**
@@ -608,6 +624,14 @@ export type OfferOut = {
      */
     langs: Array<string>;
     work_format: WorkFormat;
+    /**
+     * Options
+     */
+    options: Array<string>;
+    /**
+     * Note
+     */
+    note: string | null;
 };
 
 /**
@@ -970,6 +994,26 @@ export type ServiceForm = 'lesson' | 'work' | 'errand';
 export type ServiceGroup = 'study' | 'entrance' | 'life';
 
 /**
+ * ServiceOptionOut
+ *
+ * One line of what a kind of help covers, in the caller's language.
+ */
+export type ServiceOptionOut = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Label
+     */
+    label: string;
+};
+
+/**
  * ServiceTypeOut
  */
 export type ServiceTypeOut = {
@@ -1004,6 +1048,10 @@ export type ServiceTypeOut = {
      */
     tone: number;
     default_price_unit: PriceUnit | null;
+    /**
+     * Options
+     */
+    options: Array<ServiceOptionOut>;
 };
 
 /**

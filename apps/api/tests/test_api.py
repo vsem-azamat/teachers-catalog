@@ -875,3 +875,93 @@ async def test_you_cannot_contact_yourself(client, session, helper_factory):
         f"/api/v1/helpers/{me.id}/contact", headers=auth_header(90604)
     )
     assert response.status_code == 400
+
+
+async def test_an_errand_says_what_it_covers_and_in_the_helpers_own_words(
+    client, session
+):
+    """The checklist round-trips, and reaches the person reading the profile.
+
+    An errand has no subject and no institution, so without these two the
+    catalog shows a row saying "Insurance" and nothing else — the same row for
+    everybody offering it.
+    """
+    from sqlalchemy import select
+
+    from students_cz.db.models import ServiceOption, ServiceType
+
+    insurance = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "insurance")
+    )
+    options = (
+        await session.scalars(
+            select(ServiceOption)
+            .where(ServiceOption.service_type_id == insurance.id)
+            .order_by(ServiceOption.sort)
+        )
+    ).all()
+    assert len(options) >= 2, "the seeded checklist is missing"
+
+    headers = auth_header(90501)
+    saved = await client.put(
+        "/api/v1/helper",
+        json={
+            "publish": True,
+            "offers": [
+                {
+                    "service_type_id": insurance.id,
+                    "option_ids": [options[0].id, options[1].id],
+                    "note": "Оформляю за день, отвечаю по-русски и по-чешски.",
+                }
+            ],
+        },
+        headers=headers,
+    )
+    assert saved.status_code == 200, saved.text
+
+    mine = (await client.get("/api/v1/helper", headers=headers)).json()
+    assert mine["offers"][0]["option_ids"] == [options[0].id, options[1].id]
+    assert mine["offers"][0]["note"].startswith("Оформляю")
+
+    # And the way a student sees it: labels, not ids.
+    me = (await client.get("/api/v1/me", headers=headers)).json()
+    page = (await client.get(f"/api/v1/helpers/{me['id']}", headers=headers)).json()
+    offer = next(o for o in page["offers"] if o["service_type"] == "insurance")
+    assert offer["options"], "the checklist did not reach the person reading it"
+    assert all(isinstance(label, str) and label for label in offer["options"])
+    assert offer["note"].startswith("Оформляю")
+
+
+async def test_a_checklist_line_from_another_service_is_dropped(client, session):
+    """A stale client must not attach insurance's lines to a bank statement.
+
+    Nothing downstream would notice: the array references nothing, so the
+    labels would simply read as somebody else's.
+    """
+    from sqlalchemy import select
+
+    from students_cz.db.models import ServiceOption, ServiceType
+
+    bank = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "bank_letter")
+    )
+    insurance = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "insurance")
+    )
+    stranger = await session.scalar(
+        select(ServiceOption).where(ServiceOption.service_type_id == insurance.id)
+    )
+
+    headers = auth_header(90502)
+    saved = await client.put(
+        "/api/v1/helper",
+        json={
+            "publish": True,
+            "offers": [{"service_type_id": bank.id, "option_ids": [stranger.id]}],
+        },
+        headers=headers,
+    )
+    assert saved.status_code == 200, saved.text
+
+    mine = (await client.get("/api/v1/helper", headers=headers)).json()
+    assert mine["offers"][0]["option_ids"] == []

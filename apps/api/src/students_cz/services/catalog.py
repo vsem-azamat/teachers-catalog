@@ -12,6 +12,7 @@ from students_cz.db.models import (
     HelperProfile,
     Institution,
     Offer,
+    ServiceOption,
     ServiceType,
     Subject,
     User,
@@ -57,6 +58,27 @@ def avatar_for(user: User) -> Avatar:
         tone=user.tg_id % TONE_COUNT,
         photo_url=user.photo_url,
     )
+
+
+async def option_labels(
+    session: AsyncSession, lang: UiLang, ids: set[int]
+) -> dict[int, str]:
+    """Checklist labels by id, translated, active ones only.
+
+    One query for a whole page of offers. An option that has been withdrawn is
+    simply absent, which is how a retired line stops appearing without anybody
+    rewriting the arrays that point at it.
+    """
+    if not ids:
+        return {}
+    rows = (
+        await session.scalars(
+            select(ServiceOption)
+            .where(ServiceOption.id.in_(ids), ServiceOption.is_active.is_(True))
+            .options(selectinload(ServiceOption.names))
+        )
+    ).all()
+    return {row.id: label for row in rows if (label := translated(row, lang, "label"))}
 
 
 async def home_sections(
@@ -537,6 +559,13 @@ async def _offers_out(
         session, ServiceType, (o.service_type_id for o in helper.offers)
     )
 
+    # Every checklist label these offers point at, in one query rather than one
+    # per offer. Inactive options are left out: a line withdrawn from the
+    # catalog should stop being shown, and the ids stay valid either way.
+    labels = await option_labels(
+        session, lang, {oid for offer in helper.offers for oid in offer.option_ids}
+    )
+
     out: list[OfferOut] = []
     for offer in helper.offers:
         if not offer.is_active:
@@ -564,6 +593,8 @@ async def _offers_out(
                 ),
                 langs=list(offer.langs),
                 work_format=offer.work_format,
+                options=[labels[oid] for oid in offer.option_ids if oid in labels],
+                note=offer.note,
             )
         )
     return out

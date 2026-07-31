@@ -5,7 +5,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router';
 
 import { AppHeader } from '@/components/AppHeader';
 import { InstitutionPicker } from '@/components/InstitutionPicker';
-import { iconForService } from '@/components/icons';
+import { CheckIcon, iconForService } from '@/components/icons';
 import { ServiceGroupLabel } from '@/components/Phrase';
 import { SubjectSearch } from '@/components/SubjectSearch';
 import {
@@ -185,6 +185,34 @@ export default function OfferPricesPage() {
     });
   };
 
+  // The checklist belongs to the service, not to one of its rows: a person who
+  // prepares for ČVUT and for VŠE covers the same things either way. Written to
+  // every row of the service so the save carries it whichever rows survive.
+  const toggleOption = (type: ServiceType, optionId: number) => {
+    hapticSelection();
+    setRows((current) => {
+      const on = current.some(
+        (row) => row.service_type_id === type.id && row.option_ids.includes(optionId),
+      );
+      return current.map((row) =>
+        row.service_type_id === type.id
+          ? {
+              ...row,
+              option_ids: on
+                ? row.option_ids.filter((id) => id !== optionId)
+                : [...row.option_ids, optionId],
+            }
+          : row,
+      );
+    });
+  };
+
+  const setNote = (type: ServiceType, note: string) => {
+    setRows((current) =>
+      current.map((row) => (row.service_type_id === type.id ? { ...row, note } : row)),
+    );
+  };
+
   /**
    * Attach a subject or a school to this service.
    *
@@ -333,6 +361,34 @@ export default function OfferPricesPage() {
                         </>
                       ) : null}
 
+                      {/* What this errand covers. Reference data rather than
+                          free text, because a student can search it and it
+                          arrives already translated — the words below the list
+                          are for what the list could not say. */}
+                      {type.options.length > 0 ? (
+                        <div className={ui.ticks}>
+                          {type.options.map((option) => {
+                            const on = mineHere.some((row) =>
+                              row.option_ids.includes(option.id),
+                            );
+                            return (
+                              <button
+                                key={option.id}
+                                type="button"
+                                className={`${ui.tick} ${on ? ui.tickOn : ''}`}
+                                aria-pressed={on}
+                                onClick={() => toggleOption(type, option.id)}
+                              >
+                                <span className={ui.tickBox}>
+                                  {on ? <CheckIcon size={11} /> : null}
+                                </span>
+                                {option.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+
                       {/* One price per row, not per service. A tutor really
                           does charge 500 for calculus and 700 for physics, and
                           a single field for the pair rewrites both the first
@@ -366,6 +422,23 @@ export default function OfferPricesPage() {
                           }
                         />
                       ))}
+                      {type.options.length > 0 ? (
+                        <div className={`${ui.field} ${ui.fieldTall}`}>
+                          <textarea
+                            value={mineHere[0]?.note ?? ''}
+                            onChange={(event) => setNote(type, event.target.value)}
+                            placeholder={t`Пара слов о себе — что делаешь и как быстро`}
+                            rows={3}
+                            maxLength={600}
+                            style={{
+                              all: 'unset',
+                              width: '100%',
+                              resize: 'none',
+                              lineHeight: 1.45,
+                            }}
+                          />
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 );
@@ -513,6 +586,8 @@ interface Draft {
   subject_name: string | null;
   institution_id: number | null;
   institution_name: string | null;
+  option_ids: number[];
+  note: string;
   price: string;
   unit: PriceUnit;
   langs: string[];
@@ -561,6 +636,8 @@ function blank(type: ServiceType): Draft {
     subject_name: null,
     institution_id: null,
     institution_name: null,
+    option_ids: [],
+    note: '',
     price: '',
     // From the server, not guessed here: a thesis priced by the hour reads as
     // ten times too little.
@@ -577,6 +654,8 @@ function fromOffer(type: ServiceType, offer: MyOffer): Draft {
     subject_name: offer.subject_name,
     institution_id: offer.institution_id,
     institution_name: offer.institution_name,
+    option_ids: offer.option_ids,
+    note: offer.note ?? '',
     // Rounded, because the field holds digits: an older row saved as 550.5
     // would render a decimal point the input then refuses to accept.
     price: offer.price_amount == null ? '' : String(Math.round(offer.price_amount)),
@@ -607,5 +686,7 @@ function toOffer(row: Draft): OfferInput {
     price_amount: row.price ? Number(row.price) : null,
     price_unit: row.unit,
     langs: row.langs,
+    option_ids: row.option_ids,
+    note: row.note.trim() || null,
   };
 }

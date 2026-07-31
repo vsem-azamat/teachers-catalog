@@ -14,6 +14,7 @@ from students_cz.db.models import (
     Institution,
     Language,
     Offer,
+    ServiceOption,
     ServiceType,
     Subject,
 )
@@ -24,6 +25,7 @@ from students_cz.db.models.enums import (
 from students_cz.schemas import (
     InstitutionOut,
     LanguageOut,
+    ServiceOptionOut,
     ServiceTypeOut,
     SubjectOut,
 )
@@ -66,7 +68,10 @@ async def service_types(
             # the type's declared order, which is the order the shelves are
             # meant to appear in; `test_home_hands_over_whole_groups` pins it.
             .order_by(ServiceType.group_code, ServiceType.sort)
-            .options(selectinload(ServiceType.names))
+            .options(
+                selectinload(ServiceType.names),
+                selectinload(ServiceType.options).selectinload(ServiceOption.names),
+            )
         )
     ).all()
     return [
@@ -84,6 +89,17 @@ async def service_types(
             requires_subject=r.requires_subject,
             requires_institution=r.requires_institution,
             default_price_unit=_unit(r.default_price_unit),
+            options=[
+                ServiceOptionOut(
+                    id=option.id,
+                    code=option.code,
+                    # Falls back to the code rather than to an empty line: a
+                    # checkbox with no words is worse than an untranslated one.
+                    label=translated(option, lang, "label") or option.code,
+                )
+                for option in sorted(r.options, key=lambda o: o.sort)
+                if option.is_active
+            ],
         )
         for index, r in enumerate(rows)
     ]

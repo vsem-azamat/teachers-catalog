@@ -66,6 +66,15 @@ def _migrated_rows() -> dict[str, dict[str, Any]]:
     return rows
 
 
+def _module(path: Path, name: str) -> Any:
+    """One constant out of one migration file, or None if it has none."""
+    spec = importlib.util.spec_from_file_location(f"_migration_{path.stem}", path)
+    assert spec is not None and spec.loader is not None, f"cannot load {path}"
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return getattr(module, name, None)
+
+
 def _load(path: Path) -> list[dict[str, Any]]:
     """The service types one migration writes, or nothing if it writes none.
 
@@ -251,3 +260,54 @@ def test_seed_and_migration_agree_about_forms():
     migrated = _migrated_forms()
     assert migrated, "no migration sets a form shape"
     assert migrated == {spec["code"]: spec["form"] for spec in SERVICE_TYPES}
+
+
+def _migrated_options() -> dict[str, list[str]]:
+    """Which options each service type's migration creates."""
+    options: dict[str, list[str]] = {}
+    for path in sorted(VERSIONS.glob("*.py")):
+        module_options = _module(path, "SERVICE_OPTIONS")
+        for code, rows in (module_options or {}).items():
+            options[code] = [row[0] for row in rows]
+    return options
+
+
+def test_every_errand_says_what_it_covers() -> None:
+    """A tile is the whole query for an errand, so the checklist is the offer.
+
+    Without one the person offering insurance can say nothing beyond the word
+    "insurance", and the student reads a list of identical rows.
+    """
+    from students_cz.db.seed import SERVICE_OPTIONS
+
+    errands = {spec["code"] for spec in SERVICE_TYPES if spec["form"] == "errand"}
+    missing = sorted(errands - set(SERVICE_OPTIONS))
+    assert missing == [], f"errands with no checklist: {missing}"
+
+
+def test_seed_and_migration_agree_about_options() -> None:
+    """The deploy runs migrations and never the seed.
+
+    A checklist that exists only in the seed is one every developer sees and no
+    student does.
+    """
+    from students_cz.db.seed import SERVICE_OPTIONS
+
+    seeded = {code: [row[0] for row in rows] for code, rows in SERVICE_OPTIONS.items()}
+    migrated = _migrated_options()
+    assert migrated, "no migration creates a checklist"
+    assert migrated == seeded
+
+
+@pytest.mark.asyncio
+async def test_the_checklist_reaches_the_database(session) -> None:
+    from students_cz.db.models import ServiceOption
+    from students_cz.db.seed import SERVICE_OPTIONS
+
+    rows = (await session.scalars(select(ServiceOption))).all()
+    assert rows, "reference data is not loaded — run `make seed`"
+    by_type: dict[int, list[str]] = {}
+    for row in rows:
+        by_type.setdefault(row.service_type_id, []).append(row.code)
+    total = sum(len(codes) for codes in by_type.values())
+    assert total == sum(len(rows) for rows in SERVICE_OPTIONS.values())

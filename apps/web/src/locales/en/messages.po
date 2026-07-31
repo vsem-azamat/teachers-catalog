@@ -25,6 +25,10 @@ msgstr "Set a public @username in Telegram — otherwise nobody can write back"
 msgid "Здесь появятся заявки по твоим предметам. Чем больше предметов в профиле, тем чаще."
 msgstr "Requests about your subjects will show up here. The more subjects in your profile, the more often."
 
+#: src/pages/OfferPrices.tsx
+msgid "Пара слов о себе — что делаешь и как быстро"
+msgstr "A couple of lines about you — what you do and how fast"
+
 #: src/components/Phrase.tsx
 msgid "оценка"
 msgstr "rating"

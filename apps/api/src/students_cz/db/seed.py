@@ -22,6 +22,8 @@ from students_cz.db.models import (
     InstitutionI18n,
     Language,
     LanguageI18n,
+    ServiceOption,
+    ServiceOptionI18n,
     ServiceType,
     ServiceTypeI18n,
     Subject,
@@ -249,6 +251,192 @@ WORKING_LANGUAGES: list[tuple[str, dict[str, str]]] = [
 ]
 
 
+# What each errand covers, by service type code: (code, ru, cs, en, uk).
+#
+# An errand has no subject and no institution — the tile is the whole query — so
+# without this a person offering insurance can say nothing beyond the word.
+# `test_service_groups.py` fails when this and the migration disagree.
+SERVICE_OPTIONS: dict[str, list[tuple[str, str, str, str, str]]] = {
+    "insurance": [
+        (
+            "vzp_pvzp",
+            "Оформлю VZP или PVZP",
+            "Vyřídím VZP nebo PVZP",
+            "I arrange VZP or PVZP",
+            "Оформлю VZP або PVZP",
+        ),
+        (
+            "for_visa",
+            "Для визы и продления",
+            "K vízu a k prodloužení",
+            "For the visa and its renewal",
+            "Для візи та продовження",
+        ),
+        (
+            "choose_plan",
+            "Помогу выбрать тариф",
+            "Poradím s tarifem",
+            "I help you pick a plan",
+            "Допоможу обрати тариф",
+        ),
+        (
+            "go_with",
+            "Схожу вместе в офис",
+            "Půjdu s tebou na pobočku",
+            "I come to the office with you",
+            "Схожу разом до офісу",
+        ),
+    ],
+    "bank_letter": [
+        (
+            "open_account",
+            "Открою счёт вместе с тобой",
+            "Otevřu s tebou účet",
+            "I open the account with you",
+            "Відкрию рахунок разом з тобою",
+        ),
+        (
+            "statement",
+            "Возьму выписку для ВНЖ",
+            "Zařídím výpis k pobytu",
+            "I get the statement for your permit",
+            "Візьму виписку для посвідки",
+        ),
+        (
+            "go_with",
+            "Схожу вместе в банк",
+            "Půjdu s tebou do banky",
+            "I come to the bank with you",
+            "Схожу разом до банку",
+        ),
+    ],
+    "translation": [
+        (
+            "sworn",
+            "Судебный перевод с печатью",
+            "Soudní překlad s razítkem",
+            "Sworn translation with a stamp",
+            "Судовий переклад з печаткою",
+        ),
+        (
+            "diploma",
+            "Диплом и аттестат",
+            "Diplom a vysvědčení",
+            "Diplomas and school certificates",
+            "Диплом і атестат",
+        ),
+        (
+            "notary",
+            "Нотариальное заверение",
+            "Notářské ověření",
+            "Notarised certification",
+            "Нотаріальне засвідчення",
+        ),
+    ],
+    "residence": [
+        (
+            "appointment",
+            "Запишу на подачу",
+            "Objednám tě k podání",
+            "I book your appointment",
+            "Запишу на подання",
+        ),
+        (
+            "documents",
+            "Соберу пакет документов",
+            "Připravím složku dokumentů",
+            "I put the paperwork together",
+            "Зберу пакет документів",
+        ),
+        (
+            "interpreter",
+            "Схожу вместе как переводчик",
+            "Půjdu s tebou jako tlumočník",
+            "I come along as your interpreter",
+            "Схожу разом як перекладач",
+        ),
+        (
+            "renewal",
+            "Продление визы и ВНЖ",
+            "Prodloužení víza a pobytu",
+            "Renewing a visa or a permit",
+            "Продовження візи та посвідки",
+        ),
+    ],
+    "housing": [
+        ("dormitory", "Общежитие", "Kolej", "A dormitory place", "Гуртожиток"),
+        ("flat", "Поиск квартиры", "Hledání bytu", "Finding a flat", "Пошук квартири"),
+        (
+            "contract",
+            "Проверю договор",
+            "Zkontroluju smlouvu",
+            "I check the contract",
+            "Перевірю договір",
+        ),
+        (
+            "moving",
+            "Помогу с переездом",
+            "Pomůžu se stěhováním",
+            "I help with the move",
+            "Допоможу з переїздом",
+        ),
+    ],
+    "nostrification": [
+        (
+            "papers",
+            "Подам документы",
+            "Podám dokumenty",
+            "I file the documents",
+            "Подам документи",
+        ),
+        (
+            "exams",
+            "Подготовлю к досдаче предметов",
+            "Připravím na dozkoušení předmětů",
+            "I prepare you for the make-up exams",
+            "Підготую до складання предметів",
+        ),
+        (
+            "school",
+            "Аттестат",
+            "Vysvědčení ze střední",
+            "A school certificate",
+            "Атестат",
+        ),
+        (
+            "university",
+            "Диплом",
+            "Vysokoškolský diplom",
+            "A university diploma",
+            "Диплом",
+        ),
+    ],
+    "exam_live_help": [
+        (
+            "on_call",
+            "На связи весь экзамен",
+            "Na příjmu po celou zkoušku",
+            "On call for the whole exam",
+            "На зв'язку весь іспит",
+        ),
+        (
+            "prep",
+            "Разберу задание заранее",
+            "Projdu zadání předem",
+            "I go through the paper beforehand",
+            "Розберу завдання заздалегідь",
+        ),
+        (
+            "night",
+            "Ночью и в выходные",
+            "V noci i o víkendu",
+            "Nights and weekends",
+            "Вночі та у вихідні",
+        ),
+    ],
+}
+
+
 async def seed_service_types(session: AsyncSession) -> int:
     for sort, spec in enumerate(SERVICE_TYPES, start=1):
         row = await session.scalar(
@@ -275,8 +463,37 @@ async def seed_service_types(session: AsyncSession) -> int:
                 {"service_type_id": row.id, "lang": UiLang(lang)},
                 {"name": name, "hint": hint},
             )
+        await _seed_options(session, row, SERVICE_OPTIONS.get(spec["code"], []))
     await session.commit()
     return len(SERVICE_TYPES)
+
+
+async def _seed_options(
+    session: AsyncSession,
+    service: ServiceType,
+    rows: list[tuple[str, str, str, str, str]],
+) -> None:
+    """The checklist of one service type, and its labels in four languages."""
+    for sort, (code, ru, cs, en, uk) in enumerate(rows, start=1):
+        option = await session.scalar(
+            select(ServiceOption).where(
+                ServiceOption.service_type_id == service.id,
+                ServiceOption.code == code,
+            )
+        )
+        if option is None:
+            option = ServiceOption(service_type_id=service.id, code=code)
+            session.add(option)
+        option.sort = sort
+        option.is_active = True
+        await session.flush()
+        for lang, label in (("ru", ru), ("cs", cs), ("en", en), ("uk", uk)):
+            await _upsert_i18n(
+                session,
+                ServiceOptionI18n,
+                {"option_id": option.id, "lang": UiLang(lang)},
+                {"label": label},
+            )
 
 
 async def seed_languages(session: AsyncSession) -> int:
