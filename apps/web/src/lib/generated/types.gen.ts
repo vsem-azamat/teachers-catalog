@@ -937,6 +937,24 @@ export type SearchOut = {
 };
 
 /**
+ * ServiceForm
+ *
+ * The shape of the form that offers a kind of help.
+ *
+ * A different question from ``ServiceGroup``, and deliberately a separate
+ * column. The group is for the student browsing — *what do I need*. The shape
+ * is for the person offering — *what do we ask you*. They nearly coincide, and
+ * the places they do not are the ones that matter: help *during* an exam sits
+ * on the entrance shelf, where a student compares it with exam preparation,
+ * and its form has nothing to do with teaching.
+ *
+ * ``work`` is always remote, so its form does not ask how you work. Lessons
+ * and errands ask the same three answers under different words; see
+ * docs/data-model.md.
+ */
+export type ServiceForm = 'lesson' | 'work' | 'errand';
+
+/**
  * ServiceGroup
  *
  * Which shelf a kind of help sits on.
@@ -964,6 +982,7 @@ export type ServiceTypeOut = {
      */
     code: string;
     group: ServiceGroup;
+    form_shape: ServiceForm;
     /**
      * Name
      */

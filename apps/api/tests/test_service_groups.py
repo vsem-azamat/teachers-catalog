@@ -63,9 +63,14 @@ def _migrated_rows() -> dict[str, dict[str, Any]]:
 def _load(path: Path) -> list[dict[str, Any]]:
     """The service types one migration writes, or nothing if it writes none.
 
-    Every row is checked for the two keys these comparisons index, and named if
-    it lacks them: a future migration that spells its table differently should
-    say so here rather than fail with a bare `KeyError` in a helper.
+    Every row is checked for the keys these comparisons index, and named if it
+    lacks them: a future migration that spells its table differently should say
+    so here rather than fail with a bare `KeyError` in a helper.
+
+    A migration carries the columns it sets and no others, so `code` is the only
+    key every row must have. Beyond that a row is required to say *something* —
+    a row naming a service type and changing nothing about it is a mistake worth
+    a failure rather than a silent skip.
     """
     spec = importlib.util.spec_from_file_location(f"_migration_{path.stem}", path)
     assert spec is not None and spec.loader is not None, f"cannot load {path}"
@@ -74,8 +79,10 @@ def _load(path: Path) -> list[dict[str, Any]]:
 
     rows = list(getattr(module, "SERVICE_TYPES", []))
     for row in rows:
-        missing = sorted({"code", "group"} - set(row))
-        assert not missing, f"{path.name}: a SERVICE_TYPES row is missing {missing}"
+        assert "code" in row, f"{path.name}: a SERVICE_TYPES row is missing ['code']"
+        assert set(row) - {"code"}, (
+            f"{path.name}: {row['code']} names a service type and sets nothing"
+        )
     return rows
 
 
@@ -98,7 +105,12 @@ def _migrated_groups() -> dict[str, str]:
     groups: dict[str, str] = {}
     for path in sorted(VERSIONS.glob("*.py")):
         for row in _load(path):
-            groups[row["code"]] = row["group"]
+            # A migration that sets some other column names the same service
+            # types and says nothing about their shelf. Skipping those is what
+            # keeps "which types exist" answerable from every migration
+            # together, rather than only from the ones about groups.
+            if "group" in row:
+                groups[row["code"]] = row["group"]
     return groups
 
 
@@ -180,3 +192,43 @@ def test_subjectless_is_exactly_the_life_group():
     """
     life = {spec["code"] for spec in SERVICE_TYPES if spec["group"] == "life"}
     assert life == SUBJECTLESS
+
+
+def test_every_seeded_service_type_declares_a_form():
+    """The shape of the form that offers it, not the shelf it sits on.
+
+    Without this a new kind of help takes the column's default and gets the
+    lesson form — which is how a bank statement came to ask how you teach.
+    """
+    missing = [spec["code"] for spec in SERVICE_TYPES if not spec.get("form")]
+    assert not missing, f"no form shape: {missing}"
+
+
+def test_the_form_shape_reaches_the_database():
+    from students_cz.db.seed import SERVICE_TYPES as SEEDED
+
+    forms = {spec["code"]: spec["form"] for spec in SEEDED}
+    assert forms["tutoring"] == "lesson"
+    assert forms["writing"] == "work"
+    # Standby for one event on one day. It sits on the entrance shelf, where a
+    # student compares it with exam preparation, and its form has nothing to do
+    # with teaching.
+    assert forms["exam_live_help"] == "errand"
+    assert forms["insurance"] == "errand"
+
+
+def test_seed_and_migration_agree_about_forms():
+    """The deploy runs migrations and never the seed.
+
+    A form shape that exists only in the seed reaches every developer's
+    database and no production one, and the production form then asks a
+    bank-statement helper how they teach — silently, because nothing errors.
+    """
+    seeded = {spec["code"]: spec["form"] for spec in SERVICE_TYPES}
+    migrated: dict[str, str] = {}
+    for path in sorted(VERSIONS.glob("*.py")):
+        for row in _load(path):
+            if "form" in row:
+                migrated[row["code"]] = row["form"]
+    assert migrated, "no migration sets a form shape"
+    assert migrated == seeded

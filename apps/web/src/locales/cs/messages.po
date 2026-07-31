@@ -188,6 +188,10 @@ msgstr "Tvůj předmět — {0}"
 msgid "Дальше · {0}"
 msgstr "Dál · {0}"
 
+#: src/components/InstitutionPicker.tsx
+msgid "Вуз или факультет — ČVUT, VŠE, FEL"
+msgstr "Škola nebo fakulta — ČVUT, VŠE, FEL"
+
 #: src/pages/MyHelper.tsx
 msgid "репетиторство, работы, документы"
 msgstr "doučování, práce, dokumenty"
@@ -534,6 +538,10 @@ msgstr "Tohle si přečtou první. Pár živých vět funguje líp než seznam."
 #~ msgid "По этому мы отсеиваем тех, с кем вы друг друга не поймёте."
 #~ msgstr "Podle toho vyřazujeme ty, se kterými byste si nerozuměli."
 
+#: src/pages/MyHelper.tsx
+msgid "Удалённо"
+msgstr "Na dálku"
+
 #: src/pages/Results.tsx
 msgid "изменить"
 msgstr "změnit"
@@ -704,6 +712,10 @@ msgid "Сколько берёшь?"
 msgstr "Kolik si bereš?"
 
 #: src/pages/MyHelper.tsx
+msgid "Хожу вместе"
+msgstr "Jdu s tebou"
+
+#: src/pages/MyHelper.tsx
 msgid "Район или где удобно встречаться"
 msgstr "Čtvrť nebo kde se ti hodí potkat"
 
@@ -839,6 +851,10 @@ msgstr "Zatím nikdo"
 msgid "Сейчас бесплатно. Когда людей станет больше, размещение таких услуг станет платным."
 msgstr "Zatím zdarma. Až bude lidí víc, bude zveřejnění takových služeb placené."
 
+#: src/pages/MyHelper.tsx
+msgid "Как работаешь"
+msgstr "Jak to děláš"
+
 #: src/pages/Life.tsx
 msgid "Не про учёбу"
 msgstr "Není o škole"
@@ -883,6 +899,10 @@ msgstr "Dokumenty a život"
 #: src/pages/Ask.tsx
 msgid "Поняли так — поправь, если не то"
 msgstr "Pochopili jsme to takhle — oprav to, pokud to není ono"
+
+#: src/pages/MyHelper.tsx
+msgid "Лично"
+msgstr "Osobně"
 
 #: src/pages/OfferPrices.tsx
 msgid "Необязательно. Пустое поле значит «договоримся»."

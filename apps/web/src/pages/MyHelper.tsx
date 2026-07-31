@@ -1,6 +1,6 @@
 import { Trans, useLingui } from '@lingui/react/macro';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -22,6 +22,7 @@ import {
 import { hapticSuccess, useMainButton } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
 import type { MyOffer, OfferInput, PriceUnit, WorkFormat } from '@/lib/types';
+import { askedFormat, formatOptions, formatQuestion } from '@/lib/workFormat';
 
 /**
  * The helper's own page: everything they have told us, editable.
@@ -47,6 +48,14 @@ export default function MyHelperPage() {
     queryFn: ({ signal }) => api.getMyHelper(signal),
   });
 
+  // Which questions this person's services actually have. Cached for an hour
+  // and shared with every other screen that needs the reference list.
+  const { data: serviceTypes } = useQuery({
+    queryKey: ['service-types'],
+    queryFn: ({ signal }) => api.getServiceTypes(signal),
+    staleTime: 60 * 60 * 1000,
+  });
+
   const [headline, setHeadline] = useState('');
   const [about, setAbout] = useState('');
   const [city, setCity] = useState('');
@@ -54,6 +63,14 @@ export default function MyHelperPage() {
   const [workFormat, setWorkFormat] = useState<WorkFormat>('both');
   const [listed, setListed] = useState(true);
   const [rows, setRows] = useState<Draft[]>([]);
+
+  // Worded by what this person actually offers. Shared with the screen that
+  // sets prices, which asks the same question about the same column.
+  const asked = useMemo(
+    () =>
+      askedFormat(data?.offers.map((offer) => offer.service_type) ?? [], serviceTypes),
+    [serviceTypes, data],
+  );
 
   // Filled once, from the server. Later renders must not clobber what the
   // person is typing, which is what a plain `value={data.about}` would do.
@@ -214,20 +231,18 @@ export default function MyHelperPage() {
             </Rows>
           </div>
 
-          <Label>
-            <Trans>Как занимаешься</Trans>
-          </Label>
-          <Segmented
-            value={workFormat}
-            onChange={setWorkFormat}
-            options={[
-              { value: 'online' as WorkFormat, label: <Trans>Онлайн</Trans> },
-              { value: 'offline' as WorkFormat, label: <Trans>Очно</Trans> },
-              { value: 'both' as WorkFormat, label: <Trans>И так, и так</Trans> },
-            ]}
-          />
+          {asked === null ? null : (
+            <>
+              <Label>{formatQuestion(asked)}</Label>
+              <Segmented
+                value={workFormat}
+                onChange={setWorkFormat}
+                options={formatOptions(asked)}
+              />
+            </>
+          )}
 
-          {workFormat === 'online' ? null : (
+          {asked === null || workFormat === 'online' ? null : (
             <>
               <Label>
                 <Trans>Где</Trans>

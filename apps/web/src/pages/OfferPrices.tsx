@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router';
 
 import { AppHeader } from '@/components/AppHeader';
+import { InstitutionPicker } from '@/components/InstitutionPicker';
 import { iconForService } from '@/components/icons';
 import { ServiceGroupLabel } from '@/components/Phrase';
 import { SubjectSearch } from '@/components/SubjectSearch';
@@ -25,6 +26,7 @@ import { hapticSelection, hapticSuccess, useMainButton } from '@/hooks/useTelegr
 import { api } from '@/lib/api';
 import { groupRuns } from '@/lib/groups';
 import type {
+  Institution,
   MyOffer,
   OfferInput,
   PriceUnit,
@@ -32,6 +34,7 @@ import type {
   Subject,
   WorkFormat,
 } from '@/lib/types';
+import { askedFormat, formatOptions, formatQuestion } from '@/lib/workFormat';
 
 /**
  * Prices for everything that was ticked, on one screen.
@@ -82,6 +85,16 @@ export default function OfferPricesPage() {
     const wanted = new Set(picked);
     return serviceTypes.filter((type) => wanted.has(type.code));
   }, [picked, serviceTypes]);
+
+  // Worded by what was actually ticked, not by what the screen is called.
+  const asked = useMemo(
+    () =>
+      askedFormat(
+        chosen.map((type) => type.code),
+        serviceTypes,
+      ),
+    [chosen, serviceTypes],
+  );
 
   // Filled once. Whatever the person already offers is carried in, so a save
   // that replaces the whole list does not throw away the prices they set last
@@ -157,6 +170,35 @@ export default function OfferPricesPage() {
 
   // Arrived here directly — a reload, or a link. There is nothing to price.
   if (!picked || picked.length === 0) return <Navigate to="/offer" replace />;
+
+  const addInstitution = (type: ServiceType, institution: Institution) => {
+    hapticSelection();
+    setRows((current) => {
+      // The same shape as a subject: one row per school, because preparing for
+      // ČVUT and for VŠE are two offers, and `offers` is unique on the four
+      // axes precisely so they can be.
+      const empty = current.find(
+        (row) => row.service_type_id === type.id && row.institution_id === null,
+      );
+      const named = institution.short_name ?? institution.name;
+      if (empty) {
+        return current.map((row) =>
+          row === empty
+            ? { ...row, institution_id: institution.id, institution_name: named }
+            : row,
+        );
+      }
+      return [
+        ...current,
+        {
+          ...blank(type),
+          key: `${type.id}:inst:${institution.id}`,
+          institution_id: institution.id,
+          institution_name: named,
+        },
+      ];
+    });
+  };
 
   const addSubject = (type: ServiceType, subject: Subject) => {
     hapticSelection();
@@ -278,6 +320,46 @@ export default function OfferPricesPage() {
                         </>
                       ) : null}
 
+                      {/* The one service type that declares it needs a school.
+                          The flag has been in the database since the grouping
+                          and read by nothing, so preparation for ČVUT's
+                          entrance exam was stored the same way as preparation
+                          for nobody's. */}
+                      {type.requires_institution ? (
+                        <>
+                          {mineHere.some((row) => row.institution_id !== null) ? (
+                            <Chips>
+                              {mineHere
+                                .filter((row) => row.institution_id !== null)
+                                .map((row) => (
+                                  <ChipView
+                                    key={row.key}
+                                    active
+                                    removeLabel={t`Убрать`}
+                                    onRemove={() =>
+                                      setRows((current) => {
+                                        const left = current.filter(
+                                          (other) => other.key !== row.key,
+                                        );
+                                        return left.some(
+                                          (other) => other.service_type_id === type.id,
+                                        )
+                                          ? left
+                                          : [...left, blank(type)];
+                                      })
+                                    }
+                                  >
+                                    {row.institution_name}
+                                  </ChipView>
+                                ))}
+                            </Chips>
+                          ) : null}
+                          <InstitutionPicker
+                            onPick={(institution) => addInstitution(type, institution)}
+                          />
+                        </>
+                      ) : null}
+
                       {/* One price per row, not per service. A tutor really
                           does charge 500 for calculus and 700 for physics, and
                           a single field for the pair rewrites both the first
@@ -312,18 +394,16 @@ export default function OfferPricesPage() {
             </div>
           ))}
 
-          <Label>
-            <Trans>Как занимаешься</Trans>
-          </Label>
-          <Segmented
-            value={workFormat}
-            onChange={setWorkFormat}
-            options={[
-              { value: 'online' as WorkFormat, label: <Trans>Онлайн</Trans> },
-              { value: 'offline' as WorkFormat, label: <Trans>Очно</Trans> },
-              { value: 'both' as WorkFormat, label: <Trans>И так, и так</Trans> },
-            ]}
-          />
+          {asked === null ? null : (
+            <>
+              <Label>{formatQuestion(asked)}</Label>
+              <Segmented
+                value={workFormat}
+                onChange={setWorkFormat}
+                options={formatOptions(asked)}
+              />
+            </>
+          )}
 
           {hidden ? (
             <div style={{ marginTop: 12 }}>
@@ -453,6 +533,7 @@ interface Draft {
   subject_id: number | null;
   subject_name: string | null;
   institution_id: number | null;
+  institution_name: string | null;
   price: string;
   unit: PriceUnit;
   langs: string[];
@@ -465,6 +546,7 @@ function blank(type: ServiceType): Draft {
     subject_id: null,
     subject_name: null,
     institution_id: null,
+    institution_name: null,
     price: '',
     // From the server, not guessed here: a thesis priced by the hour reads as
     // ten times too little.
@@ -480,6 +562,7 @@ function fromOffer(type: ServiceType, offer: MyOffer): Draft {
     subject_id: offer.subject_id,
     subject_name: offer.subject_name,
     institution_id: offer.institution_id,
+    institution_name: offer.institution_name,
     // Rounded, because the field holds digits: an older row saved as 550.5
     // would render a decimal point the input then refuses to accept.
     price: offer.price_amount == null ? '' : String(Math.round(offer.price_amount)),

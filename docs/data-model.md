@@ -63,6 +63,30 @@ and the tile is the whole query. The axes were already nullable for writing a
 thesis, as above — this group is the case that leans on it hardest, and the one
 that would have needed a third pair of tables in the legacy schema.
 
+## A group is not a form
+
+`service_types.form_shape` is a second closed enum — `lesson`, `work`,
+`errand` — and it answers a different question from the group. The group is for
+the student browsing the catalog: *what do I need*. The shape is for the person
+offering: *what do we ask you*. They nearly coincide and must not be merged,
+because the two that differ are the ones that matter:
+
+| shape | which kinds | what the form asks |
+| --- | --- | --- |
+| `lesson` | tutoring, languages, exam preparation, entrance exams | a subject, an hourly price, online or in person, where |
+| `work` | written work | what is taken on, a turnaround, a price per work |
+| `errand` | nostrification, help during the exam, and all five of `life` | what is taken on, a price per case, remote or alongside |
+
+Help *during* an exam is the clearest case: it sits on the `entrance` shelf
+with the exam preparation a student would compare it to, and its form has
+nothing to do with teaching — it is standby for one event on one day.
+
+A `work` is always remote, so its form does not ask. For the other two the
+question is the same three answers under different words: `work_format` is
+`online` / `offline` / `both`, which reads as online-or-in-person for a lesson
+and remotely-or-alongside-you for an errand. One column, worded by what the
+person actually offers — a second column would be the same fact stored twice.
+
 **Group names are translated on the client, not through an `*_i18n` table.**
 This is a deliberate exception to the rule below, not an oversight. The i18n
 tables exist for rows we author and keep adding to — subjects, institutions,
