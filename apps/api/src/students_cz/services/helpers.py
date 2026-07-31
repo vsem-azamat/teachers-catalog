@@ -15,6 +15,7 @@ from students_cz.db.models import (
     HelperProfile,
     Institution,
     Offer,
+    ServiceOption,
     ServiceType,
     Subject,
     User,
@@ -141,6 +142,19 @@ async def _apply_offers(
         (await session.scalars(select(ServiceType.id).where(ServiceType.is_active))).all()
     ) | {service_type_id for service_type_id, _, _ in existing}
 
+    # Which checklist lines each kind of help owns, for the filter below. One
+    # query for the whole save.
+    # Every option, active or not. Filtering on `is_active` here would delete a
+    # withdrawn line from every offer the next time its owner saved anything —
+    # and the whole reason a line is deactivated rather than deleted is that
+    # offers keep pointing at it. Hiding it is the read path's job, which
+    # `catalog._option_labels` already does.
+    options_by_service: dict[int, set[int]] = {}
+    for service_id, option_id in (
+        await session.execute(select(ServiceOption.service_type_id, ServiceOption.id))
+    ).all():
+        options_by_service.setdefault(service_id, set()).add(option_id)
+
     seen_axes: set[tuple[int, int | None, int | None]] = set()
     for offer_spec in spec.offers:
         if offer_spec.service_type_id not in valid_service_ids:
@@ -177,6 +191,30 @@ async def _apply_offers(
         offer.price_amount = offer_spec.price_amount
         offer.price_unit = offer_spec.price_unit
         offer.langs = offer_spec.langs or list(user.spoken_langs)
+        # Said nothing, changed nothing — the same rule `work_format` follows
+        # below, and for the same reason: `OfferIn` defaults the checklist to
+        # `[]`, so any caller that saves an offer without mentioning it would
+        # erase what the prices screen wrote. Today's client always sends both
+        # fields; the guard is what keeps the next one from having to.
+        if "option_ids" in offer_spec.model_fields_set:
+            # Only the options belonging to this kind of help. A stale client
+            # holding yesterday's checklist would otherwise attach insurance's
+            # lines to a bank statement, and nothing downstream would notice:
+            # the array references nothing, so the labels would simply read as
+            # somebody else's.
+            # `fromkeys` and not a set: the same line twice would render twice
+            # and hand React two children with one key, and the order is the
+            # person's own.
+            offer.option_ids = list(
+                dict.fromkeys(
+                    option_id
+                    for option_id in offer_spec.option_ids
+                    if option_id
+                    in options_by_service.get(offer_spec.service_type_id, set())
+                )
+            )
+        if "note" in offer_spec.model_fields_set:
+            offer.note = (offer_spec.note or "").strip() or None
         # Same rule: a caller that said nothing about the format is not saying
         # every offer is now "either way". A row being created still needs one,
         # and the profile's is the only answer that cannot contradict it — the

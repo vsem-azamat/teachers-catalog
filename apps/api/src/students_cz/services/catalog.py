@@ -12,6 +12,7 @@ from students_cz.db.models import (
     HelperProfile,
     Institution,
     Offer,
+    ServiceOption,
     ServiceType,
     Subject,
     User,
@@ -57,6 +58,31 @@ def avatar_for(user: User) -> Avatar:
         tone=user.tg_id % TONE_COUNT,
         photo_url=user.photo_url,
     )
+
+
+async def _option_labels(
+    session: AsyncSession, lang: UiLang, ids: set[int]
+) -> dict[int, tuple[int, str]]:
+    """Checklist labels by id, translated, active ones only.
+
+    One query for a whole page of offers. An option that has been withdrawn is
+    simply absent, which is how a retired line stops appearing without anybody
+    rewriting the arrays that point at it.
+
+    The catalog's own `sort` comes back with the label, because the array holding
+    these ids is in the order somebody tapped the ticks — so without it the same
+    lines read in one order on a profile and another on the screen that wrote
+    them.
+    """
+    rows = await rows_by_id(session, ServiceOption, ids)
+    # Falls back to the code, the way the taxonomy endpoint does: an option
+    # missing a translation would otherwise be offered on the screen that sets
+    # it and vanish from the profile that shows it, losing a tick somebody set.
+    return {
+        row.id: (row.sort, translated(row, lang, "label") or row.code)
+        for row in rows.values()
+        if row.is_active
+    }
 
 
 async def home_sections(
@@ -537,6 +563,13 @@ async def _offers_out(
         session, ServiceType, (o.service_type_id for o in helper.offers)
     )
 
+    # Every checklist label these offers point at, in one query rather than one
+    # per offer. Inactive options are left out: a line withdrawn from the
+    # catalog should stop being shown, and the ids stay valid either way.
+    labels = await _option_labels(
+        session, lang, {oid for offer in helper.offers for oid in offer.option_ids}
+    )
+
     out: list[OfferOut] = []
     for offer in helper.offers:
         if not offer.is_active:
@@ -564,6 +597,15 @@ async def _offers_out(
                 ),
                 langs=list(offer.langs),
                 work_format=offer.work_format,
+                # Sorted by the catalog's own order, not by the order the
+                # ticks were tapped.
+                options=[
+                    label
+                    for _, label in sorted(
+                        labels[oid] for oid in offer.option_ids if oid in labels
+                    )
+                ],
+                note=offer.note,
             )
         )
     return out

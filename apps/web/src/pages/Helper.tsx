@@ -3,7 +3,6 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { openTelegramLink } from '@tma.js/sdk-react';
 import { useParams } from 'react-router';
 import { AppHeader } from '@/components/AppHeader';
-
 import { PriceUnitLabel, StatLabel } from '@/components/Phrase';
 import {
   AvatarView,
@@ -19,6 +18,7 @@ import {
   Screen,
   SkeletonRows,
   Sub,
+  ui,
 } from '@/components/Ui';
 import { hapticSuccess, useMainButton } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
@@ -157,6 +157,27 @@ export default function HelperPage() {
         </>
       ) : null}
 
+      {/* What an errand actually covers, in our words, and then in theirs. A
+          chip saying "Insurance" is the same chip for everybody offering it;
+          these lines are the difference between two people. */}
+      {coveredBy(data.offers).map(({ code, name, options, note }) => (
+        <div key={`covers-${code}`}>
+          <Label>{name}</Label>
+          {options.length > 0 ? (
+            <ul className={ui.covers}>
+              {options.map((label) => (
+                <li key={label}>{label}</li>
+              ))}
+            </ul>
+          ) : null}
+          {note ? (
+            <div style={{ marginTop: options.length > 0 ? 8 : 0 }}>
+              <Sub>{note}</Sub>
+            </div>
+          ) : null}
+        </div>
+      ))}
+
       {data.about ? (
         <>
           <Label>
@@ -262,4 +283,32 @@ function withIntro(url: string, data: HelperDetail | undefined): string {
     subjects ? `Нужна помощь: ${subjects}.` : 'Нужна помощь с учёбой.',
   ];
   return `${url}?text=${encodeURIComponent(lines.join('\n'))}`;
+}
+
+/**
+ * What each kind of help covers, one entry per kind.
+ *
+ * By service type and not by offer row: the screen that writes these puts the
+ * same checklist on every row of a service, so two subjects would otherwise
+ * print the same paragraph twice. Not a run-length grouping either — the API
+ * does not order a helper's offers, so two rows of one service need not be
+ * adjacent — and the first row carrying anything wins, because a service whose
+ * first row happens to be blank still has something to say.
+ */
+function coveredBy(offers: HelperDetail['offers']) {
+  const out = new Map<
+    string,
+    { code: string; name: string; options: string[]; note: string | null }
+  >();
+  for (const offer of offers) {
+    if (!offer.options.length && !offer.note) continue;
+    if (out.has(offer.service_type)) continue;
+    out.set(offer.service_type, {
+      code: offer.service_type,
+      name: offer.service_type_name,
+      options: offer.options,
+      note: offer.note,
+    });
+  }
+  return [...out.values()];
 }

@@ -107,6 +107,10 @@ export interface Offer {
   price: Price;
   langs: string[];
   work_format: WorkFormat;
+  /** Already translated — these are names we author. */
+  options: string[];
+  /** The helper's own words, in whatever language they wrote them. */
+  note: string | null;
 }
 
 /** One row in the results list. */
@@ -336,6 +340,8 @@ export interface ResponseCreate {
 
 export interface OfferInput {
   service_type_id: number;
+  option_ids?: number[];
+  note?: string | null;
   subject_id?: number | null;
   institution_id?: number | null;
   price_amount?: number | null;
@@ -363,6 +369,8 @@ export interface HelperUpsert {
  */
 export interface MyOffer {
   service_type_id: number;
+  option_ids: number[];
+  note: string | null;
   service_type: string;
   service_type_name: string;
   subject_id: number | null;

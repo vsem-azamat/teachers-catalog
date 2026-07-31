@@ -70,6 +70,14 @@ class Avatar(BaseModel):
 # ── taxonomy ────────────────────────────────────────────────────────────
 
 
+class ServiceOptionOut(BaseModel):
+    """One line of what a kind of help covers, in the caller's language."""
+
+    id: int
+    code: str
+    label: str
+
+
 class ServiceTypeOut(BaseModel):
     id: int
     code: str
@@ -94,6 +102,12 @@ class ServiceTypeOut(BaseModel):
     # the hour and a thesis is by the job; without this the form has to guess,
     # and a guess here is a price that reads as ten times too much.
     default_price_unit: PriceUnit | None
+    # What this kind of help can cover. Empty for the shapes that describe
+    # themselves through a subject and a price — but always present, because a
+    # default here makes the field optional in OpenAPI and the generated client
+    # then types it `| undefined` for a key every response carries. See
+    # `Avatar.photo_url`.
+    options: list[ServiceOptionOut]
 
 
 class SubjectOut(BaseModel):
@@ -133,6 +147,11 @@ class OfferOut(BaseModel):
     price: Price
     langs: list[str]
     work_format: WorkFormat
+    # Already translated, because they are names we author. The person's own
+    # words are `note`, which is theirs and stays in the language they wrote it.
+    # Neither carries a default, for the reason `ServiceTypeOut.options` gives.
+    options: list[str]
+    note: str | None
 
 
 class HelperCardOut(BaseModel):
@@ -321,6 +340,12 @@ class OfferIn(BaseModel):
     price_amount: float | None = Field(default=None, ge=0, le=1_000_000)
     price_unit: PriceUnit = PriceUnit.HOUR
     langs: list[LangCode] = Field(default_factory=list, max_length=12)
+    # Which lines of this service type's checklist. Ids the client read from
+    # `/taxonomy/service-types`; anything not belonging to this service type is
+    # dropped rather than stored, so a stale client cannot attach one kind of
+    # help's checklist to another.
+    option_ids: list[int] = Field(default_factory=list, max_length=32)
+    note: str | None = Field(default=None, max_length=600)
 
 
 class HelperUpsert(BaseModel):
@@ -354,6 +379,8 @@ class MyOfferOut(BaseModel):
     price_amount: float | None = None
     price_unit: PriceUnit = PriceUnit.HOUR
     langs: list[str] = Field(default_factory=list)
+    option_ids: list[int]
+    note: str | None
 
 
 class MyHelperOut(BaseModel):

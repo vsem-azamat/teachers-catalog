@@ -1,6 +1,6 @@
 # Data model
 
-Postgres 18. 29 tables. The schema is defined in
+Postgres 18. 32 tables. The schema is defined in
 `apps/api/src/students_cz/db/models/` and is the source of truth — this document
 explains the decisions behind it, not the columns.
 
@@ -116,6 +116,32 @@ question is the same three answers under different words: `work_format` is
 `online` / `offline` / `both`, which reads as online-or-in-person for a lesson
 and remotely-or-alongside-you for an errand. One column, worded by what the
 person actually offers — a second column would be the same fact stored twice.
+
+## What an errand covers
+
+A lesson is described by its axes: this subject, at this school, for this much
+an hour. An errand has no axes at all — the tile is the whole query — so a
+person offering one has nothing to say beyond the tile unless we ask.
+
+Two things carry that, and the split is the point:
+
+- **`service_options`** is a checklist per service type, translated through
+  `service_option_i18n` like every other name we author: "I arrange VZP or
+  PVZP", "I come to the bank with you". An offer's choices live in
+  `offers.option_ids`, an integer array with a GIN index — the same shape as
+  `offers.langs`, and searchable for the same reason. "Who goes with you to the
+  bank" is a question this schema can answer; a paragraph of prose is not.
+- **`offers.note`** is what did not fit the checklist, in the person's own
+  words. It is read, not matched.
+
+An option taken out of circulation is marked `is_active = false` rather than
+deleted, for the reason `languages` gives: the array holds plain integers and
+references nothing, so a deleted row would leave an offer pointing at an option
+with no name to show.
+
+The checklist belongs to the service type and not to the shape. Every errand has
+one today, and nothing stops a lesson growing one — "first lesson free" is the
+obvious candidate — which is why the column sits where it does.
 
 ## Trees without recursion
 

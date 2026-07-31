@@ -5,7 +5,16 @@ translated through dedicated ``*_i18n`` tables. User-written text is never
 translated — it only carries the language it happens to be written in.
 """
 
-from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, Text, text
+from sqlalchemy import (
+    Boolean,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -227,6 +236,9 @@ class ServiceType(IdMixin, TimestampMixin, Base):
     names: Mapped[list["ServiceTypeI18n"]] = relationship(
         back_populates="service_type", cascade="all, delete-orphan", lazy="selectin"
     )
+    options: Mapped[list["ServiceOption"]] = relationship(
+        back_populates="service_type", cascade="all, delete-orphan"
+    )
 
 
 class ServiceTypeI18n(Base):
@@ -241,6 +253,51 @@ class ServiceTypeI18n(Base):
     hint: Mapped[str | None] = mapped_column(String(240))
 
     service_type: Mapped[ServiceType] = relationship(back_populates="names")
+
+
+class ServiceOption(IdMixin, TimestampMixin, Base):
+    """One line of what a kind of help covers: "I come to the bank with you".
+
+    Reference data we author, so its labels live in a side table like every
+    other name — see docs/data-model.md. An offer's choices are ids in
+    `offers.option_ids`, which is why a retired option is deactivated rather
+    than deleted: the array references nothing and a deleted row would leave an
+    offer pointing at a label that no longer exists.
+    """
+
+    __tablename__ = "service_options"
+
+    service_type_id: Mapped[int] = mapped_column(
+        ForeignKey("service_types.id", ondelete="CASCADE"), nullable=False
+    )
+    code: Mapped[str] = mapped_column(String(48), nullable=False)
+    sort: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
+
+    # `names` and not `labels`, so `services/naming.translated` reads it the way
+    # it reads every other reference table's side table.
+    service_type: Mapped["ServiceType"] = relationship(back_populates="options")
+    names: Mapped[list["ServiceOptionI18n"]] = relationship(
+        back_populates="option", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+    __table_args__ = (
+        UniqueConstraint("service_type_id", "code", name="uq_service_options_code"),
+    )
+
+
+class ServiceOptionI18n(Base):
+    __tablename__ = "service_option_i18n"
+
+    option_id: Mapped[int] = mapped_column(
+        ForeignKey("service_options.id", ondelete="CASCADE"), primary_key=True
+    )
+    lang: Mapped[UiLang] = mapped_column(pg_enum(UiLang, "ui_lang"), primary_key=True)
+    label: Mapped[str] = mapped_column(String(160), nullable=False)
+
+    option: Mapped[ServiceOption] = relationship(back_populates="names")
 
 
 class ItemCategory(IdMixin, TimestampMixin, Base):

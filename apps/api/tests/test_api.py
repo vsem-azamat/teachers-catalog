@@ -875,3 +875,288 @@ async def test_you_cannot_contact_yourself(client, session, helper_factory):
         f"/api/v1/helpers/{me.id}/contact", headers=auth_header(90604)
     )
     assert response.status_code == 400
+
+
+async def test_an_errand_says_what_it_covers_and_in_the_helpers_own_words(
+    client, session
+):
+    """The checklist round-trips, and reaches the person reading the profile.
+
+    An errand has no subject and no institution, so without these two the
+    catalog shows a row saying "Insurance" and nothing else — the same row for
+    everybody offering it.
+    """
+    from sqlalchemy import select
+
+    from students_cz.db.models import ServiceOption, ServiceType
+
+    insurance = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "insurance")
+    )
+    options = (
+        await session.scalars(
+            select(ServiceOption)
+            .where(ServiceOption.service_type_id == insurance.id)
+            .order_by(ServiceOption.sort)
+        )
+    ).all()
+    assert len(options) >= 2, "the seeded checklist is missing"
+
+    headers = auth_header(90501)
+    saved = await client.put(
+        "/api/v1/helper",
+        json={
+            "publish": True,
+            "offers": [
+                {
+                    "service_type_id": insurance.id,
+                    "option_ids": [options[0].id, options[1].id],
+                    "note": "Оформляю за день, отвечаю по-русски и по-чешски.",
+                }
+            ],
+        },
+        headers=headers,
+    )
+    assert saved.status_code == 200, saved.text
+
+    mine = (await client.get("/api/v1/helper", headers=headers)).json()
+    assert mine["offers"][0]["option_ids"] == [options[0].id, options[1].id]
+    assert mine["offers"][0]["note"].startswith("Оформляю")
+
+    # And the way a student sees it: labels, not ids.
+    me = (await client.get("/api/v1/me", headers=headers)).json()
+    page = (await client.get(f"/api/v1/helpers/{me['id']}", headers=headers)).json()
+    offer = next(o for o in page["offers"] if o["service_type"] == "insurance")
+    assert offer["options"], "the checklist did not reach the person reading it"
+    assert all(isinstance(label, str) and label for label in offer["options"])
+    assert offer["note"].startswith("Оформляю")
+
+
+async def test_a_checklist_line_from_another_service_is_dropped(client, session):
+    """A stale client must not attach insurance's lines to a bank statement.
+
+    Nothing downstream would notice: the array references nothing, so the
+    labels would simply read as somebody else's.
+    """
+    from sqlalchemy import select
+
+    from students_cz.db.models import ServiceOption, ServiceType
+
+    bank = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "bank_letter")
+    )
+    insurance = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "insurance")
+    )
+    stranger = await session.scalar(
+        select(ServiceOption).where(ServiceOption.service_type_id == insurance.id)
+    )
+
+    headers = auth_header(90502)
+    saved = await client.put(
+        "/api/v1/helper",
+        json={
+            "publish": True,
+            "offers": [{"service_type_id": bank.id, "option_ids": [stranger.id]}],
+        },
+        headers=headers,
+    )
+    assert saved.status_code == 200, saved.text
+
+    mine = (await client.get("/api/v1/helper", headers=headers)).json()
+    assert mine["offers"][0]["option_ids"] == []
+
+
+async def test_a_save_that_says_nothing_about_the_checklist_keeps_it(client, session):
+    """A save that says nothing about the checklist must not erase one.
+
+    `OfferIn` defaults `option_ids` to `[]`, so a caller that saves an offer
+    without mentioning the checklist would wipe what the prices screen wrote,
+    silently, on an unrelated save. The shipped client sends both fields; this
+    holds the rule for the next one.
+    """
+    from sqlalchemy import select
+
+    from students_cz.db.models import ServiceOption, ServiceType
+
+    insurance = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "insurance")
+    )
+    option = await session.scalar(
+        select(ServiceOption).where(ServiceOption.service_type_id == insurance.id)
+    )
+
+    headers = auth_header(90503)
+    await client.put(
+        "/api/v1/helper",
+        json={
+            "publish": True,
+            "offers": [
+                {
+                    "service_type_id": insurance.id,
+                    "option_ids": [option.id],
+                    "note": "Оформляю за день.",
+                }
+            ],
+        },
+        headers=headers,
+    )
+
+    # The shape the profile screen sends: prices and languages, nothing else.
+    again = await client.put(
+        "/api/v1/helper",
+        json={
+            "publish": True,
+            "offers": [{"service_type_id": insurance.id, "price_amount": 900}],
+        },
+        headers=headers,
+    )
+    assert again.status_code == 200, again.text
+
+    mine = (await client.get("/api/v1/helper", headers=headers)).json()
+    assert mine["offers"][0]["option_ids"] == [option.id]
+    assert mine["offers"][0]["note"] == "Оформляю за день."
+    assert mine["offers"][0]["price_amount"] == 900
+
+
+async def test_the_checklist_reaches_the_screen_that_ticks_it(client, session):
+    """`/taxonomy/service-types` is the only place the boxes come from.
+
+    So the three things the screen depends on are asserted here rather than
+    inferred from the database: the labels are translated, they arrive in the
+    catalog's order, and a withdrawn line is not offered.
+    """
+    from sqlalchemy import select
+
+    from students_cz.db.models import ServiceOption, ServiceType
+
+    headers = auth_header(90505)
+    ru = (await client.get("/api/v1/taxonomy/service-types", headers=headers)).json()
+    insurance_ru = next(s for s in ru if s["code"] == "insurance")
+    assert insurance_ru["options"], "the checklist did not reach the screen"
+    assert any(o["label"] == "Оформлю VZP или PVZP" for o in insurance_ru["options"])
+
+    # A lesson asks no checklist at all, and says so with an empty list rather
+    # than by leaving the key out — the client renders the block conditionally.
+    assert next(s for s in ru if s["code"] == "tutoring")["options"] == []
+
+    await client.patch("/api/v1/me", json={"ui_lang": "cs"}, headers=headers)
+    cs = (await client.get("/api/v1/taxonomy/service-types", headers=headers)).json()
+    insurance_cs = next(s for s in cs if s["code"] == "insurance")
+    assert [o["code"] for o in insurance_cs["options"]] == [
+        o["code"] for o in insurance_ru["options"]
+    ]
+    assert any(o["label"] == "Vyřídím VZP nebo PVZP" for o in insurance_cs["options"])
+
+    # The order is the catalog's `sort`, not whatever the database returns.
+    service = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "insurance")
+    )
+    stored = (
+        await session.scalars(
+            select(ServiceOption)
+            .where(
+                ServiceOption.service_type_id == service.id,
+                ServiceOption.is_active.is_(True),
+            )
+            .order_by(ServiceOption.sort)
+        )
+    ).all()
+    assert [o["code"] for o in insurance_ru["options"]] == [r.code for r in stored]
+
+    # And a line withdrawn from the catalog stops being offered.
+    stored[0].is_active = False
+    await session.flush()
+    again = (await client.get("/api/v1/taxonomy/service-types", headers=headers)).json()
+    offered = next(s for s in again if s["code"] == "insurance")["options"]
+    assert [o["code"] for o in offered] == [r.code for r in stored[1:]]
+
+
+async def test_a_withdrawn_checklist_line_survives_an_unrelated_save(client, session):
+    """Deactivated is not deleted — that is the whole point of deactivating.
+
+    An option withdrawn from the catalog stops being shown, and the offers
+    pointing at it keep pointing at it, so putting it back puts the ticks back.
+    """
+    from sqlalchemy import select
+
+    from students_cz.db.models import ServiceOption, ServiceType
+
+    insurance = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "insurance")
+    )
+    options = (
+        await session.scalars(
+            select(ServiceOption)
+            .where(ServiceOption.service_type_id == insurance.id)
+            .order_by(ServiceOption.sort)
+        )
+    ).all()
+    chosen = [options[0].id, options[1].id]
+
+    headers = auth_header(90504)
+    await client.put(
+        "/api/v1/helper",
+        json={
+            "publish": True,
+            "offers": [{"service_type_id": insurance.id, "option_ids": chosen}],
+        },
+        headers=headers,
+    )
+
+    options[0].is_active = False
+    await session.flush()
+
+    # The person edits their price and sends the checklist back untouched.
+    await client.put(
+        "/api/v1/helper",
+        json={
+            "publish": True,
+            "offers": [
+                {
+                    "service_type_id": insurance.id,
+                    "option_ids": chosen,
+                    "price_amount": 800,
+                }
+            ],
+        },
+        headers=headers,
+    )
+
+    mine = (await client.get("/api/v1/helper", headers=headers)).json()
+    assert mine["offers"][0]["option_ids"] == chosen, "a withdrawn line was erased"
+
+    # And the page a student reads shows the surviving line only: hiding is the
+    # read path's job, which is what lets the write path keep the id.
+    me = (await client.get("/api/v1/me", headers=headers)).json()
+    page = (await client.get(f"/api/v1/helpers/{me['id']}", headers=headers)).json()
+    offer = next(o for o in page["offers"] if o["service_type"] == "insurance")
+    assert len(offer["options"]) == 1, "a withdrawn line is still on the profile"
+
+
+async def test_the_same_checklist_line_twice_is_stored_once(client, session):
+    """Twice in the array is twice on the screen, and two React keys alike."""
+    from sqlalchemy import select
+
+    from students_cz.db.models import ServiceOption, ServiceType
+
+    bank = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "bank_letter")
+    )
+    option = await session.scalar(
+        select(ServiceOption).where(ServiceOption.service_type_id == bank.id)
+    )
+
+    headers = auth_header(90505)
+    await client.put(
+        "/api/v1/helper",
+        json={
+            "publish": True,
+            "offers": [
+                {"service_type_id": bank.id, "option_ids": [option.id, option.id]}
+            ],
+        },
+        headers=headers,
+    )
+    mine = (await client.get("/api/v1/helper", headers=headers)).json()
+    assert mine["offers"][0]["option_ids"] == [option.id]

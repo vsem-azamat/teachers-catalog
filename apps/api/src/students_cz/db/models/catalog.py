@@ -11,12 +11,14 @@ meant adding another pair of tables. Here a new kind of help is one row in
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     ForeignKey,
     Index,
     Numeric,
     String,
+    Text,
     UniqueConstraint,
     text,
 )
@@ -77,6 +79,18 @@ class Offer(IdMixin, TimestampMixin, Base):
     # count, turnaround days, whether a trial lesson is free.
     attrs: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
 
+    # Which lines of the service type's checklist this offer covers. Ids rather
+    # than a join table, the same shape as `langs` above and indexed the same
+    # way: the question worth asking of them is "who does X", which an overlap
+    # test answers. A retired option is deactivated rather than deleted, so this
+    # array never points at a label that is gone.
+    option_ids: Mapped[list[int]] = mapped_column(
+        ARRAY(BigInteger), nullable=False, server_default="{}"
+    )
+    # What the checklist could not say, in the person's own words. Read, not
+    # matched — the checklist is the part search can use.
+    note: Mapped[str | None] = mapped_column(Text)
+
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default=text("true")
     )
@@ -104,6 +118,9 @@ class Offer(IdMixin, TimestampMixin, Base):
             "is_active",
         ),
         Index("ix_offers_helper", "helper_id"),
+        # "Who goes with you to the bank" is an overlap test, which is what a
+        # GIN index answers and a sequential scan does not.
+        Index("ix_offers_options", "option_ids", postgresql_using="gin"),
         # The commonest query of all is "everyone who teaches X", with no kind
         # of help named. ix_offers_lookup leads with service_type_id and so
         # cannot serve it.

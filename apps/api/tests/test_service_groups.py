@@ -66,6 +66,18 @@ def _migrated_rows() -> dict[str, dict[str, Any]]:
     return rows
 
 
+def _constant(path: Path, name: str, default: Any = None) -> Any:
+    """One constant out of one migration file, or `default` if it has none.
+
+    Loaded by path rather than imported: `versions` is not a package.
+    """
+    spec = importlib.util.spec_from_file_location(f"_migration_{path.stem}", path)
+    assert spec is not None and spec.loader is not None, f"cannot load {path}"
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return getattr(module, name, default)
+
+
 def _load(path: Path) -> list[dict[str, Any]]:
     """The service types one migration writes, or nothing if it writes none.
 
@@ -78,12 +90,7 @@ def _load(path: Path) -> list[dict[str, Any]]:
     a row naming a service type and changing nothing about it is a mistake worth
     a failure rather than a silent skip.
     """
-    spec = importlib.util.spec_from_file_location(f"_migration_{path.stem}", path)
-    assert spec is not None and spec.loader is not None, f"cannot load {path}"
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-
-    rows = list(getattr(module, "SERVICE_TYPES", []))
+    rows = list(_constant(path, "SERVICE_TYPES", []))
     for row in rows:
         assert "code" in row, f"{path.name}: a SERVICE_TYPES row is missing ['code']"
         assert set(row) - {"code"}, (
@@ -106,7 +113,6 @@ def _migrated_groups() -> dict[str, str]:
     landing on the same day and disagreeing about the same code would be
     resolved arbitrarily. They would also be a mistake worth catching by hand.
 
-    Loaded by path rather than imported: `versions` is not a package.
     """
     groups: dict[str, str] = {}
     for path in sorted(VERSIONS.glob("*.py")):
@@ -251,3 +257,114 @@ def test_seed_and_migration_agree_about_forms():
     migrated = _migrated_forms()
     assert migrated, "no migration sets a form shape"
     assert migrated == {spec["code"]: spec["form"] for spec in SERVICE_TYPES}
+
+
+def _migrated_options() -> dict[str, list[tuple]]:
+    """Each service type's checklist as the migrations write it — labels too.
+
+    Codes alone would leave a hundred translated strings duplicated between the
+    seed and the migration with nothing comparing them, which is the exact
+    failure this module exists to prevent: a label corrected in the seed alone
+    never reaches production.
+    """
+    options: dict[str, list[tuple]] = {}
+    for path in sorted(VERSIONS.glob("*.py")):
+        for code, rows in _constant(path, "SERVICE_OPTIONS", {}).items():
+            options[code] = [tuple(row) for row in rows]
+    return options
+
+
+def test_every_errand_says_what_it_covers() -> None:
+    """A tile is the whole query for an errand, so the checklist is the offer.
+
+    Without one the person offering insurance can say nothing beyond the word
+    "insurance", and the student reads a list of identical rows.
+    """
+    from students_cz.db.seed import SERVICE_OPTIONS
+
+    errands = {spec["code"] for spec in SERVICE_TYPES if spec["form"] == "errand"}
+    missing = sorted(errands - set(SERVICE_OPTIONS))
+    assert missing == [], f"errands with no checklist: {missing}"
+
+
+def test_seed_and_migration_agree_about_options() -> None:
+    """The deploy runs migrations and never the seed.
+
+    A checklist that exists only in the seed is one every developer sees and no
+    student does.
+    """
+    from students_cz.db.seed import SERVICE_OPTIONS
+
+    seeded = {
+        code: [tuple(row) for row in rows] for code, rows in SERVICE_OPTIONS.items()
+    }
+    migrated = _migrated_options()
+    assert migrated, "no migration creates a checklist"
+    assert migrated == seeded
+
+
+@pytest.mark.asyncio
+async def test_the_checklist_reaches_the_database(session) -> None:
+    from students_cz.db.models import ServiceOption, ServiceType
+    from students_cz.db.seed import SERVICE_OPTIONS
+
+    # Active only: a line dropped from the constant is retired rather than
+    # deleted, so its row outlives the constant on purpose.
+    rows = (
+        await session.scalars(
+            select(ServiceOption).where(ServiceOption.is_active.is_(True))
+        )
+    ).all()
+    assert rows, "reference data is not loaded — run `make seed`"
+
+    codes = {
+        service.id: service.code
+        for service in (await session.scalars(select(ServiceType))).all()
+    }
+    stored: dict[str, set[str]] = {}
+    for row in rows:
+        stored.setdefault(codes[row.service_type_id], set()).add(row.code)
+
+    # Per service type, not a total: a count alone passes with all twenty-five
+    # attached to the wrong kind of help, which is the mis-association the rest
+    # of this change goes to some trouble to prevent.
+    assert stored == {
+        code: {row[0] for row in rows} for code, rows in SERVICE_OPTIONS.items()
+    }
+
+
+@pytest.mark.asyncio
+async def test_a_line_dropped_from_the_checklist_is_retired_not_deleted(
+    session,
+) -> None:
+    """`offers.option_ids` holds plain integers and references nothing.
+
+    A deleted row would leave an offer pointing at a label that is gone, which
+    is why `seed_languages` retires a code rather than removing it and why this
+    does the same.
+    """
+    from students_cz.db.models import ServiceOption, ServiceType
+    from students_cz.db.seed import _seed_options
+
+    insurance = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "insurance")
+    )
+    before = (
+        await session.scalars(
+            select(ServiceOption).where(ServiceOption.service_type_id == insurance.id)
+        )
+    ).all()
+    assert len(before) >= 2
+
+    # Seed a shorter list: everything but the first line.
+    keep = [
+        (row.code, "x", "x", "x", "x") for row in sorted(before, key=lambda r: r.sort)[1:]
+    ]
+    await _seed_options(session, insurance, keep)
+    await session.flush()
+
+    dropped = await session.scalar(
+        select(ServiceOption).where(ServiceOption.id == before[0].id)
+    )
+    assert dropped is not None, "the row was deleted, not retired"
+    assert dropped.is_active is False
