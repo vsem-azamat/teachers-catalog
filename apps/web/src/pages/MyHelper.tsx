@@ -50,7 +50,7 @@ export default function MyHelperPage() {
 
   // Which questions this person's services actually have. Cached for an hour
   // and shared with every other screen that needs the reference list.
-  const { data: serviceTypes, isError: typesFailed } = useQuery({
+  const { data: serviceTypes } = useQuery({
     queryKey: ['service-types'],
     queryFn: ({ signal }) => api.getServiceTypes(signal),
     staleTime: 60 * 60 * 1000,
@@ -68,19 +68,20 @@ export default function MyHelperPage() {
   // deleting the last lesson row has to stop the question asking about
   // teaching before the profile is refetched.
   //
-  // `typesFailed` is why this is not just "no shapes, no question": a reference
-  // list that failed to load would otherwise take the question and the whole
-  // city block off a screen that still renders a live Save button, and the
-  // person would never know a question existed.
+  // Until the reference list is here — still loading, or failed — the neutral
+  // wording rather than nothing. Otherwise the question and the whole city
+  // block are missing from a screen that already renders a live Save button,
+  // and then appear: on a cold cache as a flicker, on a failure for ever, with
+  // the person never learning a question existed.
   const asked = useMemo(
     () =>
-      typesFailed
-        ? 'both'
-        : askedFormat(
+      serviceTypes
+        ? askedFormat(
             rows.map((row) => row.code),
             serviceTypes,
-          ),
-    [serviceTypes, typesFailed, rows],
+          )
+        : 'both',
+    [serviceTypes, rows],
   );
 
   // Filled once, from the server. Later renders must not clobber what the
