@@ -62,12 +62,17 @@ def avatar_for(user: User) -> Avatar:
 
 async def option_labels(
     session: AsyncSession, lang: UiLang, ids: set[int]
-) -> dict[int, str]:
+) -> dict[int, tuple[int, str]]:
     """Checklist labels by id, translated, active ones only.
 
     One query for a whole page of offers. An option that has been withdrawn is
     simply absent, which is how a retired line stops appearing without anybody
     rewriting the arrays that point at it.
+
+    The catalog's own `sort` comes back with the label, because the array holding
+    these ids is in the order somebody tapped the ticks — so without it the same
+    lines read in one order on a profile and another on the screen that wrote
+    them.
     """
     if not ids:
         return {}
@@ -78,7 +83,11 @@ async def option_labels(
             .options(selectinload(ServiceOption.names))
         )
     ).all()
-    return {row.id: label for row in rows if (label := translated(row, lang, "label"))}
+    return {
+        row.id: (row.sort, label)
+        for row in rows
+        if (label := translated(row, lang, "label"))
+    }
 
 
 async def home_sections(
@@ -593,7 +602,14 @@ async def _offers_out(
                 ),
                 langs=list(offer.langs),
                 work_format=offer.work_format,
-                options=[labels[oid] for oid in offer.option_ids if oid in labels],
+                # Sorted by the catalog's own order, not by the order the
+                # ticks were tapped.
+                options=[
+                    label
+                    for _, label in sorted(
+                        labels[oid] for oid in offer.option_ids if oid in labels
+                    )
+                ],
                 note=offer.note,
             )
         )

@@ -243,9 +243,15 @@ export default function OfferPricesPage() {
           ...blank(type),
           ...axis,
           key,
-          // Inherits what the person already typed for this service. Asking the
-          // same price four times is asking three times too many.
+          // Inherits what the person already said about this service — the
+          // price, and the checklist the ticks above wrote to its other rows.
+          // Asking the same price four times is asking three times too many,
+          // and a row added after the ticks were set would otherwise save an
+          // empty checklist.
           price: current.find((row) => row.service_type_id === type.id)?.price ?? '',
+          option_ids:
+            current.find((row) => row.service_type_id === type.id)?.option_ids ?? [],
+          note: current.find((row) => row.service_type_id === type.id)?.note ?? '',
         },
       ];
     });

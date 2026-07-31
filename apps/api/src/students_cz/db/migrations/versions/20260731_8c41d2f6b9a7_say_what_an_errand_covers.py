@@ -136,10 +136,17 @@ def upgrade() -> None:
             sa.text("SELECT id FROM service_types WHERE code = :code"),
             {"code": service_code},
         ).scalar()
-        # A checklist for a service type that is not there is a mistake in this
-        # file, not a row to skip: the twelve are created by the two migrations
-        # before this one.
-        assert service_id is not None, f"no service type {service_code}"
+        # Skipped, not asserted. Only five of the twelve service types are ever
+        # created by a migration — the five `life` ones — and the other seven
+        # exist in `db/seed.py` alone. That gap is documented in
+        # docs/data-model.md: they reached production because somebody ran the
+        # seed against it by hand, so this loop finds them there, while on a
+        # migrations-only database (CI, `make db-reset`, a fresh clone) it does
+        # not, and the seed that runs next creates both the type and its
+        # checklist. Asserting here aborts `alembic upgrade head` on every one
+        # of those.
+        if service_id is None:
+            continue
         for sort, (option_code, ru, cs, en, uk) in enumerate(rows, start=1):
             option_id = bind.execute(
                 sa.text(
