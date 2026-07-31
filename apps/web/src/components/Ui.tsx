@@ -108,7 +108,10 @@ export function Cell({
       <span className={css.cellName}>{title}</span>
       <span className={css.cellFoot}>
         <span className={css.cellHint}>{hint}</span>
-        {trailing}
+        {/* Wrapped, like the wide cell's: two loose children under
+            space-between put the trailing content in the middle of the tile
+            whenever the hint is short. */}
+        {trailing ? <span className={css.rowTrailing}>{trailing}</span> : null}
       </span>
     </button>
   );
@@ -224,7 +227,12 @@ export function AvatarStack({
   return (
     <div
       className={css.stack}
-      style={ring ? ({ '--stack-ring': ring } as React.CSSProperties) : undefined}
+      style={
+        {
+          '--stack-size': `${size}px`,
+          ...(ring ? { '--stack-ring': ring } : {}),
+        } as React.CSSProperties
+      }
     >
       {/* Reversed here too, so row-reverse puts them back in the given order. */}
       {[...avatars].reverse().map((avatar) => (

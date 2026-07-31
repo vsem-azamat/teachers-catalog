@@ -50,8 +50,7 @@ export function ServiceGrid<T extends ServiceTile>({
   onPick?: (item: T) => void;
   /**
    * Home puts its counts and faces here without this file knowing about them.
-   * `wide` is passed because a full-width cell has room for three overlapping
-   * faces and a narrow one does not.
+   * `wide` is passed because a full-width cell has room for more of them.
    */
   renderTrailing?: (item: T, wide: boolean) => ReactNode;
   /** Something to say under one group's heading, before its tiles. */
@@ -70,10 +69,9 @@ export function ServiceGrid<T extends ServiceTile>({
               {tiles.map((item, index) => {
                 const Icon = iconForService(item.code);
                 const isOn = selected?.has(item.code) ?? false;
-                // Two columns leave an odd group's last tile alone in its row,
-                // which reads as something having failed to load. Widening the
-                // first one makes the count even again — and the wide cell is
-                // the only one with room for faces.
+                // Two columns leave an odd group's last tile alone in its
+                // row, which reads as something having failed to load.
+                // Widening the first one makes the count even again.
                 const wide = tiles.length % 2 === 1 && index === 0;
                 return (
                   <Cell

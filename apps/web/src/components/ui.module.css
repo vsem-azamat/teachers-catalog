@@ -332,8 +332,11 @@
   flex-direction: row-reverse;
 }
 
+/* A third of the circle, not a fixed eight pixels: the overlap has to shrink
+   with the avatar or it eats the one thing a small monogram contains. At 19px
+   a fixed -8px left about nine pixels of the covered initial. */
 .stack > * + * {
-  margin-right: -8px;
+  margin-right: calc(var(--stack-size, 24px) / -3);
 }
 
 /* The ring makes overlapping circles legible; it has to match whatever is
