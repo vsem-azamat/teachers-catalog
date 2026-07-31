@@ -148,7 +148,7 @@ async def _apply_offers(
     # withdrawn line from every offer the next time its owner saved anything —
     # and the whole reason a line is deactivated rather than deleted is that
     # offers keep pointing at it. Hiding it is the read path's job, which
-    # `catalog.option_labels` already does.
+    # `catalog._option_labels` already does.
     options_by_service: dict[int, set[int]] = {}
     for service_id, option_id in (
         await session.execute(select(ServiceOption.service_type_id, ServiceOption.id))

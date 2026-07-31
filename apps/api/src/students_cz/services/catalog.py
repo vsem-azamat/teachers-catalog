@@ -60,7 +60,7 @@ def avatar_for(user: User) -> Avatar:
     )
 
 
-async def option_labels(
+async def _option_labels(
     session: AsyncSession, lang: UiLang, ids: set[int]
 ) -> dict[int, tuple[int, str]]:
     """Checklist labels by id, translated, active ones only.
@@ -572,7 +572,7 @@ async def _offers_out(
     # Every checklist label these offers point at, in one query rather than one
     # per offer. Inactive options are left out: a line withdrawn from the
     # catalog should stop being shown, and the ids stay valid either way.
-    labels = await option_labels(
+    labels = await _option_labels(
         session, lang, {oid for offer in helper.offers for oid in offer.option_ids}
     )
 

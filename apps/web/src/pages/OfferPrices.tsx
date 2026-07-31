@@ -434,6 +434,9 @@ export default function OfferPricesPage() {
                             value={mineHere[0]?.note ?? ''}
                             onChange={(event) => setNote(type, event.target.value)}
                             placeholder={t`Пара слов о себе — что делаешь и как быстро`}
+                            // The same words as the placeholder, which stops
+                            // being the name the moment anything is typed.
+                            aria-label={t`Пара слов о себе — что делаешь и как быстро`}
                             rows={3}
                             maxLength={600}
                             style={{
