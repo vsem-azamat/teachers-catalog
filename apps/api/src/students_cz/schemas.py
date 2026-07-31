@@ -18,7 +18,13 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field, StringConstraints, field_validator
 
-from students_cz.db.models.enums import PriceUnit, ServiceGroup, UiLang, WorkFormat
+from students_cz.db.models.enums import (
+    PriceUnit,
+    ServiceForm,
+    ServiceGroup,
+    UiLang,
+    WorkFormat,
+)
 
 # Matches ARRAY(String(8)) in the schema; a longer code cannot be stored, and a
 # request carrying one should be told so rather than fail at the database.
@@ -73,6 +79,9 @@ class ServiceTypeOut(BaseModel):
     # see docs/data-model.md for why this one is not in the database's own
     # i18n tables.
     group: ServiceGroup
+    # Which questions to ask, as against which shelf to draw it on. The two are
+    # different axes; see docs/data-model.md.
+    form_shape: ServiceForm
     name: str
     hint: str | None = None
     requires_subject: bool

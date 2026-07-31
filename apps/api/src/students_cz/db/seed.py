@@ -27,7 +27,13 @@ from students_cz.db.models import (
     Subject,
     SubjectI18n,
 )
-from students_cz.db.models.enums import InstitutionKind, NodeKind, ServiceGroup, UiLang
+from students_cz.db.models.enums import (
+    InstitutionKind,
+    NodeKind,
+    ServiceForm,
+    ServiceGroup,
+    UiLang,
+)
 from students_cz.db.session import dispose_engine, get_sessionmaker
 
 
@@ -63,6 +69,7 @@ LANGS: tuple[UiLang, ...] = (UiLang.RU, UiLang.CS, UiLang.EN, UiLang.UK)
 SERVICE_TYPES: list[dict[str, Any]] = [
     {
         "code": "tutoring",
+        "form": "lesson",
         "group": "study",
         "requires_subject": True,
         "default_price_unit": "hour",
@@ -78,6 +85,7 @@ SERVICE_TYPES: list[dict[str, Any]] = [
     },
     {
         "code": "entrance_prep",
+        "form": "lesson",
         "group": "entrance",
         "requires_institution": True,
         "default_price_unit": "hour",
@@ -90,6 +98,7 @@ SERVICE_TYPES: list[dict[str, Any]] = [
     },
     {
         "code": "language_tutoring",
+        "form": "lesson",
         "group": "study",
         "requires_subject": True,
         "default_price_unit": "hour",
@@ -102,6 +111,7 @@ SERVICE_TYPES: list[dict[str, Any]] = [
     },
     {
         "code": "exam_live_help",
+        "form": "errand",
         "group": "entrance",
         "default_price_unit": "hour",
         "names": {
@@ -113,6 +123,7 @@ SERVICE_TYPES: list[dict[str, Any]] = [
     },
     {
         "code": "exam_prep",
+        "form": "lesson",
         "group": "study",
         "requires_subject": True,
         "default_price_unit": "hour",
@@ -125,6 +136,7 @@ SERVICE_TYPES: list[dict[str, Any]] = [
     },
     {
         "code": "nostrification",
+        "form": "errand",
         "group": "entrance",
         "default_price_unit": "hour",
         "names": {
@@ -136,6 +148,7 @@ SERVICE_TYPES: list[dict[str, Any]] = [
     },
     {
         "code": "writing",
+        "form": "work",
         "group": "study",
         "default_price_unit": "work",
         "names": {
@@ -150,6 +163,7 @@ SERVICE_TYPES: list[dict[str, Any]] = [
     # one insurance policy or one bank statement is the unit people think in.
     {
         "code": "insurance",
+        "form": "errand",
         "group": "life",
         "default_price_unit": "item",
         "names": {
@@ -161,6 +175,7 @@ SERVICE_TYPES: list[dict[str, Any]] = [
     },
     {
         "code": "bank_letter",
+        "form": "errand",
         "group": "life",
         "default_price_unit": "item",
         "names": {
@@ -172,6 +187,7 @@ SERVICE_TYPES: list[dict[str, Any]] = [
     },
     {
         "code": "translation",
+        "form": "errand",
         "group": "life",
         "default_price_unit": "item",
         "names": {
@@ -183,6 +199,7 @@ SERVICE_TYPES: list[dict[str, Any]] = [
     },
     {
         "code": "residence",
+        "form": "errand",
         "group": "life",
         "default_price_unit": "item",
         "names": {
@@ -194,6 +211,7 @@ SERVICE_TYPES: list[dict[str, Any]] = [
     },
     {
         "code": "housing",
+        "form": "errand",
         "group": "life",
         "default_price_unit": "item",
         "names": {
@@ -240,8 +258,10 @@ async def seed_service_types(session: AsyncSession) -> int:
             row = ServiceType(code=spec["code"])
             session.add(row)
         # Indexed, not `.get`: a spec with no group is a bug in this file, and
-        # defaulting it would put the row on the wrong shelf silently.
+        # defaulting it would put the row on the wrong shelf silently. Same for
+        # the form — a default there asks a bank statement how it teaches.
         row.group_code = ServiceGroup(spec["group"])
+        row.form_shape = ServiceForm(spec["form"])
         row.requires_subject = spec.get("requires_subject", False)
         row.requires_institution = spec.get("requires_institution", False)
         row.default_price_unit = spec.get("default_price_unit")

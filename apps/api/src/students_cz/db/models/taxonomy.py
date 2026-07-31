@@ -13,6 +13,7 @@ from students_cz.db.base import Base, IdMixin, TimestampMixin
 from students_cz.db.models.enums import (
     InstitutionKind,
     NodeKind,
+    ServiceForm,
     ServiceGroup,
     UiLang,
     pg_enum,
@@ -198,6 +199,16 @@ class ServiceType(IdMixin, TimestampMixin, Base):
         nullable=False,
         default=ServiceGroup.STUDY,
         server_default="study",
+    )
+    # The shape of the form that offers this, which is not the shelf it sits on.
+    # Defaulting to `lesson` is the safe direction for an unmigrated row — the
+    # lesson form is a superset of the questions — but a new kind of help that
+    # takes the default silently gets asked how it teaches.
+    form_shape: Mapped[ServiceForm] = mapped_column(
+        pg_enum(ServiceForm, "service_form"),
+        nullable=False,
+        default=ServiceForm.LESSON,
+        server_default="lesson",
     )
     requires_subject: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")

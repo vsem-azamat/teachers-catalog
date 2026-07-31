@@ -74,6 +74,7 @@ async def service_types(
             id=r.id,
             code=r.code,
             group=r.group_code.value,
+            form_shape=r.form_shape.value,
             # The same rule the home screen uses, over the same ordering, so
             # the two agree. Shared rather than repeated for exactly that
             # reason; `test_a_category_keeps_its_colour_across_screens` pins it.

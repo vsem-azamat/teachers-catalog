@@ -47,8 +47,7 @@ msgid "Проверь связь и попробуй ещё раз."
 msgstr "Перевір з'єднання і спробуй ще раз."
 
 #: src/components/Phrase.tsx
-#: src/pages/MyHelper.tsx
-#: src/pages/OfferPrices.tsx
+#: src/lib/workFormat.tsx
 msgid "Онлайн"
 msgstr "Онлайн"
 
@@ -103,6 +102,10 @@ msgstr "Іспити та вступ"
 #: src/pages/Profile.tsx
 msgid "Чешский для вуза"
 msgstr "Чеська для вишу"
+
+#: src/components/InstitutionPicker.tsx
+msgid "Ничего не нашли. Попробуй сокращение — ČVUT, VŠE, MUNI."
+msgstr "Нічого не знайшли. Спробуй скорочення — ČVUT, VŠE, MUNI."
 
 #: src/pages/Helper.tsx
 msgid "Как проходит"
@@ -188,6 +191,14 @@ msgstr "Твій предмет — {0}"
 msgid "Дальше · {0}"
 msgstr "Далі · {0}"
 
+#: src/components/InstitutionPicker.tsx
+msgid "Вуз или факультет — ČVUT, VŠE, FEL"
+msgstr "Виш або факультет — ČVUT, VŠE, FEL"
+
+#: src/components/InstitutionPicker.tsx
+msgid "Загружаем список вузов…"
+msgstr "Завантажуємо список вишів…"
+
 #: src/pages/MyHelper.tsx
 msgid "репетиторство, работы, документы"
 msgstr "репетиторство, роботи, документи"
@@ -270,8 +281,7 @@ msgstr "Не збереглося — спробуй ще раз."
 msgid "Цена"
 msgstr "Ціна"
 
-#: src/pages/MyHelper.tsx
-#: src/pages/OfferPrices.tsx
+#: src/lib/workFormat.tsx
 msgid "И так, и так"
 msgstr "І так, і так"
 
@@ -397,8 +407,7 @@ msgid "В каталоге"
 msgstr "У каталозі"
 
 #: src/components/Phrase.tsx
-#: src/pages/MyHelper.tsx
-#: src/pages/OfferPrices.tsx
+#: src/lib/workFormat.tsx
 msgid "Очно"
 msgstr "Очно"
 
@@ -434,8 +443,7 @@ msgstr "Допомагати іншим"
 msgid "Здесь появятся страховка, визы, банк и переводы."
 msgstr "Тут з'являться страхування, візи, банк і перекази."
 
-#: src/pages/MyHelper.tsx
-#: src/pages/OfferPrices.tsx
+#: src/lib/workFormat.tsx
 msgid "Как занимаешься"
 msgstr "Як займаєшся"
 
@@ -533,6 +541,10 @@ msgstr "Це перше, що читають. Пара живих речень �
 #: src/pages/Profile.tsx
 #~ msgid "По этому мы отсеиваем тех, с кем вы друг друга не поймёте."
 #~ msgstr "За цим ми відсіюємо тих, з ким ви не порозумієтесь."
+
+#: src/lib/workFormat.tsx
+msgid "Удалённо"
+msgstr "Дистанційно"
 
 #: src/pages/Results.tsx
 msgid "изменить"
@@ -703,6 +715,10 @@ msgstr "Розмістити"
 msgid "Сколько берёшь?"
 msgstr "Скільки береш?"
 
+#: src/lib/workFormat.tsx
+msgid "Хожу вместе"
+msgstr "Ходжу разом"
+
 #: src/pages/MyHelper.tsx
 msgid "Район или где удобно встречаться"
 msgstr "Район або де зручно зустрічатися"
@@ -839,6 +855,10 @@ msgstr "Поки нікого"
 msgid "Сейчас бесплатно. Когда людей станет больше, размещение таких услуг станет платным."
 msgstr "Зараз безкоштовно. Коли людей стане більше, розміщення таких послуг стане платним."
 
+#: src/lib/workFormat.tsx
+msgid "Как работаешь"
+msgstr "Як працюєш"
+
 #: src/pages/Life.tsx
 msgid "Не про учёбу"
 msgstr "Не про навчання"
@@ -883,6 +903,10 @@ msgstr "Документи і життя"
 #: src/pages/Ask.tsx
 msgid "Поняли так — поправь, если не то"
 msgstr "Ми зрозуміли так — виправ, якщо не те"
+
+#: src/lib/workFormat.tsx
+msgid "Лично"
+msgstr "Особисто"
 
 #: src/pages/OfferPrices.tsx
 msgid "Необязательно. Пустое поле значит «договоримся»."
@@ -967,6 +991,10 @@ msgstr "років на майданчику"
 #: src/pages/OfferPrices.tsx
 msgid "в день"
 msgstr "за день"
+
+#: src/components/InstitutionPicker.tsx
+msgid "Список вузов не загрузился. Попробуй ещё раз позже."
+msgstr "Список вишів не завантажився. Спробуй ще раз пізніше."
 
 #: src/pages/Results.tsx
 msgid "Подходят"

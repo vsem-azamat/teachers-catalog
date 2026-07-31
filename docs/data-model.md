@@ -88,6 +88,35 @@ and inserts nothing — so they are in production only because somebody ran
 `seed.py` against it by hand. Nothing compares their names, and renaming one in
 the seed still needs a migration; nothing but this paragraph will tell you so.
 
+## A group is not a form
+
+`service_types.form_shape` is a second closed enum — `lesson`, `work`,
+`errand` — and it answers a different question from the group. The group is for
+the student browsing the catalog: *what do I need*. The shape is for the person
+offering: *what do we ask you*. They nearly coincide and must not be merged,
+because the two that differ are the ones that matter:
+
+| shape | which kinds | what the form asks |
+| --- | --- | --- |
+| `lesson` | tutoring, languages, exam preparation, entrance exams | a subject, a school where one is required, an hourly price, online or in person, where |
+| `work` | written work | a price per work, and nothing about meeting |
+| `errand` | nostrification, help during the exam, and all five of `life` | a price, remote or alongside you, where |
+
+Help *during* an exam is the clearest case: it sits on the `entrance` shelf
+with the exam preparation a student would compare it to, and its form has
+nothing to do with teaching — it is standby for one event on one day.
+
+What the price is *per* is not the shape's business: `default_price_unit` says
+that per service type, so five errands are priced per case while nostrification
+and help during an exam are priced by the hour. The shape decides which
+questions exist, not what the answers are measured in.
+
+A `work` is always remote, so its form does not ask. For the other two the
+question is the same three answers under different words: `work_format` is
+`online` / `offline` / `both`, which reads as online-or-in-person for a lesson
+and remotely-or-alongside-you for an errand. One column, worded by what the
+person actually offers — a second column would be the same fact stored twice.
+
 ## Trees without recursion
 
 `subjects` and `institutions` are hierarchies stored as materialised paths:

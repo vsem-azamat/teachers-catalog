@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router';
 
 import { AppHeader } from '@/components/AppHeader';
+import { InstitutionPicker } from '@/components/InstitutionPicker';
 import { iconForService } from '@/components/icons';
 import { ServiceGroupLabel } from '@/components/Phrase';
 import { SubjectSearch } from '@/components/SubjectSearch';
@@ -25,6 +26,7 @@ import { hapticSelection, hapticSuccess, useMainButton } from '@/hooks/useTelegr
 import { api } from '@/lib/api';
 import { groupRuns } from '@/lib/groups';
 import type {
+  Institution,
   MyOffer,
   OfferInput,
   PriceUnit,
@@ -32,6 +34,7 @@ import type {
   Subject,
   WorkFormat,
 } from '@/lib/types';
+import { askedFormat, formatOptions, formatQuestion } from '@/lib/workFormat';
 
 /**
  * Prices for everything that was ticked, on one screen.
@@ -83,6 +86,16 @@ export default function OfferPricesPage() {
     return serviceTypes.filter((type) => wanted.has(type.code));
   }, [picked, serviceTypes]);
 
+  // Worded by what was actually ticked, not by what the screen is called.
+  const asked = useMemo(
+    () =>
+      askedFormat(
+        chosen.map((type) => type.code),
+        serviceTypes,
+      ),
+    [chosen, serviceTypes],
+  );
+
   // Filled once. Whatever the person already offers is carried in, so a save
   // that replaces the whole list does not throw away the prices they set last
   // time.
@@ -123,7 +136,9 @@ export default function OfferPricesPage() {
   const save = useMutation({
     mutationFn: () =>
       api.saveHelper({
-        work_format: workFormat,
+        // See MyHelper: a question the form did not ask is one the payload does
+        // not answer.
+        ...(asked === null ? {} : { work_format: workFormat }),
         offers: [...rows.map(toOffer), ...unlisted.map(keep)],
         // Not an unconditional `true`. Somebody who hid their profile on
         // purpose and then adds a service from the cabinet is adding a
@@ -158,37 +173,77 @@ export default function OfferPricesPage() {
   // Arrived here directly — a reload, or a link. There is nothing to price.
   if (!picked || picked.length === 0) return <Navigate to="/offer" replace />;
 
-  const addSubject = (type: ServiceType, subject: Subject) => {
+  // Removing the last subject — or the last school — must not remove the
+  // service: the person ticked it, and a service with no axis is one search
+  // cannot reach yet, not one they withdrew.
+  const dropRow = (type: ServiceType, row: Draft) => {
+    setRows((current) => {
+      const left = current.filter((other) => other.key !== row.key);
+      return left.some((other) => other.service_type_id === type.id)
+        ? left
+        : [...left, blank(type)];
+    });
+  };
+
+  /**
+   * Attach a subject or a school to this service.
+   *
+   * One function for both, because they are the same move: `offers` is unique
+   * on its four axes, so calculus and physics — or ČVUT and VŠE — are two rows
+   * of the same service, and the first row of a service that takes an axis
+   * starts without one.
+   */
+  const addAxis = (
+    type: ServiceType,
+    key: string,
+    axis: Partial<Draft>,
+    hasNoAxis: (row: Draft) => boolean,
+  ) => {
     hapticSelection();
     setRows((current) => {
-      // The first row of a subject-taking service starts with no subject. Fill
-      // it rather than leaving an empty one behind, which would save as "this
-      // service, no subject" alongside the real ones.
+      // Fill the empty first row rather than leaving it behind, which would
+      // save as "this service, no subject" alongside the real ones.
       const empty = current.find(
-        (row) => row.service_type_id === type.id && row.subject_id === null,
+        (row) => row.service_type_id === type.id && hasNoAxis(row),
       );
       if (empty) {
-        return current.map((row) =>
-          row === empty
-            ? { ...row, subject_id: subject.id, subject_name: subject.name }
-            : row,
-        );
+        return current.map((row) => (row === empty ? { ...row, ...axis } : row));
       }
       return [
         ...current,
         {
           ...blank(type),
-          key: `${type.id}:${subject.id}`,
-          subject_id: subject.id,
-          subject_name: subject.name,
-          // A new subject inherits what the person already typed for this
-          // service. Asking the same price four times is asking three times
-          // too many.
+          ...axis,
+          key,
+          // Inherits what the person already typed for this service. Asking the
+          // same price four times is asking three times too many.
           price: current.find((row) => row.service_type_id === type.id)?.price ?? '',
         },
       ];
     });
   };
+
+  const addSubject = (type: ServiceType, subject: Subject) =>
+    addAxis(
+      type,
+      `${type.id}:${subject.id}`,
+      { subject_id: subject.id, subject_name: subject.name },
+      (row) => row.subject_id === null,
+    );
+
+  const addInstitution = (type: ServiceType, institution: Institution) =>
+    addAxis(
+      type,
+      `${type.id}:inst:${institution.id}`,
+      {
+        institution_id: institution.id,
+        // The server's own `institution_name`, not the short form: a chip that
+        // reads ČVUT until the screen reloads and then reads the full name is
+        // one school looking like two.
+        institution_name: institution.name,
+      },
+      (row) => row.institution_id === null,
+    );
 
   return (
     <Screen>
@@ -239,41 +294,41 @@ export default function OfferPricesPage() {
                     <div className={ui.svcBody}>
                       {type.requires_subject ? (
                         <>
-                          {mineHere.some((row) => row.subject_id !== null) ? (
-                            <Chips>
-                              {mineHere
-                                .filter((row) => row.subject_id !== null)
-                                .map((row) => (
-                                  <ChipView
-                                    key={row.key}
-                                    active
-                                    removeLabel={t`Убрать`}
-                                    onRemove={() =>
-                                      setRows((current) => {
-                                        const left = current.filter(
-                                          (other) => other.key !== row.key,
-                                        );
-                                        // Removing the last subject must not
-                                        // remove the service: the person ticked
-                                        // it, and a service with no subject is
-                                        // one search cannot reach yet, not one
-                                        // they withdrew.
-                                        return left.some(
-                                          (other) => other.service_type_id === type.id,
-                                        )
-                                          ? left
-                                          : [...left, blank(type)];
-                                      })
-                                    }
-                                  >
-                                    {row.subject_name}
-                                  </ChipView>
-                                ))}
-                            </Chips>
-                          ) : null}
+                          <AxisChips
+                            rows={mineHere.filter((row) => row.subject_id !== null)}
+                            label={(row) => row.subject_name}
+                            onDrop={(row) => dropRow(type, row)}
+                            removeLabel={t`Убрать`}
+                          />
                           <SubjectSearch
                             onPick={(subject) => addSubject(type, subject)}
                             taken={new Set(mineHere.map((row) => row.subject_id))}
+                          />
+                        </>
+                      ) : null}
+
+                      {/* The one service type that declares it needs a school.
+                          The flag has been in the database since the grouping
+                          and read by nothing, so preparation for ČVUT's
+                          entrance exam was stored the same way as preparation
+                          for nobody's. */}
+                      {type.requires_institution ? (
+                        <>
+                          <AxisChips
+                            rows={mineHere.filter((row) => row.institution_id !== null)}
+                            label={(row) => row.institution_name}
+                            onDrop={(row) => dropRow(type, row)}
+                            removeLabel={t`Убрать`}
+                          />
+                          <InstitutionPicker
+                            onPick={(institution) => addInstitution(type, institution)}
+                            taken={
+                              new Set(
+                                mineHere
+                                  .map((row) => row.institution_id)
+                                  .filter((id): id is number => id !== null),
+                              )
+                            }
                           />
                         </>
                       ) : null}
@@ -286,7 +341,13 @@ export default function OfferPricesPage() {
                       {mineHere.map((row) => (
                         <PriceRow
                           key={row.key}
-                          name={mineHere.length > 1 ? row.subject_name : null}
+                          // Whichever axis this service has. Two schools would
+                          // otherwise be two unlabelled price fields.
+                          name={
+                            mineHere.length > 1
+                              ? (row.subject_name ?? row.institution_name)
+                              : null
+                          }
                           value={row.price}
                           unit={row.unit}
                           onPrice={(price) =>
@@ -312,18 +373,16 @@ export default function OfferPricesPage() {
             </div>
           ))}
 
-          <Label>
-            <Trans>Как занимаешься</Trans>
-          </Label>
-          <Segmented
-            value={workFormat}
-            onChange={setWorkFormat}
-            options={[
-              { value: 'online' as WorkFormat, label: <Trans>Онлайн</Trans> },
-              { value: 'offline' as WorkFormat, label: <Trans>Очно</Trans> },
-              { value: 'both' as WorkFormat, label: <Trans>И так, и так</Trans> },
-            ]}
-          />
+          {asked === null ? null : (
+            <>
+              <Label>{formatQuestion(asked)}</Label>
+              <Segmented
+                value={workFormat}
+                onChange={setWorkFormat}
+                options={formatOptions(asked)}
+              />
+            </>
+          )}
 
           {hidden ? (
             <div style={{ marginTop: 12 }}>
@@ -453,9 +512,45 @@ interface Draft {
   subject_id: number | null;
   subject_name: string | null;
   institution_id: number | null;
+  institution_name: string | null;
   price: string;
   unit: PriceUnit;
   langs: string[];
+}
+
+/**
+ * The rows of one service that already carry an axis, as removable chips.
+ *
+ * One component for subjects and schools: the two blocks were byte-identical
+ * apart from the field they read, down to the closure that puts the service
+ * back when its last axis goes.
+ */
+function AxisChips({
+  rows,
+  label,
+  onDrop,
+  removeLabel,
+}: {
+  rows: Draft[];
+  label: (row: Draft) => string | null;
+  onDrop: (row: Draft) => void;
+  removeLabel: string;
+}) {
+  if (!rows.length) return null;
+  return (
+    <Chips>
+      {rows.map((row) => (
+        <ChipView
+          key={row.key}
+          active
+          removeLabel={removeLabel}
+          onRemove={() => onDrop(row)}
+        >
+          {label(row)}
+        </ChipView>
+      ))}
+    </Chips>
+  );
 }
 
 function blank(type: ServiceType): Draft {
@@ -465,6 +560,7 @@ function blank(type: ServiceType): Draft {
     subject_id: null,
     subject_name: null,
     institution_id: null,
+    institution_name: null,
     price: '',
     // From the server, not guessed here: a thesis priced by the hour reads as
     // ten times too little.
@@ -480,6 +576,7 @@ function fromOffer(type: ServiceType, offer: MyOffer): Draft {
     subject_id: offer.subject_id,
     subject_name: offer.subject_name,
     institution_id: offer.institution_id,
+    institution_name: offer.institution_name,
     // Rounded, because the field holds digits: an older row saved as 550.5
     // would render a decimal point the input then refuses to accept.
     price: offer.price_amount == null ? '' : String(Math.round(offer.price_amount)),

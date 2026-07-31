@@ -1,6 +1,6 @@
 import { Trans, useLingui } from '@lingui/react/macro';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -22,6 +22,7 @@ import {
 import { hapticSuccess, useMainButton } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
 import type { MyOffer, OfferInput, PriceUnit, WorkFormat } from '@/lib/types';
+import { askedFormat, formatOptions, formatQuestion } from '@/lib/workFormat';
 
 /**
  * The helper's own page: everything they have told us, editable.
@@ -47,6 +48,14 @@ export default function MyHelperPage() {
     queryFn: ({ signal }) => api.getMyHelper(signal),
   });
 
+  // Which questions this person's services actually have. Cached for an hour
+  // and shared with every other screen that needs the reference list.
+  const { data: serviceTypes } = useQuery({
+    queryKey: ['service-types'],
+    queryFn: ({ signal }) => api.getServiceTypes(signal),
+    staleTime: 60 * 60 * 1000,
+  });
+
   const [headline, setHeadline] = useState('');
   const [about, setAbout] = useState('');
   const [city, setCity] = useState('');
@@ -54,6 +63,24 @@ export default function MyHelperPage() {
   const [workFormat, setWorkFormat] = useState<WorkFormat>('both');
   const [listed, setListed] = useState(true);
   const [rows, setRows] = useState<Draft[]>([]);
+
+  // Worded by what is on the screen now, not by what the server last saw:
+  // deleting the last lesson row has to stop the question asking about
+  // teaching before the profile is refetched.
+  //
+  // Until the reference list is here — still loading, or failed — the neutral
+  // wording rather than nothing. Otherwise the question and the whole city
+  // block are missing from a screen that already renders a live Save button,
+  // and then appear: on a cold cache as a flicker, on a failure for ever, with
+  // the person never learning a question existed.
+  const asked = useMemo(
+    () =>
+      askedFormat(
+        rows.map((row) => row.code),
+        serviceTypes,
+      ),
+    [serviceTypes, rows],
+  );
 
   // Filled once, from the server. Later renders must not clobber what the
   // person is typing, which is what a plain `value={data.about}` would do.
@@ -75,7 +102,11 @@ export default function MyHelperPage() {
       api.saveHelper({
         headline: headline.trim() || null,
         about: about.trim() || null,
-        work_format: workFormat,
+        // Omitted, not defaulted, when the form did not ask: `HelperUpsert`
+        // reads `model_fields_set`, so a field absent from the payload leaves
+        // the stored value alone. Sending `both` for somebody who only writes
+        // theses would be the screen answering a question on their behalf.
+        ...(asked === null ? {} : { work_format: workFormat }),
         city: city.trim() || null,
         place_note: placeNote.trim() || null,
         offers: rows.map(toOffer),
@@ -214,20 +245,18 @@ export default function MyHelperPage() {
             </Rows>
           </div>
 
-          <Label>
-            <Trans>Как занимаешься</Trans>
-          </Label>
-          <Segmented
-            value={workFormat}
-            onChange={setWorkFormat}
-            options={[
-              { value: 'online' as WorkFormat, label: <Trans>Онлайн</Trans> },
-              { value: 'offline' as WorkFormat, label: <Trans>Очно</Trans> },
-              { value: 'both' as WorkFormat, label: <Trans>И так, и так</Trans> },
-            ]}
-          />
+          {asked === null ? null : (
+            <>
+              <Label>{formatQuestion(asked)}</Label>
+              <Segmented
+                value={workFormat}
+                onChange={setWorkFormat}
+                options={formatOptions(asked)}
+              />
+            </>
+          )}
 
-          {workFormat === 'online' ? null : (
+          {asked === null || workFormat === 'online' ? null : (
             <>
               <Label>
                 <Trans>Где</Trans>
@@ -402,6 +431,8 @@ function SubjectRow({
 interface Draft {
   key: string;
   service_type_id: number;
+  /** The service type's `code`, which is what the reference list is keyed by. */
+  code: string;
   service_type_name: string;
   subject_id: number | null;
   subject_name: string | null;
@@ -418,6 +449,7 @@ function toDraft(offer: MyOffer): Draft {
     // rows — so the key carries every axis the server keys on.
     key: `${offer.service_type_id}:${offer.subject_id}:${offer.institution_id}`,
     service_type_id: offer.service_type_id,
+    code: offer.service_type,
     service_type_name: offer.service_type_name,
     subject_id: offer.subject_id,
     subject_name: offer.subject_name,
