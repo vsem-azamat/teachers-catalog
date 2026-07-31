@@ -38,7 +38,7 @@ export function InstitutionPicker({
   const { t } = useLingui();
   const [query, setQuery] = useState('');
 
-  const { data, isError } = useQuery({
+  const { data, isError, isPending } = useQuery({
     queryKey: ['institutions'],
     queryFn: ({ signal }) => api.getInstitutions(signal),
     staleTime: 60 * 60 * 1000,
@@ -88,6 +88,10 @@ export function InstitutionPicker({
       {isError ? (
         <Hint>
           <Trans>Список вузов не загрузился. Попробуй ещё раз позже.</Trans>
+        </Hint>
+      ) : isPending && query.trim().length >= 2 ? (
+        <Hint>
+          <Trans>Загружаем список вузов…</Trans>
         </Hint>
       ) : null}
       {/* No margin of its own: the card this sits in spaces everything in it,

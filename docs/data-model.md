@@ -75,7 +75,7 @@ because the two that differ are the ones that matter:
 | --- | --- | --- |
 | `lesson` | tutoring, languages, exam preparation, entrance exams | a subject, a school where one is required, an hourly price, online or in person, where |
 | `work` | written work | a price per work, and nothing about meeting |
-| `errand` | nostrification, help during the exam, and all five of `life` | a price, remote or alongside you |
+| `errand` | nostrification, help during the exam, and all five of `life` | a price, remote or alongside you, where |
 
 Help *during* an exam is the clearest case: it sits on the `entrance` shelf
 with the exam preparation a student would compare it to, and its form has

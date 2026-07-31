@@ -191,6 +191,10 @@ msgstr "Дальше · {0}"
 msgid "Вуз или факультет — ČVUT, VŠE, FEL"
 msgstr "Вуз или факультет — ČVUT, VŠE, FEL"
 
+#: src/components/InstitutionPicker.tsx
+msgid "Загружаем список вузов…"
+msgstr "Загружаем список вузов…"
+
 #: src/pages/MyHelper.tsx
 msgid "репетиторство, работы, документы"
 msgstr "репетиторство, работы, документы"
