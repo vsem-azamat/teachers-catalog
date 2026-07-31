@@ -111,6 +111,8 @@ export interface Offer {
   options: string[];
   /** The helper's own words, in whatever language they wrote them. */
   note: string | null;
+  /** Only a written work has one. `null` reads as "the two of them agree". */
+  turnaround_days: number | null;
 }
 
 /** One row in the results list. */
@@ -342,6 +344,7 @@ export interface OfferInput {
   service_type_id: number;
   option_ids?: number[];
   note?: string | null;
+  turnaround_days?: number | null;
   subject_id?: number | null;
   institution_id?: number | null;
   price_amount?: number | null;
@@ -371,6 +374,7 @@ export interface MyOffer {
   service_type_id: number;
   option_ids: number[];
   note: string | null;
+  turnaround_days: number | null;
   service_type: string;
   service_type_name: string;
   subject_id: number | null;

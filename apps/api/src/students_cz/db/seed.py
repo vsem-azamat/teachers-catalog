@@ -251,12 +251,58 @@ WORKING_LANGUAGES: list[tuple[str, dict[str, str]]] = [
 ]
 
 
-# What each errand covers, by service type code: (code, ru, cs, en, uk).
+# What a kind of help covers, by service type code: (code, ru, cs, en, uk).
 #
 # An errand has no subject and no institution — the tile is the whole query — so
-# without this a person offering insurance can say nothing beyond the word.
+# without this a person offering insurance can say nothing beyond the word. A
+# written work has a subject and nothing else, and the lines say which works are
+# taken on rather than which errands are run.
 # `test_service_groups.py` fails when this and the migration disagree.
 SERVICE_OPTIONS: dict[str, list[tuple[str, str, str, str, str]]] = {
+    "writing": [
+        (
+            "semester",
+            "Семестровая и реферат",
+            "Semestrální práce a referát",
+            "Term papers and essays",
+            "Семестрова та реферат",
+        ),
+        (
+            "bachelor",
+            "Бакалаврская",
+            "Bakalářská práce",
+            "A bachelor's thesis",
+            "Бакалаврська",
+        ),
+        (
+            "master",
+            "Дипломная и магистерская",
+            "Diplomová práce",
+            "A master's thesis",
+            "Дипломна та магістерська",
+        ),
+        (
+            "presentation",
+            "Презентация к защите",
+            "Prezentace k obhajobě",
+            "Slides for the defence",
+            "Презентація до захисту",
+        ),
+        (
+            "edits",
+            "Правки после проверки",
+            "Úpravy po připomínkách",
+            "Revisions after feedback",
+            "Правки після перевірки",
+        ),
+        (
+            "formatting",
+            "Оформление по нормам вуза",
+            "Formátování dle norem školy",
+            "Formatting to the school's rules",
+            "Оформлення за нормами вишу",
+        ),
+    ],
     "insurance": [
         (
             "vzp_pvzp",

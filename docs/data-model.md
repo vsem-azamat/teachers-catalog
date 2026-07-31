@@ -99,7 +99,7 @@ because the two that differ are the ones that matter:
 | shape | which kinds | what the form asks |
 | --- | --- | --- |
 | `lesson` | tutoring, languages, exam preparation, entrance exams | a subject, a school where one is required, an hourly price, online or in person, where |
-| `work` | written work | a price per work, and nothing about meeting |
+| `work` | written work | a price per work, a turnaround, and nothing about meeting |
 | `errand` | nostrification, help during the exam, and all five of `life` | a price, remote or alongside you, where |
 
 Help *during* an exam is the clearest case: it sits on the `entrance` shelf
@@ -111,7 +111,7 @@ that per service type, so five errands are priced per case while nostrification
 and help during an exam are priced by the hour. The shape decides which
 questions exist, not what the answers are measured in.
 
-A `work` is always remote, so its form does not ask. For the other two the
+A `work` is always remote, so its form does not ask how you meet. For the other two the
 question is the same three answers under different words: `work_format` is
 `online` / `offline` / `both`, which reads as online-or-in-person for a lesson
 and remotely-or-alongside-you for an errand. One column, worded by what the
@@ -139,9 +139,24 @@ deleted, for the reason `languages` gives: the array holds plain integers and
 references nothing, so a deleted row would leave an offer pointing at an option
 with no name to show.
 
-The checklist belongs to the service type and not to the shape. Every errand has
-one today, and nothing stops a lesson growing one — "first lesson free" is the
-obvious candidate — which is why the column sits where it does.
+The checklist belongs to the service type and not to the shape, which is why the
+column sits where it does: every errand has one, and so does written work, whose
+lines are the kinds of work taken on rather than the errands run. Nothing stops
+a lesson growing one — "first lesson free" is the obvious candidate.
+
+**`offers.turnaround_days`** is how long the work takes, and `NULL` means the
+two of them will agree rather than that nobody knows: a written work is the one
+kind of help where "when" is the question asked straight after "how much", and
+a person who will not commit to a number is saying something, not omitting it.
+
+It is a column and not a key in `offers.attrs`, which is where a turnaround
+would naturally go — `attrs` is the bag for per-service-type extras that do not
+deserve columns. Two reasons it does not go there. No schema exposes `attrs`, so
+a client would be reading an untyped bag the generated types cannot check. And
+the question worth asking of a turnaround is a range — who can do it inside a
+week — which a small integer answers and a JSONB key does not. Days, not a free
+text, for the same reason: "asap" sorts against nothing. Nothing indexes the
+column yet, because nothing queries it until search does.
 
 ## Trees without recursion
 

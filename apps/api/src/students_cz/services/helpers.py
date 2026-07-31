@@ -213,6 +213,11 @@ async def _apply_offers(
                     in options_by_service.get(offer_spec.service_type_id, set())
                 )
             )
+        # Same rule, same reason as the checklist below: `OfferIn` defaults it
+        # to `None`, so an unconditional write moves a writer who said "a week"
+        # to "we will agree" on any save that did not mention it.
+        if "turnaround_days" in offer_spec.model_fields_set:
+            offer.turnaround_days = offer_spec.turnaround_days
         if "note" in offer_spec.model_fields_set:
             offer.note = (offer_spec.note or "").strip() or None
         # Same rule: a caller that said nothing about the format is not saying

@@ -606,6 +606,7 @@ async def _offers_out(
                     )
                 ],
                 note=offer.note,
+                turnaround_days=offer.turnaround_days,
             )
         )
     return out

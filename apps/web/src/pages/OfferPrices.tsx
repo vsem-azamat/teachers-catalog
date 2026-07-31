@@ -25,6 +25,7 @@ import {
 import { hapticSelection, hapticSuccess, useMainButton } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
 import { groupRuns } from '@/lib/groups';
+import { TURNAROUNDS, TurnaroundLabel } from '@/lib/turnaround';
 import type {
   Institution,
   MyOffer,
@@ -206,6 +207,34 @@ export default function OfferPricesPage() {
       );
     });
   };
+
+  // Like the checklist, this belongs to the service and not to one of its
+  // rows, and tapping the chip that is already on clears it back to
+  // «договоримся» — a person who mis-taps has no other way back.
+  const setTurnaround = (type: ServiceType, days: number) => {
+    hapticSelection();
+    setRows((current) =>
+      current.map((row) =>
+        row.service_type_id === type.id
+          ? { ...row, turnaround_days: row.turnaround_days === days ? null : days }
+          : row,
+      ),
+    );
+  };
+
+  const clearTurnaround = (type: ServiceType) => {
+    hapticSelection();
+    setRows((current) =>
+      current.map((row) =>
+        row.service_type_id === type.id ? { ...row, turnaround_days: null } : row,
+      ),
+    );
+  };
+
+  const notePlaceholder = (type: ServiceType) =>
+    type.form_shape === 'work'
+      ? t`Пара слов о себе — что берёшь и чего не берёшь`
+      : t`Пара слов о себе — что делаешь и как быстро`;
 
   const setNote = (type: ServiceType, note: string) => {
     setRows((current) =>
@@ -428,15 +457,50 @@ export default function OfferPricesPage() {
                           }
                         />
                       ))}
+                      {/* Only a written work is asked when. A lesson happens
+                          when the two of them agree, and an errand takes as
+                          long as the office queue — asking either would be
+                          asking somebody to promise the queue. */}
+                      {type.form_shape === 'work' ? (
+                        <div style={{ marginTop: 4 }}>
+                          <Label>
+                            <Trans>Срок</Trans>
+                          </Label>
+                          <Chips>
+                            {TURNAROUNDS.map((days) => (
+                              <ChipView
+                                key={days}
+                                active={mineHere[0]?.turnaround_days === days}
+                                onClick={() => setTurnaround(type, days)}
+                              >
+                                <TurnaroundLabel days={days} />
+                              </ChipView>
+                            ))}
+                            {/* Nothing chosen is «договоримся», so the chip is
+                                the state rather than a sixth answer: it reads
+                                as chosen from the start because it is. */}
+                            <ChipView
+                              active={mineHere[0]?.turnaround_days == null}
+                              onClick={() => clearTurnaround(type)}
+                            >
+                              <Trans>Договоримся</Trans>
+                            </ChipView>
+                          </Chips>
+                        </div>
+                      ) : null}
+
                       {type.options.length > 0 ? (
                         <div className={`${ui.field} ${ui.fieldTall}`}>
                           <textarea
                             value={mineHere[0]?.note ?? ''}
                             onChange={(event) => setNote(type, event.target.value)}
-                            placeholder={t`Пара слов о себе — что делаешь и как быстро`}
+                            // A written work has just been asked how fast, so
+                            // inviting it again in prose asks for the same
+                            // answer twice and gets two that disagree.
+                            placeholder={notePlaceholder(type)}
                             // The same words as the placeholder, which stops
                             // being the name the moment anything is typed.
-                            aria-label={t`Пара слов о себе — что делаешь и как быстро`}
+                            aria-label={notePlaceholder(type)}
                             rows={3}
                             maxLength={600}
                             style={{
@@ -597,6 +661,8 @@ interface Draft {
   institution_name: string | null;
   option_ids: number[];
   note: string;
+  // `null` is «договоримся», which is an answer, so the field is never absent.
+  turnaround_days: number | null;
   price: string;
   unit: PriceUnit;
   langs: string[];
@@ -647,6 +713,7 @@ function blank(type: ServiceType): Draft {
     institution_name: null,
     option_ids: [],
     note: '',
+    turnaround_days: null,
     price: '',
     // From the server, not guessed here: a thesis priced by the hour reads as
     // ten times too little.
@@ -665,6 +732,7 @@ function fromOffer(type: ServiceType, offer: MyOffer): Draft {
     institution_name: offer.institution_name,
     option_ids: offer.option_ids,
     note: offer.note ?? '',
+    turnaround_days: offer.turnaround_days,
     // Rounded, because the field holds digits: an older row saved as 550.5
     // would render a decimal point the input then refuses to accept.
     price: offer.price_amount == null ? '' : String(Math.round(offer.price_amount)),
@@ -684,6 +752,7 @@ function keep(offer: MyOffer): OfferInput {
     langs: offer.langs,
     option_ids: offer.option_ids,
     note: offer.note,
+    turnaround_days: offer.turnaround_days,
   };
 }
 
@@ -699,5 +768,6 @@ function toOffer(row: Draft): OfferInput {
     langs: row.langs,
     option_ids: row.option_ids,
     note: row.note.trim() || null,
+    turnaround_days: row.turnaround_days,
   };
 }

@@ -152,6 +152,9 @@ class OfferOut(BaseModel):
     # Neither carries a default, for the reason `ServiceTypeOut.options` gives.
     options: list[str]
     note: str | None
+    # Only a written work has one; the rest send `null`, which reads as "we
+    # will agree" there and as "nobody asked" everywhere else.
+    turnaround_days: int | None
 
 
 class HelperCardOut(BaseModel):
@@ -346,6 +349,10 @@ class OfferIn(BaseModel):
     # help's checklist to another.
     option_ids: list[int] = Field(default_factory=list, max_length=32)
     note: str | None = Field(default=None, max_length=600)
+    # A year is the outer bound of anything a student would wait for, and the
+    # form offers five presets well inside it. `None` is an answer: the two of
+    # them will agree.
+    turnaround_days: int | None = Field(default=None, ge=1, le=365)
 
 
 class HelperUpsert(BaseModel):
@@ -381,6 +388,7 @@ class MyOfferOut(BaseModel):
     langs: list[str] = Field(default_factory=list)
     option_ids: list[int]
     note: str | None
+    turnaround_days: int | None
 
 
 class MyHelperOut(BaseModel):

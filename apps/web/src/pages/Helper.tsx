@@ -22,6 +22,7 @@ import {
 } from '@/components/Ui';
 import { hapticSuccess, useMainButton } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
+import { TurnaroundLabel } from '@/lib/turnaround';
 import type { HelperDetail } from '@/lib/types';
 
 /**
@@ -160,7 +161,7 @@ export default function HelperPage() {
       {/* What an errand actually covers, in our words, and then in theirs. A
           chip saying "Insurance" is the same chip for everybody offering it;
           these lines are the difference between two people. */}
-      {coveredBy(data.offers).map(({ code, name, options, note }) => (
+      {coveredBy(data.offers).map(({ code, name, options, note, turnaround }) => (
         <div key={`covers-${code}`}>
           <Label>{name}</Label>
           {options.length > 0 ? (
@@ -170,8 +171,19 @@ export default function HelperPage() {
               ))}
             </ul>
           ) : null}
-          {note ? (
+          {/* Only a written work carries one, and it is the question asked
+              straight after the price, so it sits above their own words. */}
+          {turnaround != null ? (
             <div style={{ marginTop: options.length > 0 ? 8 : 0 }}>
+              <Sub>
+                <Trans>
+                  Срок: <TurnaroundLabel days={turnaround} />
+                </Trans>
+              </Sub>
+            </div>
+          ) : null}
+          {note ? (
+            <div style={{ marginTop: options.length > 0 || turnaround != null ? 8 : 0 }}>
               <Sub>{note}</Sub>
             </div>
           ) : null}
@@ -298,16 +310,23 @@ function withIntro(url: string, data: HelperDetail | undefined): string {
 function coveredBy(offers: HelperDetail['offers']) {
   const out = new Map<
     string,
-    { code: string; name: string; options: string[]; note: string | null }
+    {
+      code: string;
+      name: string;
+      options: string[];
+      note: string | null;
+      turnaround: number | null;
+    }
   >();
   for (const offer of offers) {
-    if (!offer.options.length && !offer.note) continue;
+    if (!offer.options.length && !offer.note && offer.turnaround_days == null) continue;
     if (out.has(offer.service_type)) continue;
     out.set(offer.service_type, {
       code: offer.service_type,
       name: offer.service_type_name,
       options: offer.options,
       note: offer.note,
+      turnaround: offer.turnaround_days,
     });
   }
   return [...out.values()];
