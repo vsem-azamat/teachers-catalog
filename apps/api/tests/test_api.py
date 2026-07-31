@@ -1071,8 +1071,12 @@ async def test_a_withdrawn_checklist_line_survives_an_unrelated_save(client, ses
     mine = (await client.get("/api/v1/helper", headers=headers)).json()
     assert mine["offers"][0]["option_ids"] == chosen, "a withdrawn line was erased"
 
-    options[0].is_active = True
-    await session.flush()
+    # And the page a student reads shows the surviving line only: hiding is the
+    # read path's job, which is what lets the write path keep the id.
+    me = (await client.get("/api/v1/me", headers=headers)).json()
+    page = (await client.get(f"/api/v1/helpers/{me['id']}", headers=headers)).json()
+    offer = next(o for o in page["offers"] if o["service_type"] == "insurance")
+    assert len(offer["options"]) == 1, "a withdrawn line is still on the profile"
 
 
 async def test_the_same_checklist_line_twice_is_stored_once(client, session):

@@ -308,7 +308,13 @@ async def test_the_checklist_reaches_the_database(session) -> None:
     from students_cz.db.models import ServiceOption, ServiceType
     from students_cz.db.seed import SERVICE_OPTIONS
 
-    rows = (await session.scalars(select(ServiceOption))).all()
+    # Active only: a line dropped from the constant is retired rather than
+    # deleted, so its row outlives the constant on purpose.
+    rows = (
+        await session.scalars(
+            select(ServiceOption).where(ServiceOption.is_active.is_(True))
+        )
+    ).all()
     assert rows, "reference data is not loaded — run `make seed`"
 
     codes = {

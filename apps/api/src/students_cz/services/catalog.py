@@ -74,20 +74,14 @@ async def _option_labels(
     lines read in one order on a profile and another on the screen that wrote
     them.
     """
-    if not ids:
-        return {}
-    rows = (
-        await session.scalars(
-            select(ServiceOption)
-            .where(ServiceOption.id.in_(ids), ServiceOption.is_active.is_(True))
-            .options(selectinload(ServiceOption.names))
-        )
-    ).all()
+    rows = await rows_by_id(session, ServiceOption, ids)
     # Falls back to the code, the way the taxonomy endpoint does: an option
     # missing a translation would otherwise be offered on the screen that sets
     # it and vanish from the profile that shows it, losing a tick somebody set.
     return {
-        row.id: (row.sort, translated(row, lang, "label") or row.code) for row in rows
+        row.id: (row.sort, translated(row, lang, "label") or row.code)
+        for row in rows.values()
+        if row.is_active
     }
 
 
