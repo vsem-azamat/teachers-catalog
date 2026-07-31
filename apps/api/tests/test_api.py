@@ -1017,6 +1017,59 @@ async def test_a_save_that_says_nothing_about_the_checklist_keeps_it(client, ses
     assert mine["offers"][0]["price_amount"] == 900
 
 
+async def test_the_checklist_reaches_the_screen_that_ticks_it(client, session):
+    """`/taxonomy/service-types` is the only place the boxes come from.
+
+    So the three things the screen depends on are asserted here rather than
+    inferred from the database: the labels are translated, they arrive in the
+    catalog's order, and a withdrawn line is not offered.
+    """
+    from sqlalchemy import select
+
+    from students_cz.db.models import ServiceOption, ServiceType
+
+    headers = auth_header(90505)
+    ru = (await client.get("/api/v1/taxonomy/service-types", headers=headers)).json()
+    insurance_ru = next(s for s in ru if s["code"] == "insurance")
+    assert insurance_ru["options"], "the checklist did not reach the screen"
+    assert any(o["label"] == "Оформлю VZP или PVZP" for o in insurance_ru["options"])
+
+    # A lesson asks no checklist at all, and says so with an empty list rather
+    # than by leaving the key out — the client renders the block conditionally.
+    assert next(s for s in ru if s["code"] == "tutoring")["options"] == []
+
+    await client.patch("/api/v1/me", json={"ui_lang": "cs"}, headers=headers)
+    cs = (await client.get("/api/v1/taxonomy/service-types", headers=headers)).json()
+    insurance_cs = next(s for s in cs if s["code"] == "insurance")
+    assert [o["code"] for o in insurance_cs["options"]] == [
+        o["code"] for o in insurance_ru["options"]
+    ]
+    assert any(o["label"] == "Vyřídím VZP nebo PVZP" for o in insurance_cs["options"])
+
+    # The order is the catalog's `sort`, not whatever the database returns.
+    service = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "insurance")
+    )
+    stored = (
+        await session.scalars(
+            select(ServiceOption)
+            .where(
+                ServiceOption.service_type_id == service.id,
+                ServiceOption.is_active.is_(True),
+            )
+            .order_by(ServiceOption.sort)
+        )
+    ).all()
+    assert [o["code"] for o in insurance_ru["options"]] == [r.code for r in stored]
+
+    # And a line withdrawn from the catalog stops being offered.
+    stored[0].is_active = False
+    await session.flush()
+    again = (await client.get("/api/v1/taxonomy/service-types", headers=headers)).json()
+    offered = next(s for s in again if s["code"] == "insurance")["options"]
+    assert [o["code"] for o in offered] == [r.code for r in stored[1:]]
+
+
 async def test_a_withdrawn_checklist_line_survives_an_unrelated_save(client, session):
     """Deactivated is not deleted — that is the whole point of deactivating.
 
