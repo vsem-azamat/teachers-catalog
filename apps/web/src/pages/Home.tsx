@@ -64,8 +64,7 @@ export default function HomePage() {
         ) : (
           // Grouped, with a heading per shelf. An odd-sized group widens its
           // first tile, which is what keeps the last one from sitting alone in
-          // its row — and the only cell with room for three overlapping faces,
-          // which is what the trailing callback below leans on.
+          // its row.
           <ServiceGrid
             items={data.people}
             onPick={(section) => navigate(`/results?service=${section.code}`)}
@@ -75,8 +74,13 @@ export default function HomePage() {
               // its number of tiles is odd, so «Учёба» — the fullest shelf in
               // the catalog — was the one that never showed a face.
               //
-              // Two of them in a narrow tile rather than three: they share the
-              // line with the hint, and each face costs it about a word.
+              // Two of them in a narrow tile rather than three: they share
+              // the line with the hint, and each face costs it about a word.
+              // On the narrowest phone that is most of the hint — "матан,
+              // физика, экономика, программирование" keeps its first word.
+              // Taken: a hint that lists examples of a category the name
+              // already gives is worth less than the faces of people offering
+              // it.
               if (!section.avatars.length && !section.count) return null;
               return (
                 <>
