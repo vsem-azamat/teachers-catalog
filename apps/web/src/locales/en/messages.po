@@ -437,7 +437,7 @@ msgstr "Insurance, visas, banking, and transfers will show up here."
 
 #: src/lib/workFormat.tsx
 msgid "Как занимаешься"
-msgstr "How you work"
+msgstr "How you teach"
 
 #: src/pages/MyHelper.tsx
 #: src/pages/Profile.tsx
@@ -983,6 +983,10 @@ msgstr "years on the platform"
 #: src/pages/OfferPrices.tsx
 msgid "в день"
 msgstr "per day"
+
+#: src/components/InstitutionPicker.tsx
+msgid "Список вузов не загрузился. Попробуй ещё раз позже."
+msgstr "The list of schools did not load. Try again later."
 
 #: src/pages/Results.tsx
 msgid "Подходят"

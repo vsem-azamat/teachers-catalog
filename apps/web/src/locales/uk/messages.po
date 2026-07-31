@@ -984,6 +984,10 @@ msgstr "років на майданчику"
 msgid "в день"
 msgstr "за день"
 
+#: src/components/InstitutionPicker.tsx
+msgid "Список вузов не загрузился. Попробуй ещё раз позже."
+msgstr "Список вишів не завантажився. Спробуй ще раз пізніше."
+
 #: src/pages/Results.tsx
 msgid "Подходят"
 msgstr "Підходять"

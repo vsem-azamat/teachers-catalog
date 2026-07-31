@@ -210,6 +210,10 @@ export default function OfferPricesPage() {
           key: `${type.id}:inst:${institution.id}`,
           institution_id: institution.id,
           institution_name: named,
+          // The same rule a new subject gets: preparing for ČVUT and for VŠE is
+          // usually the same hourly rate, and asking twice is asking once too
+          // often.
+          price: current.find((row) => row.service_type_id === type.id)?.price ?? '',
         },
       ];
     });

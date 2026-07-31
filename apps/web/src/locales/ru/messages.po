@@ -984,6 +984,10 @@ msgstr "лет на площадке"
 msgid "в день"
 msgstr "в день"
 
+#: src/components/InstitutionPicker.tsx
+msgid "Список вузов не загрузился. Попробуй ещё раз позже."
+msgstr "Список вузов не загрузился. Попробуй ещё раз позже."
+
 #: src/pages/Results.tsx
 msgid "Подходят"
 msgstr "Подходят"

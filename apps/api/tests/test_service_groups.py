@@ -50,8 +50,14 @@ def _migrated_rows() -> dict[str, dict[str, Any]]:
     rows: dict[str, dict[str, Any]] = {}
     for path in sorted(VERSIONS.glob("*.py")):
         for row in _load(path):
+            # A row that creates a service type says everything about it. One
+            # with names and no group would be a migration inserting a type onto
+            # no shelf, which is worth a named failure rather than a KeyError.
             if "names" not in row:
                 continue
+            assert "group" in row, (
+                f"{path.name}: {row['code']} creates a service type with no group"
+            )
             rows[row["code"]] = {
                 "group": row["group"],
                 "unit": row["default_price_unit"],

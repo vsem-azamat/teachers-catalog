@@ -1,9 +1,9 @@
-import { useLingui } from '@lingui/react/macro';
+import { Trans, useLingui } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 
 import { SearchIcon } from '@/components/icons';
-import { Row, Rows, ui } from '@/components/Ui';
+import { Hint, Row, Rows, ui } from '@/components/Ui';
 import { api } from '@/lib/api';
 import type { Institution } from '@/lib/types';
 
@@ -36,7 +36,7 @@ export function InstitutionPicker({
   const { t } = useLingui();
   const [query, setQuery] = useState('');
 
-  const { data } = useQuery({
+  const { data, isError } = useQuery({
     queryKey: ['institutions'],
     queryFn: ({ signal }) => api.getInstitutions(signal),
     staleTime: 60 * 60 * 1000,
@@ -80,6 +80,14 @@ export function InstitutionPicker({
           style={{ all: 'unset', flex: 1, minWidth: 0 }}
         />
       </div>
+      {/* A search box that answers nothing looks like a school nobody has
+          heard of. The list is one request, and when it fails every query comes
+          back empty with nothing to explain it. */}
+      {isError ? (
+        <Hint>
+          <Trans>Список вузов не загрузился. Попробуй ещё раз позже.</Trans>
+        </Hint>
+      ) : null}
       {/* No margin of its own: the card this sits in spaces everything in it,
           the way it does for the subject search. */}
       {found.length > 0 ? (
