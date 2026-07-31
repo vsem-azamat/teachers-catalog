@@ -1015,3 +1015,89 @@ async def test_a_save_that_says_nothing_about_the_checklist_keeps_it(client, ses
     assert mine["offers"][0]["option_ids"] == [option.id]
     assert mine["offers"][0]["note"] == "Оформляю за день."
     assert mine["offers"][0]["price_amount"] == 900
+
+
+async def test_a_withdrawn_checklist_line_survives_an_unrelated_save(client, session):
+    """Deactivated is not deleted — that is the whole point of deactivating.
+
+    An option withdrawn from the catalog stops being shown, and the offers
+    pointing at it keep pointing at it, so putting it back puts the ticks back.
+    """
+    from sqlalchemy import select
+
+    from students_cz.db.models import ServiceOption, ServiceType
+
+    insurance = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "insurance")
+    )
+    options = (
+        await session.scalars(
+            select(ServiceOption)
+            .where(ServiceOption.service_type_id == insurance.id)
+            .order_by(ServiceOption.sort)
+        )
+    ).all()
+    chosen = [options[0].id, options[1].id]
+
+    headers = auth_header(90504)
+    await client.put(
+        "/api/v1/helper",
+        json={
+            "publish": True,
+            "offers": [{"service_type_id": insurance.id, "option_ids": chosen}],
+        },
+        headers=headers,
+    )
+
+    options[0].is_active = False
+    await session.flush()
+
+    # The person edits their price and sends the checklist back untouched.
+    await client.put(
+        "/api/v1/helper",
+        json={
+            "publish": True,
+            "offers": [
+                {
+                    "service_type_id": insurance.id,
+                    "option_ids": chosen,
+                    "price_amount": 800,
+                }
+            ],
+        },
+        headers=headers,
+    )
+
+    mine = (await client.get("/api/v1/helper", headers=headers)).json()
+    assert mine["offers"][0]["option_ids"] == chosen, "a withdrawn line was erased"
+
+    options[0].is_active = True
+    await session.flush()
+
+
+async def test_the_same_checklist_line_twice_is_stored_once(client, session):
+    """Twice in the array is twice on the screen, and two React keys alike."""
+    from sqlalchemy import select
+
+    from students_cz.db.models import ServiceOption, ServiceType
+
+    bank = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "bank_letter")
+    )
+    option = await session.scalar(
+        select(ServiceOption).where(ServiceOption.service_type_id == bank.id)
+    )
+
+    headers = auth_header(90505)
+    await client.put(
+        "/api/v1/helper",
+        json={
+            "publish": True,
+            "offers": [
+                {"service_type_id": bank.id, "option_ids": [option.id, option.id]}
+            ],
+        },
+        headers=headers,
+    )
+    mine = (await client.get("/api/v1/helper", headers=headers)).json()
+    assert mine["offers"][0]["option_ids"] == [option.id]

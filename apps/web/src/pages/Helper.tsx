@@ -22,7 +22,6 @@ import {
 } from '@/components/Ui';
 import { hapticSuccess, useMainButton } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
-import { groupRuns } from '@/lib/groups';
 import type { HelperDetail } from '@/lib/types';
 
 /**
@@ -161,31 +160,23 @@ export default function HelperPage() {
       {/* What an errand actually covers, in our words, and then in theirs. A
           chip saying "Insurance" is the same chip for everybody offering it;
           these lines are the difference between two people. */}
-      {groupRuns(
-        data.offers.filter((offer) => offer.options.length > 0 || offer.note),
-        // By kind of help, not by row: the screen that writes these puts the
-        // same checklist on every row of a service, so two subjects would
-        // otherwise print the same paragraph twice.
-        (offer) => offer.service_type,
-      )
-        .flatMap(({ id, items }) => (items[0] ? [{ id, offer: items[0] }] : []))
-        .map(({ id, offer }) => (
-          <div key={`covers-${id}`}>
-            <Label>{offer.service_type_name}</Label>
-            {offer.options.length > 0 ? (
-              <ul className={ui.covers}>
-                {offer.options.map((label) => (
-                  <li key={label}>{label}</li>
-                ))}
-              </ul>
-            ) : null}
-            {offer.note ? (
-              <div style={{ marginTop: offer.options.length > 0 ? 8 : 0 }}>
-                <Sub>{offer.note}</Sub>
-              </div>
-            ) : null}
-          </div>
-        ))}
+      {coveredBy(data.offers).map(({ code, name, options, note }) => (
+        <div key={`covers-${code}`}>
+          <Label>{name}</Label>
+          {options.length > 0 ? (
+            <ul className={ui.covers}>
+              {options.map((label) => (
+                <li key={label}>{label}</li>
+              ))}
+            </ul>
+          ) : null}
+          {note ? (
+            <div style={{ marginTop: options.length > 0 ? 8 : 0 }}>
+              <Sub>{note}</Sub>
+            </div>
+          ) : null}
+        </div>
+      ))}
 
       {data.about ? (
         <>
@@ -292,4 +283,32 @@ function withIntro(url: string, data: HelperDetail | undefined): string {
     subjects ? `Нужна помощь: ${subjects}.` : 'Нужна помощь с учёбой.',
   ];
   return `${url}?text=${encodeURIComponent(lines.join('\n'))}`;
+}
+
+/**
+ * What each kind of help covers, one entry per kind.
+ *
+ * By service type and not by offer row: the screen that writes these puts the
+ * same checklist on every row of a service, so two subjects would otherwise
+ * print the same paragraph twice. Not a run-length grouping either — the API
+ * does not order a helper's offers, so two rows of one service need not be
+ * adjacent — and the first row carrying anything wins, because a service whose
+ * first row happens to be blank still has something to say.
+ */
+function coveredBy(offers: HelperDetail['offers']) {
+  const out = new Map<
+    string,
+    { code: string; name: string; options: string[]; note: string | null }
+  >();
+  for (const offer of offers) {
+    if (!offer.options.length && !offer.note) continue;
+    if (out.has(offer.service_type)) continue;
+    out.set(offer.service_type, {
+      code: offer.service_type,
+      name: offer.service_type_name,
+      options: offer.options,
+      note: offer.note,
+    });
+  }
+  return [...out.values()];
 }

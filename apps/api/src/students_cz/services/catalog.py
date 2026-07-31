@@ -83,10 +83,11 @@ async def option_labels(
             .options(selectinload(ServiceOption.names))
         )
     ).all()
+    # Falls back to the code, the way the taxonomy endpoint does: an option
+    # missing a translation would otherwise be offered on the screen that sets
+    # it and vanish from the profile that shows it, losing a tick somebody set.
     return {
-        row.id: (row.sort, label)
-        for row in rows
-        if (label := translated(row, lang, "label"))
+        row.id: (row.sort, translated(row, lang, "label") or row.code) for row in rows
     }
 
 

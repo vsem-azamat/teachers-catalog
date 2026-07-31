@@ -144,13 +144,14 @@ async def _apply_offers(
 
     # Which checklist lines each kind of help owns, for the filter below. One
     # query for the whole save.
+    # Every option, active or not. Filtering on `is_active` here would delete a
+    # withdrawn line from every offer the next time its owner saved anything —
+    # and the whole reason a line is deactivated rather than deleted is that
+    # offers keep pointing at it. Hiding it is the read path's job, which
+    # `catalog.option_labels` already does.
     options_by_service: dict[int, set[int]] = {}
     for service_id, option_id in (
-        await session.execute(
-            select(ServiceOption.service_type_id, ServiceOption.id).where(
-                ServiceOption.is_active.is_(True)
-            )
-        )
+        await session.execute(select(ServiceOption.service_type_id, ServiceOption.id))
     ).all():
         options_by_service.setdefault(service_id, set()).add(option_id)
 
@@ -200,11 +201,17 @@ async def _apply_offers(
             # lines to a bank statement, and nothing downstream would notice:
             # the array references nothing, so the labels would simply read as
             # somebody else's.
-            offer.option_ids = [
-                option_id
-                for option_id in offer_spec.option_ids
-                if option_id in options_by_service.get(offer_spec.service_type_id, set())
-            ]
+            # `fromkeys` and not a set: the same line twice would render twice
+            # and hand React two children with one key, and the order is the
+            # person's own.
+            offer.option_ids = list(
+                dict.fromkeys(
+                    option_id
+                    for option_id in offer_spec.option_ids
+                    if option_id
+                    in options_by_service.get(offer_spec.service_type_id, set())
+                )
+            )
         if "note" in offer_spec.model_fields_set:
             offer.note = (offer_spec.note or "").strip() or None
         # Same rule: a caller that said nothing about the format is not saying
