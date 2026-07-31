@@ -75,11 +75,16 @@ because the two that differ are the ones that matter:
 | --- | --- | --- |
 | `lesson` | tutoring, languages, exam preparation, entrance exams | a subject, a school where one is required, an hourly price, online or in person, where |
 | `work` | written work | a price per work, and nothing about meeting |
-| `errand` | nostrification, help during the exam, and all five of `life` | a price per case, remote or alongside you |
+| `errand` | nostrification, help during the exam, and all five of `life` | a price, remote or alongside you |
 
 Help *during* an exam is the clearest case: it sits on the `entrance` shelf
 with the exam preparation a student would compare it to, and its form has
 nothing to do with teaching — it is standby for one event on one day.
+
+What the price is *per* is not the shape's business: `default_price_unit` says
+that per service type, so five errands are priced per case while nostrification
+and help during an exam are priced by the hour. The shape decides which
+questions exist, not what the answers are measured in.
 
 A `work` is always remote, so its form does not ask. For the other two the
 question is the same three answers under different words: `work_format` is

@@ -29,6 +29,11 @@ export function askedFormat(
   if (!serviceTypes || !codes.length) return 'both';
   const shapeOf = new Map(serviceTypes.map((type) => [type.code, type.form_shape]));
   const shapes = new Set(codes.map((code) => shapeOf.get(code)));
+  // A code the reference list does not carry is a kind of help that has been
+  // deactivated since somebody offered it: `/taxonomy/service-types` returns
+  // only active ones while the cabinet returns every offer. Unknown is nothing
+  // to go on, which is the neutral question and not silence.
+  if (shapes.has(undefined)) return 'both';
   const lesson = shapes.has('lesson');
   const errand = shapes.has('errand');
   if (lesson && errand) return 'both';

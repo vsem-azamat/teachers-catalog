@@ -15,9 +15,11 @@ import type { Institution } from '@/lib/types';
  * ČVUT's entrance exam was stored the same way as preparation for nobody's.
  *
  * Filtered here rather than on the server, unlike subjects. The whole list is
- * sixteen universities and their faculties, it is reference data that changes
- * about never, and every other screen has already cached it — a search endpoint
- * would be a round trip to filter a list the client is holding.
+ * sixteen universities and their 119 faculties — reference data that changes
+ * about never — so it is one request, cached for an hour, and every keystroke
+ * after it is free. Subjects go to the server because there are hundreds of
+ * them and the match has to be fuzzy across four languages; a school is matched
+ * on its own name and its abbreviation, which a substring test does.
  *
  * `taken` is not politeness: `offers` is unique on its four axes, so a second
  * row for the same school is a 422 the screen can only report as "did not
