@@ -14,7 +14,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import select, true, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from students_cz.db.models import (
@@ -474,6 +474,21 @@ async def _seed_options(
     rows: list[tuple[str, str, str, str, str]],
 ) -> None:
     """The checklist of one service type, and its labels in four languages."""
+    # Retired rather than deleted, the way `seed_languages` retires a code:
+    # `offers.option_ids` holds plain integers and references nothing, so a
+    # deleted row would leave an offer pointing at a label that is gone. Without
+    # this nothing ever sets `is_active = false` and the documented lifecycle
+    # has no author.
+    kept = [code for code, *_ in rows]
+    await session.execute(
+        update(ServiceOption)
+        .where(
+            ServiceOption.service_type_id == service.id,
+            ServiceOption.code.notin_(kept) if kept else true(),
+        )
+        .values(is_active=False)
+    )
+
     for sort, (code, ru, cs, en, uk) in enumerate(rows, start=1):
         option = await session.scalar(
             select(ServiceOption).where(

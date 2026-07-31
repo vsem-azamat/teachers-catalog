@@ -325,3 +325,40 @@ async def test_the_checklist_reaches_the_database(session) -> None:
     assert stored == {
         code: {row[0] for row in rows} for code, rows in SERVICE_OPTIONS.items()
     }
+
+
+@pytest.mark.asyncio
+async def test_a_line_dropped_from_the_checklist_is_retired_not_deleted(
+    session,
+) -> None:
+    """`offers.option_ids` holds plain integers and references nothing.
+
+    A deleted row would leave an offer pointing at a label that is gone, which
+    is why `seed_languages` retires a code rather than removing it and why this
+    does the same.
+    """
+    from students_cz.db.models import ServiceOption, ServiceType
+    from students_cz.db.seed import _seed_options
+
+    insurance = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "insurance")
+    )
+    before = (
+        await session.scalars(
+            select(ServiceOption).where(ServiceOption.service_type_id == insurance.id)
+        )
+    ).all()
+    assert len(before) >= 2
+
+    # Seed a shorter list: everything but the first line.
+    keep = [
+        (row.code, "x", "x", "x", "x") for row in sorted(before, key=lambda r: r.sort)[1:]
+    ]
+    await _seed_options(session, insurance, keep)
+    await session.flush()
+
+    dropped = await session.scalar(
+        select(ServiceOption).where(ServiceOption.id == before[0].id)
+    )
+    assert dropped is not None, "the row was deleted, not retired"
+    assert dropped.is_active is False
