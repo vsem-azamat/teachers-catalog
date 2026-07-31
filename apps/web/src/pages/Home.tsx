@@ -69,16 +69,24 @@ export default function HomePage() {
           <ServiceGrid
             items={data.people}
             onPick={(section) => navigate(`/results?service=${section.code}`)}
-            renderTrailing={(section, wide) =>
-              // Faces only in the wide cell. A narrow tile has room for a
-              // number or for three overlapping circles, and the number is
-              // the one that says something a person cannot already guess.
-              wide && section.avatars.length ? (
-                <AvatarStack avatars={section.avatars} />
-              ) : section.count ? (
-                <Count>{section.count}</Count>
-              ) : null
-            }
+            renderTrailing={(section, wide) => (
+              // Faces on every shelf that has any, not only where a wide cell
+              // happened to fall. Which shelf got one was decided by whether
+              // its number of tiles is odd, so «Учёба» — the fullest shelf in
+              // the catalog — was the one that never showed a face.
+              //
+              // Two of them in a narrow tile rather than three: they share the
+              // line with the hint, and the third costs about a word of it.
+              <>
+                {section.avatars.length ? (
+                  <AvatarStack
+                    avatars={wide ? section.avatars : section.avatars.slice(0, 2)}
+                    size={wide ? 24 : 19}
+                  />
+                ) : null}
+                {section.count ? <Count>{section.count}</Count> : null}
+              </>
+            )}
           />
         )}
       </Screen>
