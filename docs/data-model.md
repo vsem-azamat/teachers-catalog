@@ -149,6 +149,11 @@ two of them will agree rather than that nobody knows: a written work is the one
 kind of help where "when" is the question asked straight after "how much", and
 a person who will not commit to a number is saying something, not omitting it.
 
+Only a `work` is asked, and only a `work` may answer: a turnaround sent for any
+other kind of help is dropped on the way in, the same filter the checklist gets
+and for the same reason — a profile reading «Срок: неделя» under a lesson would
+be answering a question that form never asked.
+
 It is a column and not a key in `offers.attrs`, which is where a turnaround
 would naturally go — `attrs` is the bag for per-service-type extras that do not
 deserve columns. Two reasons it does not go there. No schema exposes `attrs`, so

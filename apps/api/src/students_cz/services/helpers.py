@@ -23,6 +23,7 @@ from students_cz.db.models import (
 from students_cz.db.models.enums import (
     ContentLang,
     PublishStatus,
+    ServiceForm,
     UiLang,
     UserEventKind,
 )
@@ -155,6 +156,16 @@ async def _apply_offers(
     ).all():
         options_by_service.setdefault(service_id, set()).add(option_id)
 
+    # Which kinds of help are asked when, for the same filter the checklist
+    # gets. One query for the whole save.
+    writing_service_ids = set(
+        (
+            await session.scalars(
+                select(ServiceType.id).where(ServiceType.form_shape == ServiceForm.WORK)
+            )
+        ).all()
+    )
+
     seen_axes: set[tuple[int, int | None, int | None]] = set()
     for offer_spec in spec.offers:
         if offer_spec.service_type_id not in valid_service_ids:
@@ -213,11 +224,18 @@ async def _apply_offers(
                     in options_by_service.get(offer_spec.service_type_id, set())
                 )
             )
-        # Same rule, same reason as the checklist below: `OfferIn` defaults it
+        # Same rule, same reason as the checklist above: `OfferIn` defaults it
         # to `None`, so an unconditional write moves a writer who said "a week"
-        # to "we will agree" on any save that did not mention it.
+        # to "we will agree" on any save that did not mention it. And the same
+        # filter: only a written work is asked when, so a turnaround on a lesson
+        # is dropped rather than stored — otherwise the profile reads «Срок:
+        # неделя» under a service whose form never offered the question.
         if "turnaround_days" in offer_spec.model_fields_set:
-            offer.turnaround_days = offer_spec.turnaround_days
+            offer.turnaround_days = (
+                offer_spec.turnaround_days
+                if offer_spec.service_type_id in writing_service_ids
+                else None
+            )
         if "note" in offer_spec.model_fields_set:
             offer.note = (offer_spec.note or "").strip() or None
         # Same rule: a caller that said nothing about the format is not saying

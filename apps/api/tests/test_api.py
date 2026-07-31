@@ -1145,6 +1145,35 @@ async def test_a_save_that_says_nothing_about_the_turnaround_keeps_it(client, se
     assert mine["offers"][0]["turnaround_days"] == 14, "the turnaround was erased"
 
 
+async def test_a_turnaround_on_a_lesson_is_dropped(client, session):
+    """Only a written work is asked when, so only one can answer.
+
+    The same filter the checklist gets, and for a visible reason: a stale or
+    hand-rolled client could otherwise put «Срок: неделя» under a tutoring
+    offer, on a form that never asked.
+    """
+    from sqlalchemy import select
+
+    from students_cz.db.models import ServiceType
+
+    tutoring = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "tutoring")
+    )
+    headers = auth_header(90704)
+    saved = await client.put(
+        "/api/v1/helper",
+        json={
+            "publish": True,
+            "offers": [{"service_type_id": tutoring.id, "turnaround_days": 7}],
+        },
+        headers=headers,
+    )
+    assert saved.status_code == 200, saved.text
+
+    mine = (await client.get("/api/v1/helper", headers=headers)).json()
+    assert mine["offers"][0]["turnaround_days"] is None
+
+
 async def test_a_turnaround_must_be_a_real_number_of_days(session):
     """`NULL` says "we will agree"; zero and minus three say nothing at all.
 

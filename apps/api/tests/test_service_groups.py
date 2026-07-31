@@ -290,9 +290,10 @@ def test_every_errand_says_what_it_covers() -> None:
 def test_written_work_says_what_it_takes_on() -> None:
     """The same argument as the errand above, for the one `work` shape.
 
-    A written work has a subject and nothing else — no school, no hourly rate,
-    no question about meeting — so two people who write theses are one row read
-    twice unless they can say which works they take on.
+    A written work asks for no subject and no school — `requires_subject` is
+    false — no hourly rate and no question about meeting, so two people who
+    write theses are one row read twice unless they can say which works they
+    take on.
     """
     from students_cz.db.seed import SERVICE_OPTIONS
 

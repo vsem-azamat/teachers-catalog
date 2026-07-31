@@ -255,8 +255,9 @@ WORKING_LANGUAGES: list[tuple[str, dict[str, str]]] = [
 #
 # An errand has no subject and no institution — the tile is the whole query — so
 # without this a person offering insurance can say nothing beyond the word. A
-# written work has a subject and nothing else, and the lines say which works are
-# taken on rather than which errands are run.
+# written work has no axes either — `requires_subject` is false, so a thesis is
+# offered without naming one — and its lines say which works are taken on rather
+# than which errands are run.
 # `test_service_groups.py` fails when this and the migration disagree.
 SERVICE_OPTIONS: dict[str, list[tuple[str, str, str, str, str]]] = {
     "writing": [
