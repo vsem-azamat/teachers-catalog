@@ -171,6 +171,18 @@ export default function OfferPricesPage() {
   // Arrived here directly — a reload, or a link. There is nothing to price.
   if (!picked || picked.length === 0) return <Navigate to="/offer" replace />;
 
+  // Removing the last subject — or the last school — must not remove the
+  // service: the person ticked it, and a service with no axis is one search
+  // cannot reach yet, not one they withdrew.
+  const dropRow = (type: ServiceType, row: Draft) => {
+    setRows((current) => {
+      const left = current.filter((other) => other.key !== row.key);
+      return left.some((other) => other.service_type_id === type.id)
+        ? left
+        : [...left, blank(type)];
+    });
+  };
+
   const addInstitution = (type: ServiceType, institution: Institution) => {
     hapticSelection();
     setRows((current) => {
@@ -180,7 +192,10 @@ export default function OfferPricesPage() {
       const empty = current.find(
         (row) => row.service_type_id === type.id && row.institution_id === null,
       );
-      const named = institution.short_name ?? institution.name;
+      // The server's own `institution_name`, not the short form: a chip that
+      // reads ČVUT until the screen reloads and then reads the full name is one
+      // school looking like two.
+      const named = institution.name;
       if (empty) {
         return current.map((row) =>
           row === empty
@@ -281,38 +296,12 @@ export default function OfferPricesPage() {
                     <div className={ui.svcBody}>
                       {type.requires_subject ? (
                         <>
-                          {mineHere.some((row) => row.subject_id !== null) ? (
-                            <Chips>
-                              {mineHere
-                                .filter((row) => row.subject_id !== null)
-                                .map((row) => (
-                                  <ChipView
-                                    key={row.key}
-                                    active
-                                    removeLabel={t`Убрать`}
-                                    onRemove={() =>
-                                      setRows((current) => {
-                                        const left = current.filter(
-                                          (other) => other.key !== row.key,
-                                        );
-                                        // Removing the last subject must not
-                                        // remove the service: the person ticked
-                                        // it, and a service with no subject is
-                                        // one search cannot reach yet, not one
-                                        // they withdrew.
-                                        return left.some(
-                                          (other) => other.service_type_id === type.id,
-                                        )
-                                          ? left
-                                          : [...left, blank(type)];
-                                      })
-                                    }
-                                  >
-                                    {row.subject_name}
-                                  </ChipView>
-                                ))}
-                            </Chips>
-                          ) : null}
+                          <AxisChips
+                            rows={mineHere.filter((row) => row.subject_id !== null)}
+                            label={(row) => row.subject_name}
+                            onDrop={(row) => dropRow(type, row)}
+                            removeLabel={t`Убрать`}
+                          />
                           <SubjectSearch
                             onPick={(subject) => addSubject(type, subject)}
                             taken={new Set(mineHere.map((row) => row.subject_id))}
@@ -327,35 +316,21 @@ export default function OfferPricesPage() {
                           for nobody's. */}
                       {type.requires_institution ? (
                         <>
-                          {mineHere.some((row) => row.institution_id !== null) ? (
-                            <Chips>
-                              {mineHere
-                                .filter((row) => row.institution_id !== null)
-                                .map((row) => (
-                                  <ChipView
-                                    key={row.key}
-                                    active
-                                    removeLabel={t`Убрать`}
-                                    onRemove={() =>
-                                      setRows((current) => {
-                                        const left = current.filter(
-                                          (other) => other.key !== row.key,
-                                        );
-                                        return left.some(
-                                          (other) => other.service_type_id === type.id,
-                                        )
-                                          ? left
-                                          : [...left, blank(type)];
-                                      })
-                                    }
-                                  >
-                                    {row.institution_name}
-                                  </ChipView>
-                                ))}
-                            </Chips>
-                          ) : null}
+                          <AxisChips
+                            rows={mineHere.filter((row) => row.institution_id !== null)}
+                            label={(row) => row.institution_name}
+                            onDrop={(row) => dropRow(type, row)}
+                            removeLabel={t`Убрать`}
+                          />
                           <InstitutionPicker
                             onPick={(institution) => addInstitution(type, institution)}
+                            taken={
+                              new Set(
+                                mineHere
+                                  .map((row) => row.institution_id)
+                                  .filter((id): id is number => id !== null),
+                              )
+                            }
                           />
                         </>
                       ) : null}
@@ -368,7 +343,13 @@ export default function OfferPricesPage() {
                       {mineHere.map((row) => (
                         <PriceRow
                           key={row.key}
-                          name={mineHere.length > 1 ? row.subject_name : null}
+                          // Whichever axis this service has. Two schools would
+                          // otherwise be two unlabelled price fields.
+                          name={
+                            mineHere.length > 1
+                              ? (row.subject_name ?? row.institution_name)
+                              : null
+                          }
                           value={row.price}
                           unit={row.unit}
                           onPrice={(price) =>
@@ -537,6 +518,41 @@ interface Draft {
   price: string;
   unit: PriceUnit;
   langs: string[];
+}
+
+/**
+ * The rows of one service that already carry an axis, as removable chips.
+ *
+ * One component for subjects and schools: the two blocks were byte-identical
+ * apart from the field they read, down to the closure that puts the service
+ * back when its last axis goes.
+ */
+function AxisChips({
+  rows,
+  label,
+  onDrop,
+  removeLabel,
+}: {
+  rows: Draft[];
+  label: (row: Draft) => string | null;
+  onDrop: (row: Draft) => void;
+  removeLabel: string;
+}) {
+  if (!rows.length) return null;
+  return (
+    <Chips>
+      {rows.map((row) => (
+        <ChipView
+          key={row.key}
+          active
+          removeLabel={removeLabel}
+          onRemove={() => onDrop(row)}
+        >
+          {label(row)}
+        </ChipView>
+      ))}
+    </Chips>
+  );
 }
 
 function blank(type: ServiceType): Draft {

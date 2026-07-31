@@ -18,12 +18,19 @@ import type { Institution } from '@/lib/types';
  * sixteen universities and their faculties, it is reference data that changes
  * about never, and every other screen has already cached it — a search endpoint
  * would be a round trip to filter a list the client is holding.
+ *
+ * `taken` is not politeness: `offers` is unique on its four axes, so a second
+ * row for the same school is a 422 the screen can only report as "did not
+ * save".
  */
 export function InstitutionPicker({
   onPick,
+  taken,
   placeholder,
 }: {
   onPick: (institution: Institution) => void;
+  /** Ids already on the offer, so the list does not offer them again. */
+  taken: Set<number>;
   placeholder?: string;
 }) {
   const { t } = useLingui();
@@ -52,13 +59,14 @@ export function InstitutionPicker({
     const needle = query.trim().toLowerCase();
     if (needle.length < 2) return [];
     return flat
+      .filter(({ row }) => !taken.has(row.id))
       .filter(({ row, under }) =>
         [row.name, row.short_name, row.code, under]
           .filter(Boolean)
           .some((field) => (field as string).toLowerCase().includes(needle)),
       )
       .slice(0, 6);
-  }, [flat, query]);
+  }, [flat, query, taken]);
 
   return (
     <>

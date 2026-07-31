@@ -47,8 +47,7 @@ msgid "Проверь связь и попробуй ещё раз."
 msgstr "Zkontroluj připojení a zkus to znovu."
 
 #: src/components/Phrase.tsx
-#: src/pages/MyHelper.tsx
-#: src/pages/OfferPrices.tsx
+#: src/lib/workFormat.tsx
 msgid "Онлайн"
 msgstr "Online"
 
@@ -274,8 +273,7 @@ msgstr "Neuložilo se — zkus to znovu."
 msgid "Цена"
 msgstr "Cena"
 
-#: src/pages/MyHelper.tsx
-#: src/pages/OfferPrices.tsx
+#: src/lib/workFormat.tsx
 msgid "И так, и так"
 msgstr "Obojí"
 
@@ -401,8 +399,7 @@ msgid "В каталоге"
 msgstr "V katalogu"
 
 #: src/components/Phrase.tsx
-#: src/pages/MyHelper.tsx
-#: src/pages/OfferPrices.tsx
+#: src/lib/workFormat.tsx
 msgid "Очно"
 msgstr "Osobně"
 
@@ -438,8 +435,7 @@ msgstr "Pomáhat ostatním"
 msgid "Здесь появятся страховка, визы, банк и переводы."
 msgstr "Tady se objeví pojištění, víza, banka a převody."
 
-#: src/pages/MyHelper.tsx
-#: src/pages/OfferPrices.tsx
+#: src/lib/workFormat.tsx
 msgid "Как занимаешься"
 msgstr "Jak učíš"
 
@@ -538,7 +534,7 @@ msgstr "Tohle si přečtou první. Pár živých vět funguje líp než seznam."
 #~ msgid "По этому мы отсеиваем тех, с кем вы друг друга не поймёте."
 #~ msgstr "Podle toho vyřazujeme ty, se kterými byste si nerozuměli."
 
-#: src/pages/MyHelper.tsx
+#: src/lib/workFormat.tsx
 msgid "Удалённо"
 msgstr "Na dálku"
 
@@ -711,7 +707,7 @@ msgstr "Přidat"
 msgid "Сколько берёшь?"
 msgstr "Kolik si bereš?"
 
-#: src/pages/MyHelper.tsx
+#: src/lib/workFormat.tsx
 msgid "Хожу вместе"
 msgstr "Jdu s tebou"
 
@@ -851,7 +847,7 @@ msgstr "Zatím nikdo"
 msgid "Сейчас бесплатно. Когда людей станет больше, размещение таких услуг станет платным."
 msgstr "Zatím zdarma. Až bude lidí víc, bude zveřejnění takových služeb placené."
 
-#: src/pages/MyHelper.tsx
+#: src/lib/workFormat.tsx
 msgid "Как работаешь"
 msgstr "Jak to děláš"
 
@@ -900,7 +896,7 @@ msgstr "Dokumenty a život"
 msgid "Поняли так — поправь, если не то"
 msgstr "Pochopili jsme to takhle — oprav to, pokud to není ono"
 
-#: src/pages/MyHelper.tsx
+#: src/lib/workFormat.tsx
 msgid "Лично"
 msgstr "Osobně"
 

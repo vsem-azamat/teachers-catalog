@@ -50,7 +50,7 @@ export default function MyHelperPage() {
 
   // Which questions this person's services actually have. Cached for an hour
   // and shared with every other screen that needs the reference list.
-  const { data: serviceTypes } = useQuery({
+  const { data: serviceTypes, isError: typesFailed } = useQuery({
     queryKey: ['service-types'],
     queryFn: ({ signal }) => api.getServiceTypes(signal),
     staleTime: 60 * 60 * 1000,
@@ -64,12 +64,23 @@ export default function MyHelperPage() {
   const [listed, setListed] = useState(true);
   const [rows, setRows] = useState<Draft[]>([]);
 
-  // Worded by what this person actually offers. Shared with the screen that
-  // sets prices, which asks the same question about the same column.
+  // Worded by what is on the screen now, not by what the server last saw:
+  // deleting the last lesson row has to stop the question asking about
+  // teaching before the profile is refetched.
+  //
+  // `typesFailed` is why this is not just "no shapes, no question": a reference
+  // list that failed to load would otherwise take the question and the whole
+  // city block off a screen that still renders a live Save button, and the
+  // person would never know a question existed.
   const asked = useMemo(
     () =>
-      askedFormat(data?.offers.map((offer) => offer.service_type) ?? [], serviceTypes),
-    [serviceTypes, data],
+      typesFailed
+        ? 'both'
+        : askedFormat(
+            rows.map((row) => row.code),
+            serviceTypes,
+          ),
+    [serviceTypes, typesFailed, rows],
   );
 
   // Filled once, from the server. Later renders must not clobber what the
@@ -417,6 +428,8 @@ function SubjectRow({
 interface Draft {
   key: string;
   service_type_id: number;
+  /** The service type's `code`, which is what the reference list is keyed by. */
+  code: string;
   service_type_name: string;
   subject_id: number | null;
   subject_name: string | null;
@@ -433,6 +446,7 @@ function toDraft(offer: MyOffer): Draft {
     // rows — so the key carries every axis the server keys on.
     key: `${offer.service_type_id}:${offer.subject_id}:${offer.institution_id}`,
     service_type_id: offer.service_type_id,
+    code: offer.service_type,
     service_type_name: offer.service_type_name,
     subject_id: offer.subject_id,
     subject_name: offer.subject_name,

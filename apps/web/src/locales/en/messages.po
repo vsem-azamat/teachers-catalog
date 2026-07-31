@@ -47,8 +47,7 @@ msgid "Проверь связь и попробуй ещё раз."
 msgstr "Check your connection and try again."
 
 #: src/components/Phrase.tsx
-#: src/pages/MyHelper.tsx
-#: src/pages/OfferPrices.tsx
+#: src/lib/workFormat.tsx
 msgid "Онлайн"
 msgstr "Online"
 
@@ -274,8 +273,7 @@ msgstr "It did not save — try again."
 msgid "Цена"
 msgstr "Price"
 
-#: src/pages/MyHelper.tsx
-#: src/pages/OfferPrices.tsx
+#: src/lib/workFormat.tsx
 msgid "И так, и так"
 msgstr "Either way"
 
@@ -401,8 +399,7 @@ msgid "В каталоге"
 msgstr "In the catalog"
 
 #: src/components/Phrase.tsx
-#: src/pages/MyHelper.tsx
-#: src/pages/OfferPrices.tsx
+#: src/lib/workFormat.tsx
 msgid "Очно"
 msgstr "In person"
 
@@ -438,8 +435,7 @@ msgstr "Help others"
 msgid "Здесь появятся страховка, визы, банк и переводы."
 msgstr "Insurance, visas, banking, and transfers will show up here."
 
-#: src/pages/MyHelper.tsx
-#: src/pages/OfferPrices.tsx
+#: src/lib/workFormat.tsx
 msgid "Как занимаешься"
 msgstr "How you work"
 
@@ -538,7 +534,7 @@ msgstr "This is the first thing people read. A couple of real sentences beat a l
 #~ msgid "По этому мы отсеиваем тех, с кем вы друг друга не поймёте."
 #~ msgstr "That's how we filter out people you wouldn't understand each other with."
 
-#: src/pages/MyHelper.tsx
+#: src/lib/workFormat.tsx
 msgid "Удалённо"
 msgstr "Remotely"
 
@@ -711,7 +707,7 @@ msgstr "Post"
 msgid "Сколько берёшь?"
 msgstr "What do you charge?"
 
-#: src/pages/MyHelper.tsx
+#: src/lib/workFormat.tsx
 msgid "Хожу вместе"
 msgstr "I come with you"
 
@@ -851,7 +847,7 @@ msgstr "No one yet"
 msgid "Сейчас бесплатно. Когда людей станет больше, размещение таких услуг станет платным."
 msgstr "Free for now. Once there are more people, listing these services will cost."
 
-#: src/pages/MyHelper.tsx
+#: src/lib/workFormat.tsx
 msgid "Как работаешь"
 msgstr "How you work"
 
@@ -900,7 +896,7 @@ msgstr "Documents and life"
 msgid "Поняли так — поправь, если не то"
 msgstr "This is what we understood — fix it if that's wrong"
 
-#: src/pages/MyHelper.tsx
+#: src/lib/workFormat.tsx
 msgid "Лично"
 msgstr "In person"
 

@@ -204,17 +204,25 @@ def test_every_seeded_service_type_declares_a_form():
     assert not missing, f"no form shape: {missing}"
 
 
-def test_the_form_shape_reaches_the_database():
-    from students_cz.db.seed import SERVICE_TYPES as SEEDED
+@pytest.mark.asyncio
+async def test_the_form_shape_reaches_the_database(session) -> None:
+    """Against rows, not against the constant this module already imports.
 
-    forms = {spec["code"]: spec["form"] for spec in SEEDED}
-    assert forms["tutoring"] == "lesson"
-    assert forms["writing"] == "work"
+    The seed writing `form` into a dict proves nothing about what a database
+    holds; the column it lands in is what the API reads.
+    """
+    rows = {
+        row.code: row.form_shape.value
+        for row in (await session.scalars(select(ServiceType))).all()
+    }
+    assert rows["tutoring"] == "lesson"
+    assert rows["writing"] == "work"
     # Standby for one event on one day. It sits on the entrance shelf, where a
     # student compares it with exam preparation, and its form has nothing to do
     # with teaching.
-    assert forms["exam_live_help"] == "errand"
-    assert forms["insurance"] == "errand"
+    assert rows["exam_live_help"] == "errand"
+    assert rows["insurance"] == "errand"
+    assert rows == {spec["code"]: spec["form"] for spec in SERVICE_TYPES}
 
 
 def test_seed_and_migration_agree_about_forms():
