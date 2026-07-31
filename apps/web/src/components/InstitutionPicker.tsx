@@ -25,6 +25,23 @@ import type { Institution } from '@/lib/types';
  * row for the same school is a 422 the screen can only report as "did not
  * save".
  */
+/**
+ * Lowercase and drop Latin accents, so "ČVUT" reaches the code `cvut`.
+ *
+ * Without it the placeholder's own first example finds nothing: the code column
+ * is ASCII, and in English the school is called CTU, so the only string a person
+ * typing "ČVUT" could match is one this test never compared against.
+ *
+ * Latin only, which is all this list contains. A Russian speaker typing "чвут"
+ * is what the server's transliteration is for, and it is not here.
+ */
+function fold(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '');
+}
+
 export function InstitutionPicker({
   onPick,
   taken,
@@ -57,18 +74,18 @@ export function InstitutionPicker({
     return out;
   }, [data]);
 
+  const needle = fold(query.trim());
   const found = useMemo(() => {
-    const needle = query.trim().toLowerCase();
     if (needle.length < 2) return [];
     return flat
       .filter(({ row }) => !taken.has(row.id))
       .filter(({ row, under }) =>
         [row.name, row.short_name, row.code, under]
           .filter(Boolean)
-          .some((field) => (field as string).toLowerCase().includes(needle)),
+          .some((field) => fold(field as string).includes(needle)),
       )
       .slice(0, 6);
-  }, [flat, query, taken]);
+  }, [flat, needle, taken]);
 
   return (
     <>
@@ -96,6 +113,11 @@ export function InstitutionPicker({
       ) : null}
       {/* No margin of its own: the card this sits in spaces everything in it,
           the way it does for the subject search. */}
+      {needle.length >= 2 && !isPending && !isError && found.length === 0 ? (
+        <Hint>
+          <Trans>Ничего не нашли. Попробуй сокращение — ČVUT, VŠE, MUNI.</Trans>
+        </Hint>
+      ) : null}
       {found.length > 0 ? (
         <Rows>
           {found.map(({ row, under }) => (

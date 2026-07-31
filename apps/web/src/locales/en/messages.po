@@ -103,6 +103,10 @@ msgstr "Entrance and exams"
 msgid "Чешский для вуза"
 msgstr "Czech for university"
 
+#: src/components/InstitutionPicker.tsx
+msgid "Ничего не нашли. Попробуй сокращение — ČVUT, VŠE, MUNI."
+msgstr "Nothing found. Try the abbreviation — ČVUT, VŠE, MUNI."
+
 #: src/pages/Helper.tsx
 msgid "Как проходит"
 msgstr "How it works"
