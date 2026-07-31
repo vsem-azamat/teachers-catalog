@@ -64,21 +64,36 @@ export default function HomePage() {
         ) : (
           // Grouped, with a heading per shelf. An odd-sized group widens its
           // first tile, which is what keeps the last one from sitting alone in
-          // its row — and the only cell with room for three overlapping faces,
-          // which is what the trailing callback below leans on.
+          // its row.
           <ServiceGrid
             items={data.people}
             onPick={(section) => navigate(`/results?service=${section.code}`)}
-            renderTrailing={(section, wide) =>
-              // Faces only in the wide cell. A narrow tile has room for a
-              // number or for three overlapping circles, and the number is
-              // the one that says something a person cannot already guess.
-              wide && section.avatars.length ? (
-                <AvatarStack avatars={section.avatars} />
-              ) : section.count ? (
-                <Count>{section.count}</Count>
-              ) : null
-            }
+            renderTrailing={(section, wide) => {
+              // Faces on every shelf that has any, not only where a wide cell
+              // happened to fall. Which shelf got one was decided by whether
+              // its number of tiles is odd, so «Учёба» — the fullest shelf in
+              // the catalog — was the one that never showed a face.
+              //
+              // Two of them in a narrow tile rather than three: they share
+              // the line with the hint, and each face costs it about a word.
+              // On the narrowest phone that is most of the hint — "матан,
+              // физика, экономика, программирование" keeps its first word.
+              // Taken: a hint that lists examples of a category the name
+              // already gives is worth less than the faces of people offering
+              // it.
+              if (!section.avatars.length && !section.count) return null;
+              return (
+                <>
+                  {section.avatars.length ? (
+                    <AvatarStack
+                      avatars={wide ? section.avatars : section.avatars.slice(0, 2)}
+                      size={wide ? 24 : 19}
+                    />
+                  ) : null}
+                  {section.count ? <Count>{section.count}</Count> : null}
+                </>
+              );
+            }}
           />
         )}
       </Screen>
