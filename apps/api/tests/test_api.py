@@ -968,10 +968,12 @@ async def test_a_checklist_line_from_another_service_is_dropped(client, session)
 
 
 async def test_a_save_that_says_nothing_about_the_checklist_keeps_it(client, session):
-    """The profile screen does not edit a checklist, so it must not erase one.
+    """A save that says nothing about the checklist must not erase one.
 
-    It sends offers without `option_ids` or `note`; a default of `[]` here would
-    wipe what the prices screen wrote, silently, on an unrelated save.
+    `OfferIn` defaults `option_ids` to `[]`, so a caller that saves an offer
+    without mentioning the checklist would wipe what the prices screen wrote,
+    silently, on an unrelated save. The shipped client sends both fields; this
+    holds the rule for the next one.
     """
     from sqlalchemy import select
 

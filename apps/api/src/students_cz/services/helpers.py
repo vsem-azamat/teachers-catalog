@@ -192,9 +192,10 @@ async def _apply_offers(
         offer.price_unit = offer_spec.price_unit
         offer.langs = offer_spec.langs or list(user.spoken_langs)
         # Said nothing, changed nothing — the same rule `work_format` follows
-        # below, and for the same reason: the profile screen sends offers
-        # without a checklist because it does not edit one, and a default of
-        # `[]` here would erase what the prices screen wrote.
+        # below, and for the same reason: `OfferIn` defaults the checklist to
+        # `[]`, so any caller that saves an offer without mentioning it would
+        # erase what the prices screen wrote. Today's client always sends both
+        # fields; the guard is what keeps the next one from having to.
         if "option_ids" in offer_spec.model_fields_set:
             # Only the options belonging to this kind of help. A stale client
             # holding yesterday's checklist would otherwise attach insurance's
