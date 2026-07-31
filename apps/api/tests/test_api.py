@@ -1072,6 +1072,133 @@ async def test_the_checklist_reaches_the_screen_that_ticks_it(client, session):
     assert [o["code"] for o in offered] == [r.code for r in stored[1:]]
 
 
+async def test_a_turnaround_reaches_the_person_reading_it(client, session):
+    """The one question a written work is asked that a lesson is not."""
+    from sqlalchemy import select
+
+    from students_cz.db.models import ServiceType
+
+    writing = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "writing")
+    )
+    headers = auth_header(90702)
+    saved = await client.put(
+        "/api/v1/helper",
+        json={
+            "publish": True,
+            "offers": [
+                {
+                    "service_type_id": writing.id,
+                    "price_amount": 3000,
+                    "price_unit": "work",
+                    "turnaround_days": 7,
+                }
+            ],
+        },
+        headers=headers,
+    )
+    assert saved.status_code == 200, saved.text
+
+    mine = (await client.get("/api/v1/helper", headers=headers)).json()
+    assert mine["offers"][0]["turnaround_days"] == 7
+
+    me = (await client.get("/api/v1/me", headers=headers)).json()
+    page = (await client.get(f"/api/v1/helpers/{me['id']}", headers=headers)).json()
+    offer = next(o for o in page["offers"] if o["service_type"] == "writing")
+    assert offer["turnaround_days"] == 7
+
+
+async def test_a_save_that_says_nothing_about_the_turnaround_keeps_it(client, session):
+    """The same rule the checklist follows, and for the same reason.
+
+    `OfferIn` defaults `turnaround_days` to `None`, so a caller that saves an
+    offer without mentioning it would quietly move the writer from "a week" to
+    "we will agree".
+    """
+    from sqlalchemy import select
+
+    from students_cz.db.models import ServiceType
+
+    writing = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "writing")
+    )
+    headers = auth_header(90703)
+    await client.put(
+        "/api/v1/helper",
+        json={
+            "publish": True,
+            "offers": [{"service_type_id": writing.id, "turnaround_days": 14}],
+        },
+        headers=headers,
+    )
+
+    await client.put(
+        "/api/v1/helper",
+        json={
+            "publish": True,
+            "offers": [{"service_type_id": writing.id, "price_amount": 2500}],
+        },
+        headers=headers,
+    )
+
+    mine = (await client.get("/api/v1/helper", headers=headers)).json()
+    assert mine["offers"][0]["turnaround_days"] == 14, "the turnaround was erased"
+
+
+async def test_a_turnaround_on_a_lesson_is_dropped(client, session):
+    """Only a written work is asked when, so only one can answer.
+
+    The same filter the checklist gets, and for a visible reason: a stale or
+    hand-rolled client could otherwise put «Срок: неделя» under a tutoring
+    offer, on a form that never asked.
+    """
+    from sqlalchemy import select
+
+    from students_cz.db.models import ServiceType
+
+    tutoring = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "tutoring")
+    )
+    headers = auth_header(90704)
+    saved = await client.put(
+        "/api/v1/helper",
+        json={
+            "publish": True,
+            "offers": [{"service_type_id": tutoring.id, "turnaround_days": 7}],
+        },
+        headers=headers,
+    )
+    assert saved.status_code == 200, saved.text
+
+    mine = (await client.get("/api/v1/helper", headers=headers)).json()
+    assert mine["offers"][0]["turnaround_days"] is None
+
+
+async def test_a_turnaround_must_be_a_real_number_of_days(session):
+    """`NULL` says "we will agree"; zero and minus three say nothing at all.
+
+    The form only ever sends one of five presets, so this is about everything
+    that is not the form — an import, a fixture, a later endpoint.
+    """
+    import sqlalchemy.exc
+    from sqlalchemy import select
+
+    from students_cz.db.models import HelperProfile, Offer, ServiceType, User
+
+    writing = await session.scalar(
+        select(ServiceType).where(ServiceType.code == "writing")
+    )
+    user = User(tg_id=90701, first_name="Zero")
+    session.add(user)
+    await session.flush()
+    session.add(HelperProfile(user_id=user.id))
+    await session.flush()
+
+    session.add(Offer(helper_id=user.id, service_type_id=writing.id, turnaround_days=0))
+    with pytest.raises(sqlalchemy.exc.IntegrityError):
+        await session.flush()
+
+
 async def test_a_withdrawn_checklist_line_survives_an_unrelated_save(client, session):
     """Deactivated is not deleted — that is the whole point of deactivating.
 

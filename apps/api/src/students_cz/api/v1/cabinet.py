@@ -94,6 +94,7 @@ async def my_helper(session: SessionDep, lang: LangDep, user: UserDep) -> MyHelp
                 langs=list(offer.langs),
                 option_ids=list(offer.option_ids),
                 note=offer.note,
+                turnaround_days=offer.turnaround_days,
             )
             for offer in offers
         ],

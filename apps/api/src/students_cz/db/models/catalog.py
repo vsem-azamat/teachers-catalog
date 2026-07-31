@@ -17,6 +17,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Numeric,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -76,7 +77,7 @@ class Offer(IdMixin, TimestampMixin, Base):
     )
 
     # Per-service-type extras that do not deserve columns: exam board, page
-    # count, turnaround days, whether a trial lesson is free.
+    # count, whether a trial lesson is free.
     attrs: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
 
     # Which lines of the service type's checklist this offer covers. Ids rather
@@ -90,6 +91,16 @@ class Offer(IdMixin, TimestampMixin, Base):
     # What the checklist could not say, in the person's own words. Read, not
     # matched — the checklist is the part search can use.
     note: Mapped[str | None] = mapped_column(Text)
+
+    # How long the work takes. Only a written work asks — a lesson happens when
+    # the two of them agree and an errand takes as long as the office queue.
+    # NULL is an answer and not a gap: it says the two of them will agree.
+    #
+    # A column rather than a key in `attrs` above, which names exactly this as
+    # its example, because `attrs` is exposed by no schema and the question
+    # worth asking here is a range: who can do it inside a week. Unindexed until
+    # something asks it — see docs/data-model.md.
+    turnaround_days: Mapped[int | None] = mapped_column(SmallInteger)
 
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default=text("true")
@@ -130,5 +141,11 @@ class Offer(IdMixin, TimestampMixin, Base):
         Index("ix_offers_price", "price_currency", "price_amount"),
         CheckConstraint(
             "price_amount IS NULL OR price_amount >= 0", name="price_non_negative"
+        ),
+        # Zero days and minus three days are not answers, and NULL already says
+        # the thing somebody might reach for zero to say.
+        CheckConstraint(
+            "turnaround_days IS NULL OR turnaround_days > 0",
+            name="turnaround_positive",
         ),
     )

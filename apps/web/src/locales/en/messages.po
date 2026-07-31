@@ -177,9 +177,17 @@ msgstr "Appearance: follows the system. Tap to change"
 #~ msgid "Хочу помогать"
 #~ msgstr "I want to help"
 
+#: src/lib/turnaround.tsx
+msgid "Две недели"
+msgstr "Two weeks"
+
 #: src/components/AppHeader.tsx
 msgid "Язык"
 msgstr "Language"
+
+#: src/lib/turnaround.tsx
+msgid "Месяц"
+msgstr "A month"
 
 #. placeholder {0}: str(p.subject)
 #: src/components/Phrase.tsx
@@ -315,6 +323,10 @@ msgid "Убери что-нибудь из уточнений выше или н
 msgstr "Drop one of the details above, or put it differently."
 
 #: src/pages/OfferPrices.tsx
+msgid "Срок"
+msgstr "Turnaround"
+
+#: src/pages/OfferPrices.tsx
 msgid "Анкета скрыта — услуги сохранятся, но в каталоге их не будет. Включить видимость можно в анкете."
 msgstr "Your profile is hidden — the services are saved but will not be in the catalog. You can turn visibility on there."
 
@@ -409,6 +421,10 @@ msgstr "per item"
 #: src/pages/MyHelper.tsx
 msgid "В каталоге"
 msgstr "In the catalog"
+
+#: src/lib/turnaround.tsx
+msgid "Неделя"
+msgstr "A week"
 
 #: src/components/Phrase.tsx
 #: src/lib/workFormat.tsx
@@ -592,6 +608,10 @@ msgid "Кто поможет с учёбой в Чехии"
 msgstr "Who can help you study in Czechia"
 
 #: src/pages/Helper.tsx
+msgid "Срок: <0/>"
+msgstr "Turnaround: <0/>"
+
+#: src/pages/Helper.tsx
 msgid "Свободные окна"
 msgstr "Open time slots"
 
@@ -695,6 +715,10 @@ msgstr "Nostrification"
 msgid "до {0}"
 msgstr "by {0}"
 
+#: src/lib/turnaround.tsx
+msgid "{days} дн."
+msgstr "{days} days"
+
 #: src/pages/Profile.tsx
 msgid "Жизнь в Чехии"
 msgstr "Life in Czechia"
@@ -707,6 +731,10 @@ msgstr "Add a subject — matan, čeština, physics"
 msgid "Репетиторы, подготовка к přijímačky, помощь на экзамене и нострификация — от студентов, которые это уже прошли."
 msgstr "Tutors, přijímačky prep, help at the exam and nostrification — from students who have been through it."
 
+#: src/pages/OfferPrices.tsx
+msgid "Пара слов о себе — что берёшь и чего не берёшь"
+msgstr "A couple of words about you — what you take on and what you do not"
+
 #: src/components/Incoming.tsx
 msgid "Пока никто ничего не просит"
 msgstr "Nobody is asking for anything yet"
@@ -714,6 +742,10 @@ msgstr "Nobody is asking for anything yet"
 #: src/components/TabBar.tsx
 msgid "Разместить"
 msgstr "Post"
+
+#: src/pages/OfferPrices.tsx
+msgid "Договоримся"
+msgstr "We will agree"
 
 #: src/pages/OfferPrices.tsx
 msgid "Сколько берёшь?"
@@ -803,6 +835,10 @@ msgstr "Message · {0} Kč"
 #: src/pages/Profile.tsx
 msgid "скрыта — в каталоге её не видно"
 msgstr "hidden — not visible in the catalog"
+
+#: src/lib/turnaround.tsx
+msgid "За день"
+msgstr "In a day"
 
 #: src/pages/Request.tsx
 msgid "выбран"
@@ -941,6 +977,10 @@ msgstr "Price per hour, Kč — optional"
 #: src/pages/Request.tsx
 msgid "Откликов пока нет"
 msgstr "No responses yet"
+
+#: src/lib/turnaround.tsx
+msgid "3 дня"
+msgstr "3 days"
 
 #: src/components/Phrase.tsx
 msgid "Помощь нужна до экзамена или на нём?"

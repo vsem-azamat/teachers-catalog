@@ -86,11 +86,12 @@ const ROUTES = [
       // Where to push it. `name` is a label — the click routes call themselves
       // "helper detail" — and a label is not a URL.
       path: '/offer/prices',
-      // One that takes subjects and one that does not, so both shapes of card
-      // are on the screen being measured.
-      state: { picked: ['tutoring', 'insurance'] },
+      // One card of each form shape, so every question this screen can ask is
+      // on the screen being measured: a lesson takes subjects, an errand takes
+      // a checklist, and a written work takes a turnaround.
+      state: { picked: ['tutoring', 'insurance', 'writing'] },
       expect: '[class*="svcCard"]',
-      expectCount: 2,
+      expectCount: 3,
     },
   },
   { path: '/my-helper' },

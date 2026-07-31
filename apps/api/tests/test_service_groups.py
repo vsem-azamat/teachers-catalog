@@ -287,6 +287,21 @@ def test_every_errand_says_what_it_covers() -> None:
     assert missing == [], f"errands with no checklist: {missing}"
 
 
+def test_written_work_says_what_it_takes_on() -> None:
+    """The same argument as the errand above, for the one `work` shape.
+
+    A written work asks for no subject and no school — `requires_subject` is
+    false — no hourly rate and no question about meeting, so two people who
+    write theses are one row read twice unless they can say which works they
+    take on.
+    """
+    from students_cz.db.seed import SERVICE_OPTIONS
+
+    works = {spec["code"] for spec in SERVICE_TYPES if spec["form"] == "work"}
+    missing = sorted(works - set(SERVICE_OPTIONS))
+    assert missing == [], f"written work with no checklist: {missing}"
+
+
 def test_seed_and_migration_agree_about_options() -> None:
     """The deploy runs migrations and never the seed.
 

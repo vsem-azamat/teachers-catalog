@@ -557,6 +557,10 @@ export type MyOfferOut = {
      * Note
      */
     note: string | null;
+    /**
+     * Turnaround Days
+     */
+    turnaround_days: number | null;
 };
 
 /**
@@ -592,6 +596,10 @@ export type OfferIn = {
      * Note
      */
     note?: string | null;
+    /**
+     * Turnaround Days
+     */
+    turnaround_days?: number | null;
 };
 
 /**
@@ -632,6 +640,10 @@ export type OfferOut = {
      * Note
      */
     note: string | null;
+    /**
+     * Turnaround Days
+     */
+    turnaround_days: number | null;
 };
 
 /**
