@@ -75,12 +75,10 @@ export default function MyHelperPage() {
   // the person never learning a question existed.
   const asked = useMemo(
     () =>
-      serviceTypes
-        ? askedFormat(
-            rows.map((row) => row.code),
-            serviceTypes,
-          )
-        : 'both',
+      askedFormat(
+        rows.map((row) => row.code),
+        serviceTypes,
+      ),
     [serviceTypes, rows],
   );
 
@@ -104,7 +102,11 @@ export default function MyHelperPage() {
       api.saveHelper({
         headline: headline.trim() || null,
         about: about.trim() || null,
-        work_format: workFormat,
+        // Omitted, not defaulted, when the form did not ask: `HelperUpsert`
+        // reads `model_fields_set`, so a field absent from the payload leaves
+        // the stored value alone. Sending `both` for somebody who only writes
+        // theses would be the screen answering a question on their behalf.
+        ...(asked === null ? {} : { work_format: workFormat }),
         city: city.trim() || null,
         place_note: placeNote.trim() || null,
         offers: rows.map(toOffer),

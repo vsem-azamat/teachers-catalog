@@ -136,7 +136,9 @@ export default function OfferPricesPage() {
   const save = useMutation({
     mutationFn: () =>
       api.saveHelper({
-        work_format: workFormat,
+        // See MyHelper: a question the form did not ask is one the payload does
+        // not answer.
+        ...(asked === null ? {} : { work_format: workFormat }),
         offers: [...rows.map(toOffer), ...unlisted.map(keep)],
         // Not an unconditional `true`. Somebody who hid their profile on
         // purpose and then adds a service from the cabinet is adding a

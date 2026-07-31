@@ -120,6 +120,16 @@ def _migrated_groups() -> dict[str, str]:
     return groups
 
 
+def _migrated_forms() -> dict[str, str]:
+    """The same walk as `_migrated_groups`, for the other column."""
+    forms: dict[str, str] = {}
+    for path in sorted(VERSIONS.glob("*.py")):
+        for row in _load(path):
+            if "form" in row:
+                forms[row["code"]] = row["form"]
+    return forms
+
+
 def test_every_seeded_service_type_declares_a_group() -> None:
     """A twelfth type appended without a group would default to `study`.
 
@@ -238,11 +248,6 @@ def test_seed_and_migration_agree_about_forms():
     database and no production one, and the production form then asks a
     bank-statement helper how they teach — silently, because nothing errors.
     """
-    seeded = {spec["code"]: spec["form"] for spec in SERVICE_TYPES}
-    migrated: dict[str, str] = {}
-    for path in sorted(VERSIONS.glob("*.py")):
-        for row in _load(path):
-            if "form" in row:
-                migrated[row["code"]] = row["form"]
+    migrated = _migrated_forms()
     assert migrated, "no migration sets a form shape"
-    assert migrated == seeded
+    assert migrated == {spec["code"]: spec["form"] for spec in SERVICE_TYPES}

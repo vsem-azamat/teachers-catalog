@@ -22,7 +22,11 @@ export function askedFormat(
   codes: readonly string[],
   serviceTypes: ServiceType[] | undefined,
 ): WorkFormatAsk {
-  if (!serviceTypes || !codes.length) return null;
+  // Nothing to go on — the reference list has not arrived, or the person has
+  // not added a service yet — is not the same as "do not ask". Both would take
+  // the question and the address off a screen that still has a Save button, and
+  // an empty profile is exactly where somebody fills these in first.
+  if (!serviceTypes || !codes.length) return 'both';
   const shapeOf = new Map(serviceTypes.map((type) => [type.code, type.form_shape]));
   const shapes = new Set(codes.map((code) => shapeOf.get(code)));
   const lesson = shapes.has('lesson');
@@ -30,6 +34,7 @@ export function askedFormat(
   if (lesson && errand) return 'both';
   if (lesson) return 'lesson';
   if (errand) return 'errand';
+  // Only written work, which is always remote.
   return null;
 }
 
