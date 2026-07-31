@@ -185,73 +185,65 @@ export default function OfferPricesPage() {
     });
   };
 
-  const addInstitution = (type: ServiceType, institution: Institution) => {
+  /**
+   * Attach a subject or a school to this service.
+   *
+   * One function for both, because they are the same move: `offers` is unique
+   * on its four axes, so calculus and physics — or ČVUT and VŠE — are two rows
+   * of the same service, and the first row of a service that takes an axis
+   * starts without one.
+   */
+  const addAxis = (
+    type: ServiceType,
+    key: string,
+    axis: Partial<Draft>,
+    hasNoAxis: (row: Draft) => boolean,
+  ) => {
     hapticSelection();
     setRows((current) => {
-      // The same shape as a subject: one row per school, because preparing for
-      // ČVUT and for VŠE are two offers, and `offers` is unique on the four
-      // axes precisely so they can be.
+      // Fill the empty first row rather than leaving it behind, which would
+      // save as "this service, no subject" alongside the real ones.
       const empty = current.find(
-        (row) => row.service_type_id === type.id && row.institution_id === null,
+        (row) => row.service_type_id === type.id && hasNoAxis(row),
       );
-      // The server's own `institution_name`, not the short form: a chip that
-      // reads ČVUT until the screen reloads and then reads the full name is one
-      // school looking like two.
-      const named = institution.name;
       if (empty) {
-        return current.map((row) =>
-          row === empty
-            ? { ...row, institution_id: institution.id, institution_name: named }
-            : row,
-        );
+        return current.map((row) => (row === empty ? { ...row, ...axis } : row));
       }
       return [
         ...current,
         {
           ...blank(type),
-          key: `${type.id}:inst:${institution.id}`,
-          institution_id: institution.id,
-          institution_name: named,
-          // The same rule a new subject gets: preparing for ČVUT and for VŠE is
-          // usually the same hourly rate, and asking twice is asking once too
-          // often.
+          ...axis,
+          key,
+          // Inherits what the person already typed for this service. Asking the
+          // same price four times is asking three times too many.
           price: current.find((row) => row.service_type_id === type.id)?.price ?? '',
         },
       ];
     });
   };
 
-  const addSubject = (type: ServiceType, subject: Subject) => {
-    hapticSelection();
-    setRows((current) => {
-      // The first row of a subject-taking service starts with no subject. Fill
-      // it rather than leaving an empty one behind, which would save as "this
-      // service, no subject" alongside the real ones.
-      const empty = current.find(
-        (row) => row.service_type_id === type.id && row.subject_id === null,
-      );
-      if (empty) {
-        return current.map((row) =>
-          row === empty
-            ? { ...row, subject_id: subject.id, subject_name: subject.name }
-            : row,
-        );
-      }
-      return [
-        ...current,
-        {
-          ...blank(type),
-          key: `${type.id}:${subject.id}`,
-          subject_id: subject.id,
-          subject_name: subject.name,
-          // A new subject inherits what the person already typed for this
-          // service. Asking the same price four times is asking three times
-          // too many.
-          price: current.find((row) => row.service_type_id === type.id)?.price ?? '',
-        },
-      ];
-    });
-  };
+  const addSubject = (type: ServiceType, subject: Subject) =>
+    addAxis(
+      type,
+      `${type.id}:${subject.id}`,
+      { subject_id: subject.id, subject_name: subject.name },
+      (row) => row.subject_id === null,
+    );
+
+  const addInstitution = (type: ServiceType, institution: Institution) =>
+    addAxis(
+      type,
+      `${type.id}:inst:${institution.id}`,
+      {
+        institution_id: institution.id,
+        // The server's own `institution_name`, not the short form: a chip that
+        // reads ČVUT until the screen reloads and then reads the full name is
+        // one school looking like two.
+        institution_name: institution.name,
+      },
+      (row) => row.institution_id === null,
+    );
 
   return (
     <Screen>

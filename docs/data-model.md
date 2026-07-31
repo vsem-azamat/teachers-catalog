@@ -63,6 +63,31 @@ and the tile is the whole query. The axes were already nullable for writing a
 thesis, as above — this group is the case that leans on it hardest, and the one
 that would have needed a third pair of tables in the legacy schema.
 
+**Group names are translated on the client, not through an `*_i18n` table.**
+This is a deliberate exception to the rule below, not an oversight. The i18n
+tables exist for rows we author and keep adding to — subjects, institutions,
+service types. A closed enum of three has the same shape as `work_format` and
+`price_unit`, which `apps/web/src/components/Phrase.tsx` already translates
+client-side. Adding a `service_group_i18n` table would mean a migration every
+time a word changes.
+
+**A migration that adds reference data carries the rows itself.** The
+deployment runs `alembic upgrade head` and never runs `seed.py`
+(`.github/workflows/deploy.yml`), so a service type that exists only in the
+seed reaches every developer's database and no production one. Reference rows
+therefore live in two places on purpose, and
+`apps/api/tests/test_service_groups.py` fails when the two disagree about which
+types exist, and — for the rows a migration actually creates — about what they
+are called. Names matter as much as codes: renaming a service type in the seed
+alone leaves production showing the old one for ever, so a rename needs a
+migration too.
+
+The seven types that predate the grouping are the gap, and the reason the rule
+exists at all. No migration creates them — the initial schema builds the table
+and inserts nothing — so they are in production only because somebody ran
+`seed.py` against it by hand. Nothing compares their names, and renaming one in
+the seed still needs a migration; nothing but this paragraph will tell you so.
+
 ## A group is not a form
 
 `service_types.form_shape` is a second closed enum — `lesson`, `work`,
@@ -91,31 +116,6 @@ question is the same three answers under different words: `work_format` is
 `online` / `offline` / `both`, which reads as online-or-in-person for a lesson
 and remotely-or-alongside-you for an errand. One column, worded by what the
 person actually offers — a second column would be the same fact stored twice.
-
-**Group names are translated on the client, not through an `*_i18n` table.**
-This is a deliberate exception to the rule below, not an oversight. The i18n
-tables exist for rows we author and keep adding to — subjects, institutions,
-service types. A closed enum of three has the same shape as `work_format` and
-`price_unit`, which `apps/web/src/components/Phrase.tsx` already translates
-client-side. Adding a `service_group_i18n` table would mean a migration every
-time a word changes.
-
-**A migration that adds reference data carries the rows itself.** The
-deployment runs `alembic upgrade head` and never runs `seed.py`
-(`.github/workflows/deploy.yml`), so a service type that exists only in the
-seed reaches every developer's database and no production one. Reference rows
-therefore live in two places on purpose, and
-`apps/api/tests/test_service_groups.py` fails when the two disagree about which
-types exist, and — for the rows a migration actually creates — about what they
-are called. Names matter as much as codes: renaming a service type in the seed
-alone leaves production showing the old one for ever, so a rename needs a
-migration too.
-
-The seven types that predate the grouping are the gap, and the reason the rule
-exists at all. No migration creates them — the initial schema builds the table
-and inserts nothing — so they are in production only because somebody ran
-`seed.py` against it by hand. Nothing compares their names, and renaming one in
-the seed still needs a migration; nothing but this paragraph will tell you so.
 
 ## Trees without recursion
 
