@@ -590,6 +590,10 @@ msgstr "Tohle si přečtou první. Pár živých vět funguje líp než seznam."
 msgid "Заявку увидят все, кто предлагает помощь. Дату из текста поймём сами."
 msgstr "Uvidí ji všichni, kdo nabízejí pomoc. Datum si přečteme z textu."
 
+#: src/pages/Results.tsx
+msgid "Никто пока не предлагает то, что ты ищешь."
+msgstr "Zatím to, co hledáš, nikdo nenabízí."
+
 #: src/lib/workFormat.tsx
 msgid "Удалённо"
 msgstr "Na dálku"
@@ -1055,8 +1059,8 @@ msgid "Пусть найдут тебя"
 msgstr "Ať najdou oni tebe"
 
 #: src/pages/Results.tsx
-msgid "По этому запросу ещё нет никого. Оставь заявку — ответят сами."
-msgstr "Na tenhle dotaz zatím nikdo není. Zadej poptávku — ozvou se sami."
+#~ msgid "По этому запросу ещё нет никого. Оставь заявку — ответят сами."
+#~ msgstr "Na tenhle dotaz zatím nikdo není. Zadej poptávku — ozvou se sami."
 
 #: src/pages/Life.tsx
 msgid "Но без этого не доучишься. Сроки и требования — наши, предложения — партнёрские."

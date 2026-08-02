@@ -696,3 +696,22 @@ async def test_the_same_subject_at_two_schools_is_two_requests(
         headers=auth_header(STUDENT),
     )
     assert second.status_code == 201, second.text
+
+
+async def test_two_errands_sharing_only_a_date_are_two_requests(
+    client: AsyncClient,
+) -> None:
+    """A date is not an identity — exam week is the same week for everybody."""
+    first = await client.post(
+        "/api/v1/requests",
+        json={"text": "срочно нужно закрыть долг к 14 февраля"},
+        headers=auth_header(STUDENT),
+    )
+    assert first.status_code == 201, first.text
+
+    second = await client.post(
+        "/api/v1/requests",
+        json={"text": "перевести документы к 14 февраля"},
+        headers=auth_header(STUDENT),
+    )
+    assert second.status_code == 201, second.text

@@ -242,11 +242,14 @@ async def create(
     # and about a flat today. When none of the three axes is known there is
     # nothing to compare but the words, and identical words are the double tap
     # this is here for.
+    # A date is not an identity. Two people's errands land on the same exam
+    # week all the time, so a deadline alone must not switch the words off —
+    # otherwise «закрыть долг к 14 февраля» refuses «перевести документы к
+    # 14 февраля», which share nothing but the date.
     known = (
         subject_id is not None
         or service_type_id is not None
         or institution_id is not None
-        or deadline is not None
     )
     now = datetime.now(UTC)
     duplicate = await session.scalar(

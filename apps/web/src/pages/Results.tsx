@@ -110,11 +110,7 @@ export default function ResultsPage() {
           <>
             <Empty
               title={<Trans>Пока никого</Trans>}
-              body={
-                <Trans>
-                  По этому запросу ещё нет никого. Оставь заявку — ответят сами.
-                </Trans>
-              }
+              body={<Trans>Никто пока не предлагает то, что ты ищешь.</Trans>}
             />
             <AskInstead onClick={() => setAsking(true)} found={0} />
           </>

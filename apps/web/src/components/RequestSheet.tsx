@@ -23,6 +23,9 @@ const AXIS = {
   budget: 'budget_max',
 } as const satisfies Record<string, keyof RequestCreate>;
 
+/** Every axis the payload speaks about, chip or no chip. */
+const AXES = Object.values(AXIS);
+
 /**
  * Turn the search that is already on screen into a request.
  *
@@ -71,13 +74,19 @@ export function RequestSheet({
   });
 
   function payload(): RequestCreate {
+    // Every axis is mentioned, including the ones with no chip. The request
+    // carries the search's filters and nothing more — an axis missing from the
+    // search is one the person took off on `/ask`, or one the parser never
+    // found, and either way the server must not put it back out of the text.
+    // Silence would mean exactly that, which is the case this whole change is
+    // about. The deadline is not an axis and stays unmentioned on purpose: it
+    // is not a filter, so the words are the only place it can come from.
     const body: RequestCreate = { text: words.trim() };
+    for (const axis of AXES) body[axis] = null;
     for (const chip of chips) {
       const axis = AXIS[chip.kind as keyof typeof AXIS];
       if (!axis || chip.value == null) continue;
-      // Mentioned either way: kept means "this one", removed means "any". Only
-      // an axis the search never carried is left for the text to answer.
-      body[axis] = dropped.has(chipKey(chip)) ? null : Number(chip.value);
+      if (!dropped.has(chipKey(chip))) body[axis] = Number(chip.value);
     }
     if (budget) body.budget_max = Number(budget);
     return body;

@@ -590,6 +590,10 @@ msgstr "This is the first thing people read. A couple of real sentences beat a l
 msgid "Заявку увидят все, кто предлагает помощь. Дату из текста поймём сами."
 msgstr "Everyone who offers help will see it. We read the date out of your words."
 
+#: src/pages/Results.tsx
+msgid "Никто пока не предлагает то, что ты ищешь."
+msgstr "Nobody is offering what you are looking for yet."
+
 #: src/lib/workFormat.tsx
 msgid "Удалённо"
 msgstr "Remotely"
@@ -1055,8 +1059,8 @@ msgid "Пусть найдут тебя"
 msgstr "Let them find you"
 
 #: src/pages/Results.tsx
-msgid "По этому запросу ещё нет никого. Оставь заявку — ответят сами."
-msgstr "Nobody for this query yet. Post a request — they answer you."
+#~ msgid "По этому запросу ещё нет никого. Оставь заявку — ответят сами."
+#~ msgstr "Nobody for this query yet. Post a request — they answer you."
 
 #: src/pages/Life.tsx
 msgid "Но без этого не доучишься. Сроки и требования — наши, предложения — партнёрские."
