@@ -184,7 +184,12 @@ export function RequestSheet({
         <div className={ui.field}>
           <input
             value={budget}
-            onChange={(event) => setBudget(event.target.value.replace(/\D/g, ''))}
+            // Six digits, not the seven the price fields allow: the server
+            // bounds a budget at a million, and a number it will refuse is one
+            // the person only finds out about through a failed save.
+            onChange={(event) =>
+              setBudget(event.target.value.replace(/\D/g, '').slice(0, 6))
+            }
             inputMode="numeric"
             placeholder={t`Сколько готов платить`}
             aria-label={t`Сколько готов платить`}
