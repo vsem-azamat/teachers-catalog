@@ -13,7 +13,7 @@ that each step owes somebody.
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 
-from sqlalchemy import false, func, or_, select
+from sqlalchemy import false, func, or_, select, true
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -228,15 +228,25 @@ async def create(
     if "budget_max" not in given:
         budget_max = parsed.budget_max
 
-    # The same subject and the same deadline, still open, is a double tap or a
-    # reload rather than a second thing to answer. Two requests for two
-    # subjects are the ordinary case and are left alone.
+    # A double tap, or a reload, rather than a second thing to answer. Same
+    # author, same subject, same kind of help, same deadline, still open.
+    #
+    # The kind of help has to be in the key, and the last clause has to exist:
+    # half the catalog is help with no subject at all — insurance, a bank
+    # statement, housing — so a rule keyed on the subject alone reads two NULLs
+    # as a match and answers 409 to somebody who asked about a visa yesterday
+    # and about a flat today. When none of the three axes is known there is
+    # nothing to compare but the words, and identical words are the double tap
+    # this is here for.
+    known = subject_id is not None or service_type_id is not None or deadline is not None
     duplicate = await session.scalar(
         select(HelpRequest.id).where(
             HelpRequest.author_id == user.id,
             HelpRequest.status == RequestStatus.OPEN,
             HelpRequest.subject_id.is_not_distinct_from(subject_id),
+            HelpRequest.service_type_id.is_not_distinct_from(service_type_id),
             HelpRequest.deadline_on.is_not_distinct_from(deadline),
+            true() if known else HelpRequest.raw_text == text,
         )
     )
     if duplicate is not None:

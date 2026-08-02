@@ -46,8 +46,8 @@ msgid "Пока ни одной. Добавь ниже — без них теб�
 msgstr "None yet. Add one below — without them search cannot find you."
 
 #: src/components/RequestSheet.tsx
-msgid "Заявку увидят все, кто предлагает помощь."
-msgstr "Everyone who offers help will see it."
+#~ msgid "Заявку увидят все, кто предлагает помощь."
+#~ msgstr "Everyone who offers help will see it."
 
 #: src/pages/Offer.tsx
 #: src/pages/OfferPrices.tsx
@@ -586,6 +586,10 @@ msgstr "This is the first thing people read. A couple of real sentences beat a l
 #~ msgid "По этому мы отсеиваем тех, с кем вы друг друга не поймёте."
 #~ msgstr "That's how we filter out people you wouldn't understand each other with."
 
+#: src/components/RequestSheet.tsx
+msgid "Заявку увидят все, кто предлагает помощь. Дату из текста поймём сами."
+msgstr "Everyone who offers help will see it. We read the date out of your words."
+
 #: src/lib/workFormat.tsx
 msgid "Удалённо"
 msgstr "Remotely"
@@ -662,6 +666,10 @@ msgstr "Tick everything you can do. Prices come on the next screen."
 #: src/pages/Results.tsx
 msgid "Дешевле"
 msgstr "Cheaper"
+
+#: src/components/RequestSheet.tsx
+msgid "Такая заявка уже открыта — она в разделе «Заявки»"
+msgstr "You already have this request open — it is under Requests"
 
 #: src/pages/Life.tsx
 msgid "Загружаем"

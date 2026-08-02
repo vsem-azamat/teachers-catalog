@@ -110,7 +110,13 @@ export default function AskPage() {
 
   // One string, used for the preview, for the filters and for the navigation,
   // so none of the three can describe a different search.
-  const query = useMemo(() => toQuery(kept, answer, text), [kept, answer, text]);
+  const query = useMemo(() => toQuery(kept, answer), [kept, answer]);
+
+  // The words themselves travel too, but only on the way out. They are not a
+  // filter, and putting them in the string this screen measures would make
+  // every query "ready" from the first letter — a count of the whole catalog
+  // under a screen that has understood nothing yet.
+  const target = useMemo(() => withWords(query, text), [query, text]);
 
   // Empty when nothing the parse understood is something the search can filter
   // on — a lone deadline is the real case, since there is no date filter to send
@@ -145,7 +151,7 @@ export default function AskPage() {
           isVisible: true,
           isEnabled: true,
           isLoaderVisible: parse.isPending || preview.isFetching,
-          onClick: () => navigate(`/results?${query}`),
+          onClick: () => navigate(`/results?${target}`),
         }
       : null,
   );
@@ -457,14 +463,24 @@ function Preview({
   );
 }
 
-/** Turn the chips the person kept into the search query string. */
-function toQuery(chips: Chip[], answer: string | null, text = ''): string {
-  const params = new URLSearchParams();
-  // The words themselves, not only what was parsed out of them. The results
-  // screen offers to turn the search into a request, and a request is the
-  // person's own sentence — rebuilt from chips it would read like a form.
+/**
+ * The same query with the person's own sentence attached.
+ *
+ * The results screen offers to turn the search into a request, and a request
+ * is the sentence rather than the filters — rebuilt from chips it would read
+ * like a form.
+ */
+function withWords(query: string, text: string): string {
   const words = text.trim();
-  if (words) params.set('q', words);
+  if (!words) return query;
+  const params = new URLSearchParams(query);
+  params.set('q', words);
+  return params.toString();
+}
+
+/** Turn the chips the person kept into the search query string. */
+function toQuery(chips: Chip[], answer: string | null): string {
+  const params = new URLSearchParams();
   for (const chip of chips) {
     if (chip.value == null) continue;
     if (chip.kind === 'subject') params.set('subject_id', String(chip.value));

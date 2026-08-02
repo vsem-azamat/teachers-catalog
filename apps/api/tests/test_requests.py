@@ -635,3 +635,24 @@ async def test_the_same_request_twice_is_one_request(client: AsyncClient) -> Non
         "/api/v1/requests", json={"text": text}, headers=auth_header(STUDENT)
     )
     assert again.status_code == 409, again.text
+
+
+async def test_two_different_errands_are_two_requests(client: AsyncClient) -> None:
+    """Half the catalog has no subject, so two NULLs are not a match.
+
+    A visa yesterday and a flat today are two things to answer, and a rule that
+    reads them as one locks a person out of every request after their first.
+    """
+    first = await client.post(
+        "/api/v1/requests",
+        json={"text": "нужна помощь с оформлением визы"},
+        headers=auth_header(STUDENT),
+    )
+    assert first.status_code == 201, first.text
+
+    second = await client.post(
+        "/api/v1/requests",
+        json={"text": "ищу жильё в Праге"},
+        headers=auth_header(STUDENT),
+    )
+    assert second.status_code == 201, second.text

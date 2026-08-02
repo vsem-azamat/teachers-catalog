@@ -293,11 +293,16 @@ export interface HelpRequest {
 
 export interface RequestCreate {
   text: string;
-  subject_id?: number;
-  institution_id?: number;
-  service_type_id?: number;
-  deadline_on?: string;
-  budget_max?: number;
+  /**
+   * `null` is an answer and not an omission: the axes are read out of the text
+   * only where the caller said nothing, so a removed chip has to arrive as an
+   * explicit null. See `services/requests.create`.
+   */
+  subject_id?: number | null;
+  institution_id?: number | null;
+  service_type_id?: number | null;
+  deadline_on?: string | null;
+  budget_max?: number | null;
   langs?: string[];
 }
 

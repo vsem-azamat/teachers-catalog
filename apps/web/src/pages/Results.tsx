@@ -20,6 +20,7 @@ import {
 import { useSearchFilters } from '@/hooks/useSearchFilters';
 import { hapticSelection } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
+import { chipKey, chipLabel } from '@/lib/chips';
 import type { SearchSort } from '@/lib/types';
 
 /**
@@ -68,8 +69,8 @@ export default function ResultsPage() {
           <div style={{ marginBottom: 12 }}>
             <Chips>
               {data.chips.map((chip) => (
-                <ChipView key={`${chip.kind}:${chip.value}`} active>
-                  {chip.kind === 'budget' ? `≤ ${chip.label} Kč` : chip.label}
+                <ChipView key={chipKey(chip)} active>
+                  {chipLabel(chip, i18n.locale)}
                 </ChipView>
               ))}
               <ChipView ghost onClick={() => navigate('/ask')}>

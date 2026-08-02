@@ -4,19 +4,24 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { hapticSelection, hapticSuccess } from '@/hooks/useTelegram';
-import { api } from '@/lib/api';
+import { ApiError, api } from '@/lib/api';
 import { chipKey, chipLabel } from '@/lib/chips';
 import type { Chip, RequestCreate } from '@/lib/types';
 import { Sheet } from './Sheet';
 import { Action, Chips, ChipView, Hint, ui } from './Ui';
 
-/** Which axis each kind of chip is, for the payload below. */
-const AXIS: Record<string, keyof RequestCreate> = {
+/**
+ * Which axis each kind of chip is.
+ *
+ * Only the four the search filters on, and only the ones whose value is a
+ * number: a deadline is neither, which is why the sheet has no chip for it.
+ */
+const AXIS = {
   subject: 'subject_id',
   institution: 'institution_id',
   service_type: 'service_type_id',
   budget: 'budget_max',
-};
+} as const satisfies Record<string, keyof RequestCreate>;
 
 /**
  * Turn the search that is already on screen into a request.
@@ -68,13 +73,11 @@ export function RequestSheet({
   function payload(): RequestCreate {
     const body: RequestCreate = { text: words.trim() };
     for (const chip of chips) {
-      const axis = AXIS[chip.kind];
+      const axis = AXIS[chip.kind as keyof typeof AXIS];
       if (!axis || chip.value == null) continue;
       // Mentioned either way: kept means "this one", removed means "any". Only
       // an axis the search never carried is left for the text to answer.
-      Object.assign(body, {
-        [axis]: dropped.has(chipKey(chip)) ? null : Number(chip.value),
-      });
+      body[axis] = dropped.has(chipKey(chip)) ? null : Number(chip.value);
     }
     if (budget) body.budget_max = Number(budget);
     return body;
@@ -158,11 +161,13 @@ export function RequestSheet({
 
       {post.isError ? (
         <Hint>
-          <Trans>Не отправилось — попробуй ещё раз.</Trans>
+          <PostError error={post.error} />
         </Hint>
       ) : (
         <Hint>
-          <Trans>Заявку увидят все, кто предлагает помощь.</Trans>
+          <Trans>
+            Заявку увидят все, кто предлагает помощь. Дату из текста поймём сами.
+          </Trans>
         </Hint>
       )}
 
@@ -171,4 +176,17 @@ export function RequestSheet({
       </Action>
     </Sheet>
   );
+}
+
+/**
+ * Why it did not post.
+ *
+ * The 409 is the one worth naming: "try again" invites a retry that cannot
+ * succeed while the earlier request is open, and the person would keep tapping.
+ */
+function PostError({ error }: { error: unknown }) {
+  if (error instanceof ApiError && error.status === 409) {
+    return <Trans>Такая заявка уже открыта — она в разделе «Заявки»</Trans>;
+  }
+  return <Trans>Не отправилось — попробуй ещё раз.</Trans>;
 }

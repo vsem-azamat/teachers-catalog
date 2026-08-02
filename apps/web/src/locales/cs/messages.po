@@ -46,8 +46,8 @@ msgid "Пока ни одной. Добавь ниже — без них теб�
 msgstr "Zatím žádná. Přidej ji níž — bez nich tě vyhledávání nenajde."
 
 #: src/components/RequestSheet.tsx
-msgid "Заявку увидят все, кто предлагает помощь."
-msgstr "Uvidí ji všichni, kdo nabízejí pomoc."
+#~ msgid "Заявку увидят все, кто предлагает помощь."
+#~ msgstr "Uvidí ji všichni, kdo nabízejí pomoc."
 
 #: src/pages/Offer.tsx
 #: src/pages/OfferPrices.tsx
@@ -586,6 +586,10 @@ msgstr "Tohle si přečtou první. Pár živých vět funguje líp než seznam."
 #~ msgid "По этому мы отсеиваем тех, с кем вы друг друга не поймёте."
 #~ msgstr "Podle toho vyřazujeme ty, se kterými byste si nerozuměli."
 
+#: src/components/RequestSheet.tsx
+msgid "Заявку увидят все, кто предлагает помощь. Дату из текста поймём сами."
+msgstr "Uvidí ji všichni, kdo nabízejí pomoc. Datum si přečteme z textu."
+
 #: src/lib/workFormat.tsx
 msgid "Удалённо"
 msgstr "Na dálku"
@@ -662,6 +666,10 @@ msgstr "Označ všechno, co umíš. Na ceny se zeptáme na dalším kroku."
 #: src/pages/Results.tsx
 msgid "Дешевле"
 msgstr "Levnější"
+
+#: src/components/RequestSheet.tsx
+msgid "Такая заявка уже открыта — она в разделе «Заявки»"
+msgstr "Takovou poptávku už máš otevřenou — je v sekci Poptávky"
 
 #: src/pages/Life.tsx
 msgid "Загружаем"
