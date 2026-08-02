@@ -46,10 +46,19 @@ const AXES = Object.values(AXIS);
 export function RequestSheet({
   text,
   chips,
+  known,
   onClose,
 }: {
   text: string;
   chips: Chip[];
+  /**
+   * Whether `chips` is the search's answer or merely what we have so far.
+   *
+   * An empty list means two different things — the search found nothing to
+   * filter on, or it has not come back — and the second one must not be read
+   * as "no subject, no school, no kind of help".
+   */
+  known: boolean;
   onClose: () => void;
 }) {
   const { t, i18n } = useLingui();
@@ -81,7 +90,7 @@ export function RequestSheet({
    * screen, a category from the profile — and there the person writes the
    * sentence here, from scratch; edit the words and the same thing is true.
    */
-  const fromSearch = text.trim().length > 0 && words.trim() === text.trim();
+  const fromSearch = known && text.trim().length > 0 && words.trim() === text.trim();
 
   function payload(): RequestCreate {
     // Every axis is mentioned when the chips still describe these words: an

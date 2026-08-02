@@ -144,6 +144,10 @@ export default function ResultsPage() {
         <RequestSheet
           text={words}
           chips={data?.chips ?? []}
+          // `ask=1` opens the sheet on the first render, before the search has
+          // answered — and after it fails. Neither is "this query filters on
+          // nothing", which is what an empty list would otherwise say.
+          known={data !== undefined}
           onClose={() => setAsking(false)}
         />
       ) : null}
