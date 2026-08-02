@@ -90,16 +90,20 @@ export function RequestSheet({
     // back out of the text. Silence would mean exactly that, which is the case
     // this whole change is about.
     //
-    // When the words are new, silence is right: nobody has removed anything,
-    // and the sentence is the only thing that knows what it is about. The
-    // deadline is unmentioned either way — it is not a filter, so the words are
-    // the only place it can come from.
+    // When the words are new, silence is right for an axis nobody touched: the
+    // sentence is the only thing that knows what it is about. Removals are
+    // sent either way, just below. The deadline is unmentioned in every case —
+    // it is not a filter, so the words are the only place it can come from.
     const body: RequestCreate = { text: words.trim() };
     if (fromSearch) for (const axis of AXES) body[axis] = null;
     for (const chip of chips) {
       const axis = AXIS[chip.kind as keyof typeof AXIS];
       if (!axis || chip.value == null) continue;
-      if (!dropped.has(chipKey(chip))) body[axis] = Number(chip.value);
+      // A chip taken off is a removal whatever happened to the words: the
+      // screen shows it as gone, so the request must not carry it, and only an
+      // explicit null says that. Editing the sentence changes what silence
+      // means, never what a removal means.
+      body[axis] = dropped.has(chipKey(chip)) ? null : Number(chip.value);
     }
     if (budget) body.budget_max = Number(budget);
     return body;
