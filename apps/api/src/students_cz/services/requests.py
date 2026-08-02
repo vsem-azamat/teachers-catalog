@@ -13,7 +13,7 @@ that each step owes somebody.
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 
-from sqlalchemy import false, func, or_, select
+from sqlalchemy import false, func, or_, select, true
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -195,6 +195,7 @@ async def create(
     deadline_on: date | None = None,
     budget_max: float | None = None,
     langs: list[str] | None = None,
+    given: frozenset[str],
 ) -> HelpRequest:
     """Post "I need help with X" and let helpers answer.
 
@@ -202,6 +203,16 @@ async def create(
     can be a single field. A request without a deadline expires in thirty
     days; with one, the day after — an exam on the 14th is worthless on the
     15th, and a stale board is worse than an empty one.
+
+    `given` is the set of field names the caller actually mentioned, and it is
+    what separates "did not say" from "said none" — the same rule
+    `HelperUpsert` follows through `model_fields_set`. The screen that posts a
+    request shows the parse back as chips, so removing one sends `null` on
+    purpose; without this the text would put it straight back.
+
+    It has no default on purpose: it decides whether the five axis arguments
+    above mean anything at all, so a caller that forgot it would watch every one
+    of them be quietly replaced by whatever the parser made of the text.
     """
     await require_row(session, Subject, subject_id, "subject_id")
     await require_row(session, Institution, institution_id, "institution_id")
@@ -209,15 +220,59 @@ async def create(
 
     parsed = await parser.parse(session, text, lang.value)
 
-    subject_id = subject_id or (parsed.subject.id if parsed.subject else None)
-    institution_id = institution_id or (
-        parsed.institution.id if parsed.institution else None
-    )
-    if service_type_id is None and parsed.service_type:
+    if "subject_id" not in given:
+        subject_id = parsed.subject.id if parsed.subject else None
+    if "institution_id" not in given:
+        institution_id = parsed.institution.id if parsed.institution else None
+    if "service_type_id" not in given and parsed.service_type:
         service_type_id = await session.scalar(
             select(ServiceType.id).where(ServiceType.code == parsed.service_type)
         )
-    deadline = deadline_on or parsed.deadline
+    deadline = deadline_on if "deadline_on" in given else parsed.deadline
+    if "budget_max" not in given:
+        budget_max = parsed.budget_max
+
+    # A double tap, or a reload, rather than a second thing to answer. Same
+    # author, same subject, same kind of help, same deadline, still open.
+    #
+    # Every axis is in the key, and the last clause has to exist:
+    # half the catalog is help with no subject at all — insurance, a bank
+    # statement, housing — so a rule keyed on the subject alone reads two NULLs
+    # as a match and answers 409 to somebody who asked about a visa yesterday
+    # and about a flat today. When none of the three axes is known there is
+    # nothing to compare but the words, and identical words are the double tap
+    # this is here for.
+    # A date is not an identity. Two people's errands land on the same exam
+    # week all the time, so a deadline alone must not switch the words off —
+    # otherwise «закрыть долг к 14 февраля» refuses «перевести документы к
+    # 14 февраля», which share nothing but the date.
+    known = (
+        subject_id is not None
+        or service_type_id is not None
+        or institution_id is not None
+    )
+    now = datetime.now(UTC)
+    duplicate = await session.scalar(
+        select(HelpRequest.id).where(
+            HelpRequest.author_id == user.id,
+            HelpRequest.status == RequestStatus.OPEN,
+            # Expiry is a deadline and not a job that has to have run, so
+            # `status` alone still reads `open` on a request the feed stopped
+            # showing thirty days ago and that already refuses answers. Without
+            # this the person is refused a second ask by a corpse.
+            or_(HelpRequest.expires_at.is_(None), HelpRequest.expires_at > now),
+            HelpRequest.subject_id.is_not_distinct_from(subject_id),
+            HelpRequest.service_type_id.is_not_distinct_from(service_type_id),
+            # The school belongs in the key for the same reason the sheet lets
+            # you take it off: calculus at ČVUT and calculus at VŠE are two
+            # different asks, and the row stores which.
+            HelpRequest.institution_id.is_not_distinct_from(institution_id),
+            HelpRequest.deadline_on.is_not_distinct_from(deadline),
+            true() if known else HelpRequest.raw_text == text,
+        )
+    )
+    if duplicate is not None:
+        raise Conflict("you already have an open request for this")
 
     request = HelpRequest(
         author_id=user.id,
@@ -227,7 +282,7 @@ async def create(
         institution_id=institution_id,
         service_type_id=service_type_id,
         deadline_on=deadline,
-        budget_max=budget_max or parsed.budget_max,
+        budget_max=budget_max,
         langs=langs or list(user.spoken_langs),
         status=RequestStatus.OPEN,
         expires_at=(

@@ -11,7 +11,7 @@ import {
   PlusIcon,
   SearchIcon,
 } from '@/components/icons';
-import { ClarifyOptionLabel, formatDay, PhraseView } from '@/components/Phrase';
+import { ClarifyOptionLabel, PhraseView } from '@/components/Phrase';
 import {
   Cards,
   Chips,
@@ -32,6 +32,7 @@ import {
 import { useSearchFilters } from '@/hooks/useSearchFilters';
 import { useMainButton } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
+import { chipKey, chipLabel } from '@/lib/chips';
 import type { Chip, ParseResult, SearchResult } from '@/lib/types';
 
 const OPTION_ICON: Record<string, typeof CheckIcon> = {
@@ -111,6 +112,12 @@ export default function AskPage() {
   // so none of the three can describe a different search.
   const query = useMemo(() => toQuery(kept, answer), [kept, answer]);
 
+  // The words themselves travel too, but only on the way out. They are not a
+  // filter, and putting them in the string this screen measures would make
+  // every query "ready" from the first letter — a count of the whole catalog
+  // under a screen that has understood nothing yet.
+  const target = useMemo(() => withWords(query, text), [query, text]);
+
   // Empty when nothing the parse understood is something the search can filter
   // on — a lone deadline is the real case, since there is no date filter to send
   // it to. Counting that would count the whole catalog and put the number under
@@ -138,13 +145,17 @@ export default function AskPage() {
     // button goes away rather than keeping the previous number under new chips:
     // a stale number on a button that promises it is the failure this screen was
     // rebuilt to fix.
-    ready && total
+    // Zero is a count too, and the way out of it is the other half of the
+    // product: a search that found nobody used to hide the button and end the
+    // screen, which is the one case a request exists for.
+    ready && total !== undefined
       ? {
-          text: t`Показать ${total}`,
+          text: total > 0 ? t`Показать ${total}` : t`Оставить заявку`,
           isVisible: true,
           isEnabled: true,
           isLoaderVisible: parse.isPending || preview.isFetching,
-          onClick: () => navigate(`/results?${query}`),
+          onClick: () =>
+            navigate(total > 0 ? `/results?${target}` : `/results?${target}&ask=1`),
         }
       : null,
   );
@@ -456,14 +467,19 @@ function Preview({
   );
 }
 
-function chipKey(chip: Chip): string {
-  return `${chip.kind}:${chip.value ?? chip.label}`;
-}
-
-function chipLabel(chip: Chip, locale: string): string {
-  if (chip.kind === 'deadline') return formatDay(chip.label, locale);
-  if (chip.kind === 'budget') return `≤ ${chip.label} Kč`;
-  return chip.label;
+/**
+ * The same query with the person's own sentence attached.
+ *
+ * The results screen offers to turn the search into a request, and a request
+ * is the sentence rather than the filters — rebuilt from chips it would read
+ * like a form.
+ */
+function withWords(query: string, text: string): string {
+  const words = text.trim();
+  if (!words) return query;
+  const params = new URLSearchParams(query);
+  params.set('q', words);
+  return params.toString();
 }
 
 /** Turn the chips the person kept into the search query string. */

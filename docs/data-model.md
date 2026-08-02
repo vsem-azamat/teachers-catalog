@@ -310,6 +310,35 @@ worthless on the 15th. A request past it is filtered out of the helper feed and
 refuses new answers even while its `status` still reads `open` — expiry is a
 deadline, not a job that has to have run.
 
+**What the text says, and what the caller says.** A request can be one
+sentence: anything the caller leaves out is read out of the text by the same
+parser the search screen uses, so «матан на ČVUT, экзамен 14 февраля» arrives
+with a subject, an institution and a deadline without a form. The rule that
+makes that safe is the one `HelperUpsert` already follows — the caller's own
+words win over the inference, and *mentioning* a field is what makes it the
+caller's. A `subject_id` of `null` that was sent means "any subject", and is
+kept; a `subject_id` that was never sent means "read it out of the text". The
+screen that posts a request shows the parse back as chips, and removing one is
+exactly the first case: the text still says ČVUT while the request says nothing
+about a school.
+
+**The same request twice is one request.** A live request by the same person,
+for the same subject, the same school, the same kind of help and the same
+deadline, is a double tap or a reload — not a second thing to answer — so it is
+refused rather than stored. Most of those four are nearly always `NULL`, which
+is why all four are in the key and why, when the request names no subject, no
+school and no kind of help, the words are compared instead. A date does not
+count towards that: exam week is the same week for everybody, so two errands
+sharing only a deadline share nothing.
+
+The reason is the shape of the catalog: half of it is help
+with no subject at all, so a rule keyed on the subject alone reads a visa and a
+flat as the same request.
+
+Live and not merely `open`: expiry is a deadline rather than a job that has to
+have run, so a request the feed stopped showing thirty days ago must not refuse
+the next one.
+
 An answer carries `price_amount` **and** `price_unit`: "500" alone is ambiguous
 between an hour and the whole job, and the two readings are different offers.
 Accepting one writes a `contacts` row — the same row the catalog writes when

@@ -5,7 +5,7 @@ once someone can reply — who may see incoming requests, who may answer them,
 and what the author sees afterwards.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -592,3 +592,126 @@ async def test_nobody_hears_about_it_who_never_started_the_bot(
 
     assert response.status_code == 201, response.text
     assert bot.sent == []
+
+
+# ── what the text says, and what the caller says ────────────────────────
+
+
+async def test_a_removed_chip_is_not_put_back_by_the_text(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    """The screen shows the parse back as chips; removing one has to mean it.
+
+    Anything the caller leaves out is read out of the text — that is what lets
+    the form be one field. But a caller who *said* «no institution» has said
+    something, and the text saying ČVUT does not overrule them.
+    """
+    text = "матан на ČVUT FEL, экзамен 14 февраля"
+
+    inferred = await client.post(
+        "/api/v1/requests", json={"text": text}, headers=auth_header(STUDENT)
+    )
+    assert inferred.status_code == 201, inferred.text
+    assert inferred.json()["institution"] is not None, "the text names a school"
+
+    kept = await client.post(
+        "/api/v1/requests",
+        json={"text": text, "institution_id": None},
+        headers=auth_header(OTHER),
+    )
+    assert kept.status_code == 201, kept.text
+    assert kept.json()["institution"] is None, "a removed chip came back"
+
+
+async def test_the_same_request_twice_is_one_request(client: AsyncClient) -> None:
+    """A double tap, or a reload, is not a second thing to answer."""
+    text = "нужен матан, экзамен 14 февраля"
+    first = await client.post(
+        "/api/v1/requests", json={"text": text}, headers=auth_header(STUDENT)
+    )
+    assert first.status_code == 201, first.text
+
+    again = await client.post(
+        "/api/v1/requests", json={"text": text}, headers=auth_header(STUDENT)
+    )
+    assert again.status_code == 409, again.text
+
+
+async def test_two_different_errands_are_two_requests(client: AsyncClient) -> None:
+    """Half the catalog has no subject, so two NULLs are not a match.
+
+    A visa yesterday and a flat today are two things to answer, and a rule that
+    reads them as one locks a person out of every request after their first.
+    """
+    first = await client.post(
+        "/api/v1/requests",
+        json={"text": "нужна помощь с оформлением визы"},
+        headers=auth_header(STUDENT),
+    )
+    assert first.status_code == 201, first.text
+
+    second = await client.post(
+        "/api/v1/requests",
+        json={"text": "ищу жильё в Праге"},
+        headers=auth_header(STUDENT),
+    )
+    assert second.status_code == 201, second.text
+
+
+async def test_an_expired_request_does_not_block_asking_again(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    """Expiry is a deadline, not a job that has to have run.
+
+    A request thirty-one days old still reads `open`, and is invisible in every
+    feed and refuses answers. Letting it refuse the next ask leaves the person
+    to hunt down a corpse before they can ask again.
+    """
+    posted = await post_request(client, "нужен матан")
+    request = await session.get(HelpRequest, posted["id"])
+    assert request is not None
+    request.expires_at = datetime.now(UTC) - timedelta(days=1)
+    await session.flush()
+
+    again = await client.post(
+        "/api/v1/requests", json={"text": "нужен матан"}, headers=auth_header(STUDENT)
+    )
+    assert again.status_code == 201, again.text
+
+
+async def test_the_same_subject_at_two_schools_is_two_requests(
+    client: AsyncClient,
+) -> None:
+    """Calculus at ČVUT and calculus at VŠE are two different asks."""
+    first = await client.post(
+        "/api/v1/requests",
+        json={"text": "нужен матан на ČVUT FEL"},
+        headers=auth_header(STUDENT),
+    )
+    assert first.status_code == 201, first.text
+
+    second = await client.post(
+        "/api/v1/requests",
+        json={"text": "нужен матан на VŠE"},
+        headers=auth_header(STUDENT),
+    )
+    assert second.status_code == 201, second.text
+
+
+async def test_two_errands_sharing_only_a_date_are_two_requests(
+    client: AsyncClient,
+) -> None:
+    """A date is not an identity — exam week is the same week for everybody."""
+    first = await client.post(
+        "/api/v1/requests",
+        json={"text": "срочно нужно закрыть долг к 14 февраля"},
+        headers=auth_header(STUDENT),
+    )
+    assert first.status_code == 201, first.text
+
+    second = await client.post(
+        "/api/v1/requests",
+        json={"text": "перевести документы к 14 февраля"},
+        headers=auth_header(STUDENT),
+    )
+    assert second.status_code == 201, second.text

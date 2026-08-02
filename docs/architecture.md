@@ -287,15 +287,15 @@ finds, and a rule with silent exceptions is worse than no rule.
   `browse.helper_detail` and `search.parse`. Named rather than counted — a
   number here is one nobody remembers to correct, and the last three attempts
   at one were all wrong.
-- **`Request.tsx` claims two things the code does not do.** It says a request
-  is seen by the helpers who teach that subject: `requests.feed_for` filters on
-  status, authorship, expiry and whether you already answered, and uses the
-  subject only for *ranking*, so every helper profile sees every open request.
-  And it promises an answer "usually within a day": nothing tells a helper a
-  request exists at all — the two notifications that exist are about a response
-  and an acceptance — and `response_minutes_avg` is written only by
-  `db/demo.py`. Both wait on one product decision: narrow who sees a request,
-  or say plainly that every helper does.
+- **Nothing tells a helper that a request exists.** `requests.feed_for` filters
+  on status, authorship, expiry and whether you already answered, and uses the
+  subject only for *ranking*, so every helper profile sees every open request —
+  which the screens now say, rather than promising the subject narrows it. What
+  is still missing is the push: the two notifications that exist are about a
+  response and an acceptance, so a request waits to be found rather than
+  arriving. The product decision it waits on is whether to narrow the feed
+  first, since notifying every helper about every request is how a feed becomes
+  something people mute.
 - **`public.py` still reaches into `app.state`** — for the bot, and for the
   per-process cache of its username. The cache is genuinely app-scoped, so
   this one needs somewhere for that state to live before it can become a
