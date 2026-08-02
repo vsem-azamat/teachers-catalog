@@ -592,3 +592,46 @@ async def test_nobody_hears_about_it_who_never_started_the_bot(
 
     assert response.status_code == 201, response.text
     assert bot.sent == []
+
+
+# ── what the text says, and what the caller says ────────────────────────
+
+
+async def test_a_removed_chip_is_not_put_back_by_the_text(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    """The screen shows the parse back as chips; removing one has to mean it.
+
+    Anything the caller leaves out is read out of the text — that is what lets
+    the form be one field. But a caller who *said* «no institution» has said
+    something, and the text saying ČVUT does not overrule them.
+    """
+    text = "матан на ČVUT FEL, экзамен 14 февраля"
+
+    inferred = await client.post(
+        "/api/v1/requests", json={"text": text}, headers=auth_header(STUDENT)
+    )
+    assert inferred.status_code == 201, inferred.text
+    assert inferred.json()["institution"] is not None, "the text names a school"
+
+    kept = await client.post(
+        "/api/v1/requests",
+        json={"text": text, "institution_id": None},
+        headers=auth_header(OTHER),
+    )
+    assert kept.status_code == 201, kept.text
+    assert kept.json()["institution"] is None, "a removed chip came back"
+
+
+async def test_the_same_request_twice_is_one_request(client: AsyncClient) -> None:
+    """A double tap, or a reload, is not a second thing to answer."""
+    text = "нужен матан, экзамен 14 февраля"
+    first = await client.post(
+        "/api/v1/requests", json={"text": text}, headers=auth_header(STUDENT)
+    )
+    assert first.status_code == 201, first.text
+
+    again = await client.post(
+        "/api/v1/requests", json={"text": text}, headers=auth_header(STUDENT)
+    )
+    assert again.status_code == 409, again.text

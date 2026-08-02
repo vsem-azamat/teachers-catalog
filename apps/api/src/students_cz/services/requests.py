@@ -195,6 +195,7 @@ async def create(
     deadline_on: date | None = None,
     budget_max: float | None = None,
     langs: list[str] | None = None,
+    given: frozenset[str] = frozenset(),
 ) -> HelpRequest:
     """Post "I need help with X" and let helpers answer.
 
@@ -202,6 +203,12 @@ async def create(
     can be a single field. A request without a deadline expires in thirty
     days; with one, the day after — an exam on the 14th is worthless on the
     15th, and a stale board is worse than an empty one.
+
+    `given` is the set of field names the caller actually mentioned, and it is
+    what separates "did not say" from "said none" — the same rule
+    `HelperUpsert` follows through `model_fields_set`. The screen that posts a
+    request shows the parse back as chips, so removing one sends `null` on
+    purpose; without this the text would put it straight back.
     """
     await require_row(session, Subject, subject_id, "subject_id")
     await require_row(session, Institution, institution_id, "institution_id")
@@ -209,15 +216,31 @@ async def create(
 
     parsed = await parser.parse(session, text, lang.value)
 
-    subject_id = subject_id or (parsed.subject.id if parsed.subject else None)
-    institution_id = institution_id or (
-        parsed.institution.id if parsed.institution else None
-    )
-    if service_type_id is None and parsed.service_type:
+    if "subject_id" not in given:
+        subject_id = parsed.subject.id if parsed.subject else None
+    if "institution_id" not in given:
+        institution_id = parsed.institution.id if parsed.institution else None
+    if "service_type_id" not in given and parsed.service_type:
         service_type_id = await session.scalar(
             select(ServiceType.id).where(ServiceType.code == parsed.service_type)
         )
-    deadline = deadline_on or parsed.deadline
+    deadline = deadline_on if "deadline_on" in given else parsed.deadline
+    if "budget_max" not in given:
+        budget_max = parsed.budget_max
+
+    # The same subject and the same deadline, still open, is a double tap or a
+    # reload rather than a second thing to answer. Two requests for two
+    # subjects are the ordinary case and are left alone.
+    duplicate = await session.scalar(
+        select(HelpRequest.id).where(
+            HelpRequest.author_id == user.id,
+            HelpRequest.status == RequestStatus.OPEN,
+            HelpRequest.subject_id.is_not_distinct_from(subject_id),
+            HelpRequest.deadline_on.is_not_distinct_from(deadline),
+        )
+    )
+    if duplicate is not None:
+        raise Conflict("you already have an open request for this")
 
     request = HelpRequest(
         author_id=user.id,
@@ -227,7 +250,7 @@ async def create(
         institution_id=institution_id,
         service_type_id=service_type_id,
         deadline_on=deadline,
-        budget_max=budget_max or parsed.budget_max,
+        budget_max=budget_max,
         langs=langs or list(user.spoken_langs),
         status=RequestStatus.OPEN,
         expires_at=(

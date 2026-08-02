@@ -310,6 +310,23 @@ worthless on the 15th. A request past it is filtered out of the helper feed and
 refuses new answers even while its `status` still reads `open` — expiry is a
 deadline, not a job that has to have run.
 
+**What the text says, and what the caller says.** A request can be one
+sentence: anything the caller leaves out is read out of the text by the same
+parser the search screen uses, so «матан на ČVUT, экзамен 14 февраля» arrives
+with a subject, an institution and a deadline without a form. The rule that
+makes that safe is the one `HelperUpsert` already follows — the caller's own
+words win over the inference, and *mentioning* a field is what makes it the
+caller's. A `subject_id` of `null` that was sent means "any subject", and is
+kept; a `subject_id` that was never sent means "read it out of the text". The
+screen that posts a request shows the parse back as chips, and removing one is
+exactly the first case: the text still says ČVUT while the request says nothing
+about a school.
+
+**The same request twice is one request.** An open request by the same person,
+for the same subject and the same deadline, is a double tap or a reload — not a
+second thing to answer — so it is refused rather than stored. Nothing stops two
+requests for two subjects, which is the ordinary case.
+
 An answer carries `price_amount` **and** `price_unit`: "500" alone is ambiguous
 between an hour and the whole job, and the two readings are different offers.
 Accepting one writes a `contacts` row — the same row the catalog writes when

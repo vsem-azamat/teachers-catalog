@@ -45,6 +45,10 @@ msgstr "Volní"
 msgid "Пока ни одной. Добавь ниже — без них тебя не найдут по поиску."
 msgstr "Zatím žádná. Přidej ji níž — bez nich tě vyhledávání nenajde."
 
+#: src/components/RequestSheet.tsx
+msgid "Заявку увидят все, кто предлагает помощь."
+msgstr "Uvidí ji všichni, kdo nabízejí pomoc."
+
 #: src/pages/Offer.tsx
 #: src/pages/OfferPrices.tsx
 msgid "Проверь связь и попробуй ещё раз."
@@ -166,12 +170,20 @@ msgid "первый год"
 msgstr "první rok"
 
 #: src/pages/Results.tsx
-msgid "По этому запросу ещё нет никого. Создай заявку — тогда найдут тебя."
-msgstr "Na tenhle dotaz zatím nikdo není. Založ poptávku — pak si tě najdou sami."
+#~ msgid "По этому запросу ещё нет никого. Создай заявку — тогда найдут тебя."
+#~ msgstr "Na tenhle dotaz zatím nikdo není. Založ poptávku — pak si tě najdou sami."
+
+#: src/pages/Results.tsx
+msgid "Оставь заявку — ответят сами"
+msgstr "Zadej poptávku — ozvou se sami"
 
 #: src/components/AppHeader.tsx
 msgid "Оформление: как в системе. Нажми, чтобы сменить"
 msgstr "Vzhled: podle systému. Klepnutím změníš"
+
+#: src/components/RequestSheet.tsx
+msgid "Не отправилось — попробуй ещё раз."
+msgstr "Neodeslalo se — zkus to znovu."
 
 #: src/pages/Profile.tsx
 #~ msgid "Хочу помогать"
@@ -271,6 +283,10 @@ msgstr "Partner"
 msgid "Сохранить"
 msgstr "Uložit"
 
+#: src/pages/Results.tsx
+msgid "Оставить"
+msgstr "Zadat"
+
 #: src/pages/Mine.tsx
 msgid "Входящие"
 msgstr "Příchozí"
@@ -296,6 +312,10 @@ msgstr "Cena"
 #: src/lib/workFormat.tsx
 msgid "И так, и так"
 msgstr "Obojí"
+
+#: src/pages/Request.tsx
+msgid "Заявку видят все, кто предлагает помощь. Отклики приходят сюда."
+msgstr "Poptávku vidí všichni, kdo nabízejí pomoc. Odpovědi chodí sem."
 
 #: src/components/TabBar.tsx
 #: src/pages/Chats.tsx
@@ -443,6 +463,10 @@ msgstr "Víc otázek nebude."
 #~ msgid "Получилось так"
 #~ msgstr "Vyšlo to takhle"
 
+#: src/components/RequestSheet.tsx
+msgid "Сколько готов платить"
+msgstr "Kolik jsi ochoten platit"
+
 #: src/components/Phrase.tsx
 #: src/pages/MyHelper.tsx
 #: src/pages/OfferPrices.tsx
@@ -481,8 +505,8 @@ msgid "опиши задачу — придут отклики"
 msgstr "popiš zadání — přijdou nabídky"
 
 #: src/pages/Request.tsx
-msgid "Заявку видят те, кто ведёт этот предмет. Обычно отвечают в течение дня."
-msgstr "Poptávku vidí ti, kdo tenhle předmět učí. Obvykle odpovídají do dne."
+#~ msgid "Заявку видят те, кто ведёт этот предмет. Обычно отвечают в течение дня."
+#~ msgstr "Poptávku vidí ti, kdo tenhle předmět učí. Obvykle odpovídají do dne."
 
 #: src/pages/Ask.tsx
 msgid "Кого тут можно найти"
@@ -627,6 +651,10 @@ msgstr "koncept — v katalogu není vidět"
 msgid "Ссылка устарела или в ней опечатка."
 msgstr "Odkaz je starý nebo je v něm překlep."
 
+#: src/components/RequestSheet.tsx
+msgid "Что нужно"
+msgstr "Co potřebuješ"
+
 #: src/pages/Offer.tsx
 msgid "Отметь всё, что умеешь. Цены спросим на следующем экране."
 msgstr "Označ všechno, co umíš. Na ceny se zeptáme na dalším kroku."
@@ -689,6 +717,7 @@ msgid "Чем помогает"
 msgstr "S čím pomáhá"
 
 #: src/components/AppHeader.tsx
+#: src/components/RequestSheet.tsx
 #: src/components/TabBar.tsx
 msgid "Закрыть"
 msgstr "Zavřít"
@@ -806,6 +835,10 @@ msgstr "Z tvojí fakulty"
 msgid "Работы"
 msgstr "Práce"
 
+#: src/components/RequestSheet.tsx
+msgid "+ бюджет"
+msgstr "+ rozpočet"
+
 #: src/pages/OfferPrices.tsx
 msgid "Опубликовать"
 msgstr "Zveřejnit"
@@ -877,6 +910,7 @@ msgstr "S čím můžeš pomoct a kdy"
 msgid "Заявок пока нет"
 msgstr "Zatím žádné poptávky"
 
+#: src/components/RequestSheet.tsx
 #: src/pages/Ask.tsx
 #: src/pages/MyHelper.tsx
 #: src/pages/OfferPrices.tsx
@@ -986,6 +1020,10 @@ msgstr "3 dny"
 msgid "Помощь нужна до экзамена или на нём?"
 msgstr "Potřebuješ pomoc před zkouškou, nebo přímo na ní?"
 
+#: src/components/RequestSheet.tsx
+msgid "Опубликовать заявку"
+msgstr "Zveřejnit poptávku"
+
 #: src/components/TabBar.tsx
 #: src/pages/Mine.tsx
 #~ msgid "Мои"
@@ -1004,6 +1042,14 @@ msgstr "Odpovědi"
 msgid "Ищем…"
 msgstr "Hledáme…"
 
+#: src/pages/Results.tsx
+msgid "Пусть найдут тебя"
+msgstr "Ať najdou oni tebe"
+
+#: src/pages/Results.tsx
+msgid "По этому запросу ещё нет никого. Оставь заявку — ответят сами."
+msgstr "Na tenhle dotaz zatím nikdo není. Zadej poptávku — ozvou se sami."
+
 #: src/pages/Life.tsx
 msgid "Но без этого не доучишься. Сроки и требования — наши, предложения — партнёрские."
 msgstr "Ale bez tohohle to nedoděláš. Termíny a požadavky jsou naše, nabídky partnerské."
@@ -1013,6 +1059,10 @@ msgstr "Ale bez tohohle to nedoděláš. Termíny a požadavky jsou naše, nabí
 #: src/pages/OfferPrices.tsx
 msgid "Не получилось загрузить анкету"
 msgstr "Profil se nepodařilo načíst"
+
+#: src/pages/Results.tsx
+msgid "Никто не подошёл?"
+msgstr "Nikdo se nehodil?"
 
 #: src/components/TabBar.tsx
 msgid "Предлагаю услугу"

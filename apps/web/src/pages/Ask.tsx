@@ -11,7 +11,7 @@ import {
   PlusIcon,
   SearchIcon,
 } from '@/components/icons';
-import { ClarifyOptionLabel, formatDay, PhraseView } from '@/components/Phrase';
+import { ClarifyOptionLabel, PhraseView } from '@/components/Phrase';
 import {
   Cards,
   Chips,
@@ -32,6 +32,7 @@ import {
 import { useSearchFilters } from '@/hooks/useSearchFilters';
 import { useMainButton } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
+import { chipKey, chipLabel } from '@/lib/chips';
 import type { Chip, ParseResult, SearchResult } from '@/lib/types';
 
 const OPTION_ICON: Record<string, typeof CheckIcon> = {
@@ -109,7 +110,7 @@ export default function AskPage() {
 
   // One string, used for the preview, for the filters and for the navigation,
   // so none of the three can describe a different search.
-  const query = useMemo(() => toQuery(kept, answer), [kept, answer]);
+  const query = useMemo(() => toQuery(kept, answer, text), [kept, answer, text]);
 
   // Empty when nothing the parse understood is something the search can filter
   // on — a lone deadline is the real case, since there is no date filter to send
@@ -456,19 +457,14 @@ function Preview({
   );
 }
 
-function chipKey(chip: Chip): string {
-  return `${chip.kind}:${chip.value ?? chip.label}`;
-}
-
-function chipLabel(chip: Chip, locale: string): string {
-  if (chip.kind === 'deadline') return formatDay(chip.label, locale);
-  if (chip.kind === 'budget') return `≤ ${chip.label} Kč`;
-  return chip.label;
-}
-
 /** Turn the chips the person kept into the search query string. */
-function toQuery(chips: Chip[], answer: string | null): string {
+function toQuery(chips: Chip[], answer: string | null, text = ''): string {
   const params = new URLSearchParams();
+  // The words themselves, not only what was parsed out of them. The results
+  // screen offers to turn the search into a request, and a request is the
+  // person's own sentence — rebuilt from chips it would read like a form.
+  const words = text.trim();
+  if (words) params.set('q', words);
   for (const chip of chips) {
     if (chip.value == null) continue;
     if (chip.kind === 'subject') params.set('subject_id', String(chip.value));
