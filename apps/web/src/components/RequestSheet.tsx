@@ -73,16 +73,29 @@ export function RequestSheet({
     },
   });
 
+  /**
+   * The chips describe the sentence that produced them.
+   *
+   * Which is only true while the sentence is the one the search ran. Three of
+   * the four ways onto `/results` carry no words at all — a tile on the home
+   * screen, a category from the profile — and there the person writes the
+   * sentence here, from scratch; edit the words and the same thing is true.
+   */
+  const fromSearch = text.trim().length > 0 && words.trim() === text.trim();
+
   function payload(): RequestCreate {
-    // Every axis is mentioned, including the ones with no chip. The request
-    // carries the search's filters and nothing more — an axis missing from the
-    // search is one the person took off on `/ask`, or one the parser never
-    // found, and either way the server must not put it back out of the text.
-    // Silence would mean exactly that, which is the case this whole change is
-    // about. The deadline is not an axis and stays unmentioned on purpose: it
-    // is not a filter, so the words are the only place it can come from.
+    // Every axis is mentioned when the chips still describe these words: an
+    // axis missing from the search is one the person took off on `/ask`, or
+    // one the parser never found, and either way the server must not put it
+    // back out of the text. Silence would mean exactly that, which is the case
+    // this whole change is about.
+    //
+    // When the words are new, silence is right: nobody has removed anything,
+    // and the sentence is the only thing that knows what it is about. The
+    // deadline is unmentioned either way — it is not a filter, so the words are
+    // the only place it can come from.
     const body: RequestCreate = { text: words.trim() };
-    for (const axis of AXES) body[axis] = null;
+    if (fromSearch) for (const axis of AXES) body[axis] = null;
     for (const chip of chips) {
       const axis = AXIS[chip.kind as keyof typeof AXIS];
       if (!axis || chip.value == null) continue;
