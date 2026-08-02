@@ -291,20 +291,17 @@ export interface HelpRequest {
   created_at: string;
 }
 
-export interface RequestCreate {
-  text: string;
-  /**
-   * `null` is an answer and not an omission: the axes are read out of the text
-   * only where the caller said nothing, so a removed chip has to arrive as an
-   * explicit null. See `services/requests.create`.
-   */
-  subject_id?: number | null;
-  institution_id?: number | null;
-  service_type_id?: number | null;
-  deadline_on?: string | null;
-  budget_max?: number | null;
-  langs?: string[];
-}
+/**
+ * What posting a request sends.
+ *
+ * From the generated module rather than hand-written, which is the rule this
+ * file states above: a screen that touches a wire type takes it from the
+ * contract. It matters more here than usual — `null` is an answer and not an
+ * omission, the axes being read out of the text only where the caller said
+ * nothing, and a second copy of that is a second thing to get wrong. See
+ * `services/requests.create`.
+ */
+export type { RequestCreate } from './generated/types.gen';
 
 /**
  * A request as a helper sees it: who is asking, and why it surfaced. No
