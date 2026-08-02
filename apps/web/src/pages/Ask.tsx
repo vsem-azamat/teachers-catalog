@@ -145,13 +145,17 @@ export default function AskPage() {
     // button goes away rather than keeping the previous number under new chips:
     // a stale number on a button that promises it is the failure this screen was
     // rebuilt to fix.
-    ready && total
+    // Zero is a count too, and the way out of it is the other half of the
+    // product: a search that found nobody used to hide the button and end the
+    // screen, which is the one case a request exists for.
+    ready && total !== undefined
       ? {
-          text: t`Показать ${total}`,
+          text: total > 0 ? t`Показать ${total}` : t`Оставить заявку`,
           isVisible: true,
           isEnabled: true,
           isLoaderVisible: parse.isPending || preview.isFetching,
-          onClick: () => navigate(`/results?${target}`),
+          onClick: () =>
+            navigate(total > 0 ? `/results?${target}` : `/results?${target}&ask=1`),
         }
       : null,
   );

@@ -35,7 +35,10 @@ export default function ResultsPage() {
   const navigate = useNavigate();
   const { t, i18n } = useLingui();
   const [sort, setSort] = useState<SearchSort>('relevance');
-  const [asking, setAsking] = useState(false);
+  // Opened straight away when the search screen sent somebody here because it
+  // found nobody: the button there said «Оставить заявку», and landing on an
+  // empty list with the sheet still shut would be that promise unkept.
+  const [asking, setAsking] = useState(params.get('ask') === '1');
 
   // The words behind the chips. A link somebody was sent may carry only the
   // ids, in which case the sheet opens on an empty field rather than not at

@@ -326,12 +326,18 @@ about a school.
 for the same subject, the same school, the same kind of help and the same
 deadline, is a double tap or a reload — not a second thing to answer — so it is
 refused rather than stored. Most of those four are nearly always `NULL`, which
-is why all four are in the key and why, when none of them is known, the words
-are compared instead:
-half the catalog is help with no subject at all, and a rule keyed on the subject
-alone would read a visa and a flat as the same request. Live and not merely
-`open`: expiry is a deadline rather than a job that has to have run, so a
-request the feed stopped showing thirty days ago must not refuse the next one.
+is why all four are in the key and why, when the request names no subject, no
+school and no kind of help, the words are compared instead. A date does not
+count towards that: exam week is the same week for everybody, so two errands
+sharing only a deadline share nothing.
+
+The reason is the shape of the catalog: half of it is help
+with no subject at all, so a rule keyed on the subject alone reads a visa and a
+flat as the same request.
+
+Live and not merely `open`: expiry is a deadline rather than a job that has to
+have run, so a request the feed stopped showing thirty days ago must not refuse
+the next one.
 
 An answer carries `price_amount` **and** `price_unit`: "500" alone is ambiguous
 between an hour and the whole job, and the two readings are different offers.

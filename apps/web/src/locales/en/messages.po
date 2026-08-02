@@ -201,6 +201,10 @@ msgstr "Language"
 msgid "Месяц"
 msgstr "A month"
 
+#: src/pages/Ask.tsx
+msgid "Оставить заявку"
+msgstr "Post a request"
+
 #. placeholder {0}: str(p.subject)
 #: src/components/Phrase.tsx
 msgid "Твой предмет — {0}"
