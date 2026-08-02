@@ -5,7 +5,7 @@ once someone can reply — who may see incoming requests, who may answer them,
 and what the author sees afterwards.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -656,3 +656,24 @@ async def test_two_different_errands_are_two_requests(client: AsyncClient) -> No
         headers=auth_header(STUDENT),
     )
     assert second.status_code == 201, second.text
+
+
+async def test_an_expired_request_does_not_block_asking_again(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    """Expiry is a deadline, not a job that has to have run.
+
+    A request thirty-one days old still reads `open`, and is invisible in every
+    feed and refuses answers. Letting it refuse the next ask leaves the person
+    to hunt down a corpse before they can ask again.
+    """
+    posted = await post_request(client, "нужен матан")
+    request = await session.get(HelpRequest, posted["id"])
+    assert request is not None
+    request.expires_at = datetime.now(UTC) - timedelta(days=1)
+    await session.flush()
+
+    again = await client.post(
+        "/api/v1/requests", json={"text": "нужен матан"}, headers=auth_header(STUDENT)
+    )
+    assert again.status_code == 201, again.text

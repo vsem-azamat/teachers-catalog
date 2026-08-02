@@ -195,7 +195,7 @@ async def create(
     deadline_on: date | None = None,
     budget_max: float | None = None,
     langs: list[str] | None = None,
-    given: frozenset[str] = frozenset(),
+    given: frozenset[str],
 ) -> HelpRequest:
     """Post "I need help with X" and let helpers answer.
 
@@ -209,6 +209,10 @@ async def create(
     `HelperUpsert` follows through `model_fields_set`. The screen that posts a
     request shows the parse back as chips, so removing one sends `null` on
     purpose; without this the text would put it straight back.
+
+    It has no default on purpose: it decides whether the five axis arguments
+    above mean anything at all, so a caller that forgot it would watch every one
+    of them be quietly replaced by whatever the parser made of the text.
     """
     await require_row(session, Subject, subject_id, "subject_id")
     await require_row(session, Institution, institution_id, "institution_id")
@@ -239,10 +243,16 @@ async def create(
     # nothing to compare but the words, and identical words are the double tap
     # this is here for.
     known = subject_id is not None or service_type_id is not None or deadline is not None
+    now = datetime.now(UTC)
     duplicate = await session.scalar(
         select(HelpRequest.id).where(
             HelpRequest.author_id == user.id,
             HelpRequest.status == RequestStatus.OPEN,
+            # Expiry is a deadline and not a job that has to have run, so
+            # `status` alone still reads `open` on a request the feed stopped
+            # showing thirty days ago and that already refuses answers. Without
+            # this the person is refused a second ask by a corpse.
+            or_(HelpRequest.expires_at.is_(None), HelpRequest.expires_at > now),
             HelpRequest.subject_id.is_not_distinct_from(subject_id),
             HelpRequest.service_type_id.is_not_distinct_from(service_type_id),
             HelpRequest.deadline_on.is_not_distinct_from(deadline),
