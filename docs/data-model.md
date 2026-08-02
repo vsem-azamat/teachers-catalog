@@ -323,10 +323,11 @@ exactly the first case: the text still says ČVUT while the request says nothing
 about a school.
 
 **The same request twice is one request.** A live request by the same person,
-for the same subject, the same kind of help and the same deadline, is a double
-tap or a reload — not a second thing to answer — so it is refused rather than
-stored. Two of those three are nearly always `NULL`, which is why all three are
-in the key and why, when none of them is known, the words are compared instead:
+for the same subject, the same school, the same kind of help and the same
+deadline, is a double tap or a reload — not a second thing to answer — so it is
+refused rather than stored. Most of those four are nearly always `NULL`, which
+is why all four are in the key and why, when none of them is known, the words
+are compared instead:
 half the catalog is help with no subject at all, and a rule keyed on the subject
 alone would read a visa and a flat as the same request. Live and not merely
 `open`: expiry is a deadline rather than a job that has to have run, so a

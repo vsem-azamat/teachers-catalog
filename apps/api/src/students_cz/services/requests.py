@@ -235,14 +235,19 @@ async def create(
     # A double tap, or a reload, rather than a second thing to answer. Same
     # author, same subject, same kind of help, same deadline, still open.
     #
-    # The kind of help has to be in the key, and the last clause has to exist:
+    # Every axis is in the key, and the last clause has to exist:
     # half the catalog is help with no subject at all — insurance, a bank
     # statement, housing — so a rule keyed on the subject alone reads two NULLs
     # as a match and answers 409 to somebody who asked about a visa yesterday
     # and about a flat today. When none of the three axes is known there is
     # nothing to compare but the words, and identical words are the double tap
     # this is here for.
-    known = subject_id is not None or service_type_id is not None or deadline is not None
+    known = (
+        subject_id is not None
+        or service_type_id is not None
+        or institution_id is not None
+        or deadline is not None
+    )
     now = datetime.now(UTC)
     duplicate = await session.scalar(
         select(HelpRequest.id).where(
@@ -255,6 +260,10 @@ async def create(
             or_(HelpRequest.expires_at.is_(None), HelpRequest.expires_at > now),
             HelpRequest.subject_id.is_not_distinct_from(subject_id),
             HelpRequest.service_type_id.is_not_distinct_from(service_type_id),
+            # The school belongs in the key for the same reason the sheet lets
+            # you take it off: calculus at ČVUT and calculus at VŠE are two
+            # different asks, and the row stores which.
+            HelpRequest.institution_id.is_not_distinct_from(institution_id),
             HelpRequest.deadline_on.is_not_distinct_from(deadline),
             true() if known else HelpRequest.raw_text == text,
         )

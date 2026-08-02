@@ -677,3 +677,22 @@ async def test_an_expired_request_does_not_block_asking_again(
         "/api/v1/requests", json={"text": "нужен матан"}, headers=auth_header(STUDENT)
     )
     assert again.status_code == 201, again.text
+
+
+async def test_the_same_subject_at_two_schools_is_two_requests(
+    client: AsyncClient,
+) -> None:
+    """Calculus at ČVUT and calculus at VŠE are two different asks."""
+    first = await client.post(
+        "/api/v1/requests",
+        json={"text": "нужен матан на ČVUT FEL"},
+        headers=auth_header(STUDENT),
+    )
+    assert first.status_code == 201, first.text
+
+    second = await client.post(
+        "/api/v1/requests",
+        json={"text": "нужен матан на VŠE"},
+        headers=auth_header(STUDENT),
+    )
+    assert second.status_code == 201, second.text
