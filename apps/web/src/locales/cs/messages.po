@@ -22,8 +22,8 @@ msgid "Заведи в Telegram публичный @username — иначе те
 msgstr "Nastav si v Telegramu veřejný @username — jinak ti nikdo neodpoví"
 
 #: src/components/Incoming.tsx
-msgid "Здесь появятся заявки по твоим предметам. Чем больше предметов в профиле, тем чаще."
-msgstr "Tady se objeví poptávky k tvým předmětům. Čím víc předmětů máš v profilu, tím častěji."
+#~ msgid "Здесь появятся заявки по твоим предметам. Чем больше предметов в профиле, тем чаще."
+#~ msgstr "Tady se objeví poptávky k tvým předmětům. Čím víc předmětů máš v profilu, tím častěji."
 
 #: src/pages/OfferPrices.tsx
 msgid "Пара слов о себе — что делаешь и как быстро"
@@ -775,6 +775,10 @@ msgstr "Doučování, příprava na přijímačky, pomoc u zkoušky a nostrifika
 #: src/pages/OfferPrices.tsx
 msgid "Пара слов о себе — что берёшь и чего не берёшь"
 msgstr "Pár slov o tobě — co bereš a co ne"
+
+#: src/components/Incoming.tsx
+msgid "Здесь появятся заявки со всего каталога. Те, что по твоим предметам, будут выше."
+msgstr "Objeví se tu poptávky z celého katalogu. Ty z tvých předmětů budou výš."
 
 #: src/components/Incoming.tsx
 msgid "Пока никто ничего не просит"
