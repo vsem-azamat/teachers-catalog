@@ -10,6 +10,7 @@ from students_cz.db.models.enums import UiLang
 from students_cz.db.session import session_scope
 from students_cz.services.notify import Notifier
 from students_cz.services.people import remember
+from students_cz.services.telegram import BotHandle
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 SessionDep = Annotated[AsyncSession, Depends(session_scope, scope="function")]
@@ -109,3 +110,30 @@ async def current_notifier(http: Request, settings: SettingsDep) -> Notifier:
 
 
 NotifierDep = Annotated[Notifier, Depends(current_notifier)]
+
+
+async def current_handle(http: Request) -> BotHandle:
+    """The bot's own handle, as one object per process.
+
+    Built here rather than in the lifespan, and kept: what a handler needs is
+    composed from what the process was started with, which is this module's
+    job, and the lifespan does not run under the test client or under an app
+    built by a script. One construction site means the path production takes
+    is the path the tests take.
+
+    Built on the first request rather than at import, because that is when the
+    bot exists: the lifespan has already run by then, so a `None` cached here
+    means the process really has no token.
+
+    `async` like every other dependency here, and not only for symmetry: a
+    plain `def` would be dispatched to a worker thread, and two first requests
+    landing together would each build a handle and each ask Telegram.
+    """
+    handle = getattr(http.app.state, "bot_handle", None)
+    if handle is None:
+        handle = BotHandle(getattr(http.app.state, "bot", None))
+        http.app.state.bot_handle = handle
+    return handle
+
+
+HandleDep = Annotated[BotHandle, Depends(current_handle)]
