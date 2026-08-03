@@ -233,6 +233,13 @@ something else:
   search by a subject nobody named. A synonym hit is kept, because a curated
   synonym is not a guess — "курсовая" and "нострификация" are written down
   against real subjects.
+- **A synonym names one row, so a word that names a whole shelf does not belong
+  in one.** `prijimacky` and `приймачки` sat on «Поступление в технические вузы»,
+  and a synonym scores 1.00 — so every «přijímačky …» query came back filtered by
+  maths and physics, including one that said medicine. The word names a kind of
+  help, and reaches `entrance_prep` through the keyword table, which is where a
+  category word belongs. What stays in `synonyms` is what names *that* row and
+  no other: «матан» is calculus, «приемка математика» is the maths entrance exam.
 - **A subject and a kind of help that carries none cannot both survive.** The
   `life` group's offers have no subject at all, while the search applies subject
   and kind of help together — so the pair matches nobody, and one of the two has
@@ -257,8 +264,40 @@ something else:
 A kind of help that cannot be named in words cannot be found, in any of the four
 languages. The five that are not about studying — insurance, a bank statement,
 a document translation, residence paperwork, housing — were offerable and
-unfindable, which is a listing nobody can reach. `language_tutoring` still has
-no keywords of its own and is reachable only as plain tutoring.
+unfindable, which is a listing nobody can reach. So is a kind of help named by
+the brands people actually say: an insurance policy is asked for as "VZP" or
+"PVZP" far more often than as "pojištění", and those are `Word`s rather than
+stems because `vzp` prefixes `vzpomínky`.
+
+Languages are the case where two kinds of help overlap: asking for a Czech tutor
+is `language_tutoring` and not plain `tutoring`. It has no keywords in the table,
+because the words that would name it — "чешск", "anglict" — also say *whose*
+bank, *whose* visa and *whose* dormitory, and anything placed high enough to beat
+tutoring takes all of those with it.
+
+It is a refinement of a lesson instead, and the test is **whether the language
+is the whole request**. Take out the words that asked and the language itself,
+and what is left decides: "репетитор по чешскому" leaves nothing, while
+"репетитор по химии на чешском" leaves chemistry, "репетитор по чешской
+литературе" leaves literature and "репетитор по матану на чешском" leaves maths
+— a medium of instruction and a nationality, not a request for a language. Read
+the other way they would carry a subject no language offer has, and the search
+ANDs the two: an empty screen for a query that worked. It is the same test the
+rule above makes of a keyword that was the whole query.
+
+"What is left" ignores the words that ask rather than name — verbs of searching,
+prepositions, the word "language" itself, and the word "course", which is what
+makes "kurzy cestiny" and "курс чешского языка" lessons as well. It also ignores
+the words that say the *same* request more precisely: a level ("B2"), a shade
+("разговорный", "konverzace") and a second language, so "doucovani cestiny B2"
+and "репетитор по чешскому и английскому" are language lessons too. And it is
+asked last, once the budget, the date and the school are fields of their own —
+otherwise "doucovani cestiny na ČVUT" reads as a language request with a school
+left over in it.
+
+The words and not the resolved subject, because the commonest phrasing resolves
+none: "репетитор по чешскому" says which language and not which level, and a
+bare «чешский» names five subjects and belongs to none of them.
 
 Above all this sits the query parser, which turns free text into ids. Because it
 does, the database rarely has to do linguistic work at all — it looks up

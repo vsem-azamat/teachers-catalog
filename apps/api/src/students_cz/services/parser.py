@@ -16,7 +16,13 @@ from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from students_cz.services.lookup import Match, find_institutions, find_subjects, normalise
+from students_cz.services.lookup import (
+    Match,
+    find_institutions,
+    find_subjects,
+    normalise,
+    transliterate,
+)
 
 _NON_WORD = re.compile(r"[^a-z0-9\u0400-\u04ff]+")
 
@@ -102,6 +108,9 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "prijimaci",
         "entrance",
         "вступн",
+        # The Ukrainian spelling, which used to reach `entrance_prep` only
+        # because it was a synonym of one subject on this shelf.
+        "приймач",
         "tsp",
         "osp",
         "nastupni",
@@ -133,6 +142,10 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
     "nostrification": (
         "нострифик",
         "nostrifik",
+        # The English spells it with a c — "nostrification" — so the stem above
+        # misses it entirely, and the word that names this kind of help in
+        # English reached nothing at all.
+        "nostrific",
         "аттестат",
         "признание диплома",
         "uznani",
@@ -189,6 +202,15 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "pojisten",
         "pojistk",
         "insurance",
+        # The names people actually say. Words and not stems, for the reason
+        # above and one more: "vzp" begins "vzpomínky", "vzpoura" and "vzpírání".
+        # Only the health insurers a student meets, and only the names that are
+        # nothing else in the catalog — "maxima" is a maths word, so it is not
+        # here.
+        Word("vzp"),
+        Word("pvzp"),
+        Word("slavia"),
+        Word("uniqa"),
     ),
     "bank_letter": (
         "справка из банк",
@@ -269,6 +291,41 @@ ASIDES = SUBJECTLESS - {"translation"}
 # nothing about *which* kind of help. It counts as tutoring only when the text
 # gives no other clue — see _match_service.
 WEAK_HELP: tuple[str, ...] = ("помо", "pomo", "help", "допомо", "нужен", "потрібн")
+
+# The languages people learn, for the one case the subject cannot settle: a
+# query that says which language but not which level — "репетитор по чешскому" —
+# resolves no subject at all, because a bare «чешский» names five of them and
+# belongs to none.
+#
+# Used only there. High in the keyword table these words took «нужна чешская
+# виза» and «zdravotní pojištění pro cizince» with them, because a language also
+# says whose bank and whose visa.
+LANGUAGE_WORDS: tuple[str, ...] = (
+    "чешск",
+    "чеськ",
+    "cestin",
+    # The adjective as well as the noun: "doucovani ceskeho jazyka" is how it is
+    # said in Czech, and the Russian and Ukrainian entries already carry both
+    # forms because their adjective is the stem.
+    "cesk",
+    "anglick",
+    "nemeck",
+    "английск",
+    "англійськ",
+    "anglict",
+    "немецк",
+    "німецьк",
+    "nemcin",
+    Word("czech"),
+    Word("english"),
+    Word("german"),
+)
+
+# A course, in any of the forms these decline into: both halves are matched
+# independently, so "курсы чешского", "kurzu cestiny" and "czech language
+# course" all reach the same place, which a multi-word keyword cannot do —
+# it tolerates inflection only on its last word.
+COURSE_WORDS: tuple[str, ...] = ("курс", "курси", "kurz", "course", "kurs")
 
 # Words that put an exam in the picture without saying whether the help is
 # wanted before it or during it. When one of these appears next to nothing but
@@ -380,8 +437,197 @@ async def parse(
     result.deadline = _match_deadline(norm, today or date.today())
     result.budget_max = _match_budget(norm)
 
+    # A language lesson is a lesson whose request is the language, and nothing
+    # else. "репетитор по химии на чешском" names the medium of instruction,
+    # "репетитор по чешской литературе" a nationality, and "репетитор по матану
+    # на чешском" both — each leaves a subject named once the asking and the
+    # language are taken out, which is the same test the subject filter above
+    # makes of a keyword that was the whole query. Read as language lessons they
+    # would carry a subject no language offer has, and `catalog.search` ANDs the
+    # two: an empty screen for a query that worked.
+    #
+    # Last, because "what is left" has to mean *left over from everything the
+    # query said*: a budget, a date and a school are all already fields by now,
+    # and counting their words would have made "doucovani cestiny na ČVUT" plain
+    # tutoring.
+    #
+    # Lexical, and not a question about the resolved subject, for two reasons.
+    # The commonest phrasing resolves none — "репетитор по чешскому" says which
+    # language and not which level, and a bare «чешский» names five subjects and
+    # belongs to none of them. And where one does resolve it is as often the
+    # wrong one: "chemistry tutor in czech" scores Czech C1 at 0.69 against
+    # chemistry at 0.55, by name in both cases, so neither the score nor how it
+    # matched separates the two.
+    if result.service_type == "tutoring" or (
+        result.service_type is None and _mentions(norm, COURSE_WORDS)
+    ):
+        language = _first(norm, LANGUAGE_WORDS)
+        spoken_for = [keyword or "", language or ""]
+        if result.institution:
+            spoken_for.append(result.institution.label)
+        # The date and the price come out by the spans that produced them, not
+        # by their words: "мар" is March and the first three letters of
+        # "маркетингу", so discounting month words made a marketing query a
+        # language lesson, and a currency list beside the one `_BUDGET` already
+        # holds is a second list to keep in step.
+        spoken = norm
+        if result.deadline:
+            spoken = _DAY_MONTH_WORD.sub(" ", _DAY_MONTH_NUM.sub(" ", spoken))
+        if result.budget_max is not None:
+            spoken = _BUDGET.sub(" ", spoken)
+        if language and not _left_over(spoken, *spoken_for):
+            result.service_type = "language_tutoring"
+
     result.unmatched = not any((result.subject, result.institution, result.service_type))
     return result
+
+
+# The words that ask rather than name: verbs of searching, prepositions,
+# articles, the word "language" itself and the word "course". What is left after
+# these and after the words a rule already accounted for is the part of the
+# query that names something else — see the language refinement in `parse`.
+FILLER: tuple[str, ...] = (
+    *WEAK_HELP,
+    # WEAK_HELP carries "нужен" and "потрібн", which between them miss "нужна",
+    # "нужно" and "потрібен" — forms that matter here, where what is left over
+    # is the whole question.
+    "нужн",
+    "потріб",
+    "ищу",
+    "найти",
+    "хочу",
+    "подскаж",
+    "посовет",
+    "шукаю",
+    "знайти",
+    "hledam",
+    "potrebuj",
+    "looking",
+    "need",
+    "want",
+    "язык",
+    "мова",
+    "мови",
+    "мову",
+    "jazyk",
+    "language",
+    *COURSE_WORDS,
+    # A shade of the language rather than another subject.
+    "разговорн",
+    "розмовн",
+    "konverzac",
+    "conversational",
+    # And any *other* language: "репетитор по чешскому и английскому" asks for
+    # two of these and for nothing else.
+    *LANGUAGE_WORDS,
+)
+
+# Single letters and prepositions, which a stem list cannot hold: "по" would
+# match "поступление" and "s" would match every Czech word beginning with it.
+FILLER_WORDS: frozenset[str] = frozenset(
+    (
+        # ru
+        "по",
+        "на",
+        "с",
+        "у",
+        "для",
+        "в",
+        "о",
+        "от",
+        "из",
+        "и",
+        "мне",
+        # uk
+        "і",
+        "з",
+        "до",
+        "та",
+        "мені",
+        # cs
+        "z",
+        "s",
+        "v",
+        "k",
+        "na",
+        "pro",
+        "si",
+        # "do 600 korun" — the Czech limit word, which `_BUDGET` does not
+        # consume the way it consumes the Russian "до".
+        "do",
+        # The level, which says which row of the same language and never
+        # another subject.
+        "a1",
+        "a2",
+        "b1",
+        "b2",
+        "c1",
+        "c2",
+        # en
+        "for",
+        "a",
+        "an",
+        "the",
+        "in",
+        "with",
+        "and",
+        "i",
+        "am",
+        "is",
+        "are",
+        "to",
+        "of",
+        "my",
+        "me",
+    )
+)
+
+
+def _left_over(norm: str, *accounted: str) -> str:
+    """What the query still names once these words and the filler are gone.
+
+    An accounted word is removed as it stands and, failing that, by its
+    transliteration: a school resolves through its code or through the
+    transliterated query, so "на чвуте" carries none of the label's characters
+    and would otherwise be left over as a word that names something.
+    """
+    text_left = norm
+    for word in accounted:
+        if word:
+            text_left = _without(text_left, word)
+    tokens = [
+        token
+        for token in tokenise(text_left).split()
+        if not any(
+            word and transliterate(token).startswith(transliterate(normalise(word)))
+            for word in accounted
+        )
+    ]
+    rest = [
+        token
+        for token in tokens
+        # A bare number names nothing: whatever it was — a price, a page count,
+        # a year — it is not a subject. What the date and the price matchers
+        # consumed is already gone; see the caller.
+        if not token.isdigit()
+        and token not in FILLER_WORDS
+        and not any(token.startswith(normalise(word)) for word in FILLER)
+    ]
+    return " ".join(rest)
+
+
+def _first(norm: str, words: tuple[str, ...]) -> str | None:
+    """The first of `words` the text contains, or None."""
+    tokens = tokenise(norm)
+    for word in words:
+        match = is_whole_word if isinstance(word, Word) else starts_a_word
+        if match(tokens, word):
+            return word
+    return None
+
+
+def _mentions(norm: str, words: tuple[str, ...]) -> bool:
+    return _first(norm, words) is not None
 
 
 def _match_service(

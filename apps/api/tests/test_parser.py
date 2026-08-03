@@ -431,3 +431,177 @@ async def test_a_document_phrase_is_the_request_even_beside_a_named_subject(
 )
 def test_the_genitive_reaches_the_same_kind_as_the_nominative(text, expected):
     assert _match_service(normalise(text))[0] == expected
+
+
+# ── words that name a shelf, and words that name a brand ─────────────────
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("text", ["přijímačky", "prijimacky", "приймачки"])
+async def test_a_bare_prijimacky_names_the_kind_of_help(session, text) -> None:
+    """It is a category, and a category is not one of its members.
+
+    Carried as a synonym of «Поступление в технические вузы» it scored 1.00, so
+    a word that says nothing about a subject filtered the search by maths and
+    physics.
+    """
+    parsed = await parse(session, text, "ru", today=TODAY)
+    assert parsed.service_type == "entrance_prep"
+    assert parsed.subject is None, f"answered with {parsed.subject}"
+
+
+@pytest.mark.asyncio
+async def test_prijimacky_for_medicine_reaches_medicine(session) -> None:
+    """Written the way one language writes it, which is where this stops.
+
+    The mixed «přijímačky на медицину» still answers with the technical subject
+    at 0.67, because `find_subjects` compares one script at a time — the
+    institution lookup transliterates the query and the subject lookup does not,
+    so a Cyrillic word cannot reach a Latin-spelled synonym. That is a separate
+    change and is deferred with the measurement; what this one owes is that the
+    phrase resolves at all, rather than the category word deciding it.
+    """
+    parsed = await parse(session, "prijimacky na medicinu", "ru", today=TODAY)
+    assert parsed.service_type == "entrance_prep"
+    assert parsed.subject is not None
+    assert "медицин" in parsed.subject.label.lower(), parsed.subject.label
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text", ["pvzp na rok", "нужно оформить vzp", "slavia pojisteni"]
+)
+async def test_an_insurer_name_is_the_insurance_it_names(session, text) -> None:
+    """Nobody asks for «pojištění». They ask for VZP."""
+    parsed = await parse(session, text, "ru", today=TODAY)
+    assert parsed.service_type == "insurance"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # An adjective is not an ask. This block sits above the non-study kinds,
+        # so a bare "чешск" made every one of these a language lesson — a study
+        # kind with no subject, which is an empty screen.
+        ("нужна чешская виза", "residence"),
+        ("нужна чешская страховка", "insurance"),
+        # "pro cizince" is not a language phrase — it attaches to whatever came
+        # before it, and «zdravotní pojištění pro cizince» is the literal name
+        # of the product this same change taught the parser to know by brand.
+        ("zdravotni pojisteni pro cizince", "insurance"),
+        ("pvzp pojisteni pro cizince na rok", "insurance"),
+        ("страховка для иностранцев", "insurance"),
+        ("общежитие для иностранцев", "housing"),
+        ("выписка со счета в чешском банке", "bank_letter"),
+        ("потрібна чеська віза", "residence"),
+        ("нужен репетитор по матану", "tutoring"),
+        ("репетитора по физике", "tutoring"),
+        # A language can be the medium rather than the subject, and reading
+        # these as language lessons would carry a maths subject no language
+        # offer has — an empty screen for a query that worked.
+        ("нужен репетитор по матану на чешском", "tutoring"),
+        # The same, where the subject scores far lower than the language does:
+        # the guard cannot be "the subject won", or these three would be
+        # language lessons carrying a subject no language offer has.
+        ("нужен репетитор по химии на чешском", "tutoring"),
+        ("chemistry tutor in czech", "tutoring"),
+        ("physics tutor in english", "tutoring"),
+        ("нужен репетитор по химии на чешском 500 kc", "tutoring"),
+        # "мар" is March and the first three letters of "маркетингу", so a
+        # month must be discounted only when one was actually read.
+        ("нужен репетитор по маркетингу на чешском", "tutoring"),
+        ("marketing tutor in czech", "tutoring"),
+        ("doucovani marketingu v cestine", "tutoring"),
+        ("репетитор з маркетингу англійською", "tutoring"),
+        # And with a date beside it, which is where discounting month *words*
+        # rather than what the date matcher consumed went wrong.
+        ("нужен репетитор по маркетингу на чешском 14 марта", "tutoring"),
+        ("doucovani marketingu v cestine 14 unora", "tutoring"),
+        ("marketing tutor in czech 14 february", "tutoring"),
+        ("нужен репетитор по маркетингу на чешском 3.03", "tutoring"),
+        ("i need a chemistry tutor in czech", "tutoring"),
+        ("репетитор з біології англійською", "tutoring"),
+        ("репетитор по чешской литературе", "tutoring"),
+        ("doucovani matematiky v cestine", "tutoring"),
+        ("потрібен репетитор з матану чеською", "tutoring"),
+        ("calculus tutor in czech", "tutoring"),
+        ("нужен перевод диплома на чешский", "translation"),
+    ],
+)
+async def test_a_language_beside_an_errand_is_not_a_lesson(
+    session, text, expected
+) -> None:
+    parsed = await parse(session, text, "ru", today=TODAY)
+    assert parsed.service_type == expected
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text",
+    [
+        "нужен репетитор по чешскому",
+        "doucovani cestiny",
+        "english tutor",
+        "потрібен репетитор з англійської",
+        # Every one of these is how it is actually typed, and every one of them
+        # inflects the *first* word — which a multi-word keyword cannot follow.
+        # Matching the language on its own is what carries them.
+        "ищу репетитора по чешскому",
+        "посоветуйте репетитора по немецкому",
+        "шукаю репетитора з англійської",
+        # A course is one too, in any of the forms both halves decline into.
+        "kurzy cestiny",
+        "курс чешского языка",
+        "на курсах чешского",
+        "курси чеської",
+        "czech language course",
+        # The weak-verb phrasings, which name no kind of help at all until the
+        # subject says what it is about.
+        "помогите с чешским языком",
+        "нужен чешский",
+        # A level, a shade and a second language all say the same thing more
+        # precisely; none of them names another subject, so none of them stops
+        # this being a language lesson.
+        "doucovani cestiny B2",
+        "репетитор по разговорному чешскому",
+        "conversational czech tutor",
+        "нужен репетитор по чешскому и английскому",
+        # Everything else the query said is a field of its own by the time this
+        # is asked — a budget, a date, a school — so none of them can make a
+        # language request look like something else.
+        "репетитор по чешскому 500 kc",
+        "doucovani cestiny 14 unora",
+        "doucovani cestiny na ČVUT",
+        # The same school as the person typed it: it resolves through a code or
+        # through the transliterated query, so the label's own characters are
+        # nowhere in the text.
+        "репетитор по чешскому на чвуте",
+        "репетитор по чешскому до 600 крон",
+        "doucovani cestiny do 600 korun",
+        "репетитор по чешскому 14 марта",
+        # English says it with a pronoun and an article, and Czech with the
+        # adjective rather than the noun.
+        "i need a czech tutor",
+        "i am looking for an english tutor",
+        "doucovani ceskeho jazyka",
+        "doucovani anglickeho jazyka",
+    ],
+)
+async def test_asking_for_a_language_tutor_finds_languages(session, text) -> None:
+    """The more specific kind of help wins the word it shares with tutoring."""
+    parsed = await parse(session, text, "ru", today=TODAY)
+    assert parsed.service_type == "language_tutoring"
+
+
+@pytest.mark.asyncio
+async def test_nostrification_is_nameable_in_english(session) -> None:
+    """Czech spells it with a k and English with a c.
+
+    The stem `nostrifik` covers «нострификация» and «nostrifikace» and misses
+    «nostrification», so the English word for this kind of help reached nothing
+    — the same "unnameable and therefore unfindable" failure as the five that
+    are not about studying.
+    """
+    parsed = await parse(session, "nostrification of a school certificate", "en")
+    assert parsed.service_type == "nostrification"
