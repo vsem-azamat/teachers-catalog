@@ -5,35 +5,16 @@ cooldown after a failing Telegram used to be three `getattr` defaults in a
 route, and the only way to exercise it was two HTTP requests and a stub bot.
 """
 
-from types import SimpleNamespace
-
 import pytest
 
 from students_cz.services.telegram import BotHandle
 
+from .conftest import BrokenBot, StubBot
+
 pytestmark = pytest.mark.asyncio
 
 
-class StubBot:
-    def __init__(self, username: str) -> None:
-        self.username = username
-        self.calls = 0
-
-    async def get_me(self):
-        self.calls += 1
-        return SimpleNamespace(username=self.username)
-
-
-class BrokenBot:
-    def __init__(self) -> None:
-        self.calls = 0
-
-    async def get_me(self):
-        self.calls += 1
-        raise RuntimeError("Telegram is having a moment")
-
-
-async def test_the_handle_is_asked_for_once() -> None:
+async def test_telegram_is_asked_once_and_the_answer_kept() -> None:
     bot = StubBot("student_cz_bot")
     handle = BotHandle(bot)
 
@@ -66,3 +47,15 @@ async def test_and_is_asked_again_once_the_cooldown_passes() -> None:
     now[0] += 31.0
     assert await handle.username() is None
     assert bot.calls == 2, "a bot that came back must be reachable again"
+
+
+async def test_a_bot_with_no_public_handle_is_not_asked_again_either() -> None:
+    """Nothing is cached in that case, so the cooldown is what stops the loop."""
+
+    now = [1000.0]
+    bot = StubBot(username=None)
+    handle = BotHandle(bot, cooldown=30.0, clock=lambda: now[0])
+
+    assert await handle.username() is None
+    assert await handle.username() is None
+    assert bot.calls == 1

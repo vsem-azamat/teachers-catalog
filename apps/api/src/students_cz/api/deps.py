@@ -115,11 +115,15 @@ NotifierDep = Annotated[Notifier, Depends(current_notifier)]
 def current_handle(http: Request) -> BotHandle:
     """The bot's own handle, as one object per process.
 
-    Built where the bot is built, and only found here — but built on demand as
-    well, because the lifespan does not run under the test client and an app
-    with a bot on its state and no handle beside it would otherwise have no
-    handle at all. Either way there is one, and it is the same one for every
-    request, which is what makes remembering the answer worth anything.
+    Built here rather than in the lifespan, and kept: what a handler needs is
+    composed from what the process was started with, which is this module's
+    job, and the lifespan does not run under the test client or under an app
+    built by a script. One construction site means the path production takes
+    is the path the tests take.
+
+    Built on the first request rather than at import, because that is when the
+    bot exists: the lifespan has already run by then, so a `None` cached here
+    means the process really has no token.
     """
     handle = getattr(http.app.state, "bot_handle", None)
     if handle is None:

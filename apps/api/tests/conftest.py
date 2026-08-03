@@ -20,6 +20,7 @@ os.environ["BOT_TOKEN"] = ""
 os.environ["PUBLIC_BASE_URL"] = "https://tests.example"
 
 from collections.abc import AsyncIterator
+from types import SimpleNamespace
 
 import pytest
 import pytest_asyncio
@@ -205,3 +206,26 @@ async def helper_factory(session: AsyncSession):
         return user
 
     return make
+
+
+class StubBot:
+    """Enough of aiogram's `Bot` to answer "what is your username?"."""
+
+    def __init__(self, username: str | None = "student_cz_bot") -> None:
+        self.username = username
+        self.calls = 0
+
+    async def get_me(self):
+        self.calls += 1
+        return SimpleNamespace(username=self.username)
+
+
+class BrokenBot:
+    """A Telegram that is having a moment."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def get_me(self):
+        self.calls += 1
+        raise RuntimeError("Telegram is having a moment")

@@ -136,11 +136,20 @@ runtimes rather than a handler.
 a bot and an address, decided once. `telegram.BotHandle` is the other, and it
 was the harder case — it holds the bot's own handle and the cooldown that
 stops a failing Telegram being asked again on every landing visit, which is
-per-process state rather than a value. It lives on `app.state` still, but as
-one object built where the bot is built, and `api/deps.py` is what reaches for
-it. A route asks for `HandleDep` and cannot tell whether there is a bot at
-all — a handle with no bot answers `None`, which the route already had to
-answer for anyway.
+per-process state rather than a value. `api/deps.py` builds it on the first
+request that needs it and keeps it on `app.state`; a route asks for
+`HandleDep` and cannot tell whether there is a bot at all, because a handle
+with no bot answers `None`.
+
+Built in `deps.py` and not in the lifespan, deliberately: the lifespan does
+not run under the test client, so a handle built there would leave the tested
+path and the production path as different code.
+
+The webhook watchdog's state — `webhook_observed`, `webhook_checked_at` and
+the lock beside them — is the exception, and it belongs to the same carve-out
+as `health.py` above: it exists so that `/healthz` can report on the process
+without asking Telegram on every probe, and it is read by the one route whose
+job is reporting on the process.
 
 **A schema** is a leaf. `students_cz/schemas.py` — the package root, not inside
 `api/` — describes what goes over the wire. A service may return one without

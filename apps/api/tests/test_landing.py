@@ -6,34 +6,15 @@ build. That makes this the only unauthenticated route in the API, which is
 worth pinning down.
 """
 
-from types import SimpleNamespace
-
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .conftest import app_for
+from .conftest import BrokenBot, StubBot, app_for
 
 pytestmark = pytest.mark.asyncio
-
-
-class StubBot:
-    """Enough of aiogram's Bot to answer "what is your username?"."""
-
-    def __init__(self, username: str) -> None:
-        self.username = username
-        self.calls = 0
-
-    async def get_me(self):
-        self.calls += 1
-        return SimpleNamespace(username=self.username)
-
-
-class BrokenBot:
-    async def get_me(self):
-        raise RuntimeError("Telegram is having a moment")
 
 
 @pytest_asyncio.fixture
@@ -72,7 +53,7 @@ async def test_open_needs_no_init_data(app_with) -> None:
     assert "Authorization" not in response.request.headers
 
 
-async def test_the_handle_is_asked_for_once(app_with) -> None:
+async def test_the_landing_asks_telegram_once(app_with) -> None:
     """Every landing visit would otherwise be a round trip to Telegram."""
     bot = StubBot("student_cz_bot")
     app = await app_with(bot)

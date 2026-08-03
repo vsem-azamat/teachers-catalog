@@ -23,7 +23,6 @@ from students_cz.core.config import get_settings
 from students_cz.db.session import dispose_engine
 from students_cz.services import errors
 from students_cz.services.embedding import get_embedder
-from students_cz.services.telegram import BotHandle
 
 log = logging.getLogger("students_cz")
 
@@ -185,7 +184,6 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     app.state.settings = settings
     app.state.bot = None
-    app.state.bot_handle = BotHandle(None)
     app.state.dispatcher = None
     app.state.webhook_task = None
     # Why registration failed, if it did. Whether there *is* a webhook is
@@ -204,9 +202,6 @@ async def lifespan(app: FastAPI):
         # Injected into every handler, so handlers never reach for a global.
         dispatcher["settings"] = settings
         app.state.bot, app.state.dispatcher = bot, dispatcher
-        # Beside the bot, because it is the bot's own handle and the memory of
-        # having asked for it. `api/deps.py` is what hands it to a route.
-        app.state.bot_handle = BotHandle(bot)
 
         await dispatcher.emit_startup(bot=bot, dispatcher=dispatcher)
         if settings.public_base_url:
