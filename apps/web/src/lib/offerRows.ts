@@ -79,12 +79,23 @@ export function dropRow(rows: Draft[], row: Draft, axis: Axis): Draft[] {
   if (bare && others.some((other) => other.service_type_id === row.service_type_id)) {
     return others;
   }
-  // In place, so the row keeps its position among its neighbours. The key it
-  // takes when nothing is left to name it is the one a fresh row of this
-  // service would have, and nothing of this service is left to collide with it.
+  // In place, so the row keeps its position among its neighbours, and re-keyed
+  // from what it now holds. Keeping the old key would leave a row named after
+  // an axis it no longer has, which `addAxis` could then mint a second time.
   return rows.map((other) =>
-    other.key === row.key
-      ? { ...left, key: bare ? `${row.service_type_id}:new` : other.key }
-      : other,
+    other.key === row.key ? { ...left, key: keyOf(left) } : other,
   );
+}
+
+/**
+ * A row's key, from its axes.
+ *
+ * Unique by construction: `offers` is unique on the same four columns, so two
+ * rows of one service cannot hold the same pair. The other places that mint a
+ * key — a row read from the server, a row a picker just added — name the same
+ * pair, and a row with no axis left is the one blank row its service is
+ * allowed.
+ */
+function keyOf(row: Draft): string {
+  return `${row.service_type_id}:${row.subject_id}:${row.institution_id}`;
 }

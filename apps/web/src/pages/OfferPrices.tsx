@@ -636,8 +636,7 @@ function PriceRow({
  * The rows of one service that already carry an axis, as removable chips.
  *
  * One component for subjects and schools: the two blocks were byte-identical
- * apart from the field they read, down to the closure that puts the service
- * back when its last axis goes.
+ * apart from the field they read and the axis they name when a chip goes.
  */
 function AxisChips({
   rows,

@@ -93,7 +93,19 @@ test('a row with both axes goes only when both are gone', () => {
   // Two taps, the second on the row as it stands after the first — which is
   // what the chip the screen renders carries.
   const once = dropRow([both, other], both, 'subject');
-  const bare = once.find((candidate) => candidate.key === both.key);
-  assert.ok(bare);
-  assert.deepEqual(dropRow(once, bare, 'institution'), [other]);
+  const school = once.find((candidate) => candidate.institution_id === 4);
+  assert.ok(school);
+  assert.deepEqual(dropRow(once, school, 'institution'), [other]);
+});
+
+test('a cleared row is re-keyed from what it still holds', () => {
+  // The key names the row's axes, and `addAxis` mints keys the same way. A row
+  // still called `7:12` after subject 12 was cleared is one the picker can
+  // mint again — two rows, one key, and a duplicate the server refuses.
+  const both = row({ key: '7:12', institution_id: 4, institution_name: 'ČVUT' });
+  const [kept] = dropRow([both], both, 'subject');
+  assert.equal(kept?.key, '7:null:4');
+
+  const [bare] = dropRow([row()], row(), 'subject');
+  assert.equal(bare?.key, '7:null:null');
 });
