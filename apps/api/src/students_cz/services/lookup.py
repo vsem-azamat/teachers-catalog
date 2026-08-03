@@ -134,6 +134,25 @@ class Match:
 _NORM = "immutable_unaccent(lower({expr}))"
 _TOKENS = "' ' || btrim(regexp_replace({expr}, '[^[:alnum:]]+', ' ', 'g')) || ' '"
 
+# One predicate, used twice: once for the `hit` flag a caller reads as
+# "the query named this", once for the 1.0 it scores. Two copies would drift,
+# and the drift would report a synonym match on a row that never had one.
+#
+# The transliterated half — see the comment beside the score below — is
+# restricted to synonyms of more than one word, because a latinised generic noun
+# collides with another subject's.
+_SYNONYM_HIT = (
+    "EXISTS (SELECT 1 FROM unnest(s.synonyms) syn"
+    "  WHERE btrim(syn) <> '' AND (strpos("
+    "     q.tokens,"
+    f"     rtrim({_TOKENS.format(expr='immutable_unaccent(lower(syn))')})"
+    "     || CASE WHEN length(btrim(syn)) >= 4 THEN '' ELSE ' ' END"
+    "  ) > 0 OR (strpos(btrim(syn), ' ') > 0 AND strpos("
+    "     q.latin_tokens,"
+    f"     rtrim({_TOKENS.format(expr='immutable_unaccent(lower(syn))')})"
+    "  ) > 0)))"
+)
+
 _SUBJECT_SQL = text(
     f"""
     WITH q AS (
@@ -145,26 +164,16 @@ _SUBJECT_SQL = text(
     SELECT id, label, score, hit FROM (
         SELECT s.id,
                COALESCE(pref.name, any_name.name) AS label,
-               (EXISTS (
-                   SELECT 1 FROM unnest(s.synonyms) syn
-                    WHERE btrim(syn) <> '' AND (strpos(
-                        q.tokens,
-                        rtrim({_TOKENS.format(expr="immutable_unaccent(lower(syn))")})
-                        || CASE WHEN length(btrim(syn)) >= 4 THEN '' ELSE ' ' END
-                    ) > 0 OR (strpos(btrim(syn), ' ') > 0 AND strpos(
-                        q.latin_tokens,
-                        rtrim({_TOKENS.format(expr="immutable_unaccent(lower(syn))")})
-                    ) > 0))
-               )) AS hit,
+               ({_SYNONYM_HIT}) AS hit,
                GREATEST(
-                   -- The query transliterated as well as as typed. A student
-                   -- in Prague writes «přijímačky на медицину» — a Czech word
-                   -- and a Russian object — and the synonym naming what they
-                   -- want is spelled one way or the other, so a single
-                   -- comparison always misses.
+                   -- `_SYNONYM_HIT` compares the query transliterated as well
+                   -- as as typed. A student in Prague writes «přijímačky на
+                   -- медицину» — a Czech word and a Russian object — and the
+                   -- synonym naming what they want is spelled one way or the
+                   -- other, so a single comparison always misses.
                    --
-                   -- Two restrictions, both bought with measurements over every
-                   -- name and synonym in the catalog:
+                   -- Two restrictions there, both bought with measurements over
+                   -- every name and synonym in the catalog:
                    --
                    -- The exact branch only, never the two fuzzy ones below. A
                    -- transliteration is a guess at how a word would look in
@@ -175,21 +184,11 @@ _SUBJECT_SQL = text(
                    -- And multi-word synonyms only. A latinised generic noun
                    -- collides: "квантовая механика" becomes "mechanika", which
                    -- is a synonym of «Теоретическая механика», and beside a
-                   -- school name — "квантовая механика ČVUT", the ordinary
-                   -- shape of a query here — it won at 1.00. A phrase does not
-                   -- collide by accident, and restricting to phrases moved
-                   -- nothing wrong and 57 strings right.
-                   CASE WHEN EXISTS (
-                       SELECT 1 FROM unnest(s.synonyms) syn
-                        WHERE btrim(syn) <> '' AND (strpos(
-                            q.tokens,
-                            rtrim({_TOKENS.format(expr="immutable_unaccent(lower(syn))")})
-                            || CASE WHEN length(btrim(syn)) >= 4 THEN '' ELSE ' ' END
-                        ) > 0 OR (strpos(btrim(syn), ' ') > 0 AND strpos(
-                            q.latin_tokens,
-                            rtrim({_TOKENS.format(expr="immutable_unaccent(lower(syn))")})
-                        ) > 0))
-                   ) THEN 1.0 ELSE 0.0 END,
+                   -- school name — the ordinary shape of a query here — it won
+                   -- at 1.00. A phrase does not collide by accident: with both
+                   -- restrictions every one of those strings answers exactly as
+                   -- it did before.
+                   CASE WHEN {_SYNONYM_HIT} THEN 1.0 ELSE 0.0 END,
                    -- Prefix matching handles a changed word *ending* only
                    -- when the ending is added, not when it is replaced:
                    -- "линал" reaches "линала" but "линейка" does not reach

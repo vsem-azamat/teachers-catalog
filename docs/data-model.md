@@ -224,7 +224,9 @@ onto the wrong subject. A latinised generic noun collides even without a
 trigram: «квантовая механика» becomes "mechanika", which is a synonym of
 «Теоретическая механика», and beside a school name — the ordinary shape of a
 query here — it won outright. A phrase does not collide by accident. With both
-restrictions the change moves nothing wrong and fifty-seven strings right.
+restrictions, every name and synonym in the catalog — alone and beside a school
+name, four and a half thousand probes — answers exactly as it did before, and
+the mixed query that started this answers correctly.
 
 Verified against a live database: `prijimacky` scores 1.00 against `Přijímačky`,
 `matematicka analyza` scores 1.00 against `Matematická analýza`.

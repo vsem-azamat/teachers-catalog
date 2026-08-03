@@ -751,15 +751,28 @@ async def test_the_floor_is_what_stops_a_distant_nearest_neighbour(
 
 
 @pytest.mark.asyncio
-async def test_a_query_that_mixes_alphabets_finds_the_subject(session) -> None:
-    """A Czech word and a Russian object, which is what people type here.
+@pytest.mark.parametrize(
+    ("text", "lang"),
+    [
+        # The `/ask` example, in each language it ships in. What an example must
+        # do is parse to what it says — the Russian one was pulled from the
+        # screen for years of answering «Поступление в технические вузы».
+        ("přijímačky на медицину", "ru"),
+        ("přijímačky na medicínu", "cs"),
+        ("medical admissions", "en"),
+        ("приймачки на медицину", "uk"),
+    ],
+)
+async def test_the_medicine_example_parses_to_what_it_says(session, text, lang) -> None:
+    from sqlalchemy import select
 
-    «přijímačky на медицину» answered «Поступление в технические вузы» at 0.67
-    on a trigram, while the same query transliterated answered the right subject
-    at 1.00 through a synonym — the lookup was only ever comparing one alphabet.
-    """
-    from students_cz.services.lookup import find_subjects
+    from students_cz.db.models import Subject
 
-    rows = await find_subjects(session, "přijímačky на медицину", "ru", limit=2)
-    assert rows, "nothing at all"
-    assert "медицин" in rows[0].label.lower(), rows[0].label
+    parsed = await parse(session, text, lang, today=TODAY)
+    assert parsed.subject is not None, f"{text!r} names no subject"
+
+    # By id and not by the words of the label, which differ per language.
+    wanted = await session.scalar(
+        select(Subject.id).where(Subject.slug == "prijimacky-medicina")
+    )
+    assert parsed.subject.id == wanted, parsed.subject.label
