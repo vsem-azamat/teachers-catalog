@@ -486,6 +486,13 @@ async def test_an_insurer_name_is_the_insurance_it_names(session, text) -> None:
         # kind with no subject, which is an empty screen.
         ("нужна чешская виза", "residence"),
         ("нужна чешская страховка", "insurance"),
+        # "pro cizince" is not a language phrase — it attaches to whatever came
+        # before it, and «zdravotní pojištění pro cizince» is the literal name
+        # of the product this same change taught the parser to know by brand.
+        ("zdravotni pojisteni pro cizince", "insurance"),
+        ("pvzp pojisteni pro cizince na rok", "insurance"),
+        ("страховка для иностранцев", "insurance"),
+        ("общежитие для иностранцев", "housing"),
         ("выписка со счета в чешском банке", "bank_letter"),
         ("потрібна чеська віза", "residence"),
         ("нужен репетитор по матану", "tutoring"),

@@ -189,12 +189,15 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "english tutor",
         "german tutor",
         "language tutor",
-        # A course rather than the language: nobody says these about a visa.
-        "pro cizince",
-        "для иностранцев",
-        "для іноземців",
-        "jazykov kurz",
+        # A course, named as one. Not "pro cizince" and not "для иностранцев":
+        # those belong to whatever comes before them, and "zdravotní pojištění
+        # pro cizince" is the literal name of the insurance product this same
+        # change taught the parser to recognise by its brand.
         "kurz cestiny",
+        "kurz anglictiny",
+        "kurz nemciny",
+        "курсы чешского",
+        "курсы английского",
         "языковые курсы",
         "мовні курси",
     ),
