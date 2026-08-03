@@ -389,11 +389,12 @@ class ParsedQuery:
     # judged by can be set from data instead of by eye. Logged into
     # `search_queries.parsed`; see `api/v1/search`.
     vector: tuple[Match, float] | None = None
-    # Set when the vector's subject was good enough to believe and was then
-    # removed for a reason that has nothing to do with confidence — a kind of
-    # help that carries no subject. Anything downstream that would show the
-    # guess has to know the difference: "we were not sure" is worth showing,
-    # "this cannot go with what you asked for" is not.
+    # Set when the proposal cannot go with the kind of help at all — one that
+    # carries no subject — whether it was believed and then removed or never
+    # reached the bar. Anything downstream that would show the guess has to know
+    # the difference: "we were not sure" is worth showing, "this cannot go with
+    # what you asked for" is not, because the list behind it is empty by
+    # construction.
     vector_conflicted: bool = False
 
 

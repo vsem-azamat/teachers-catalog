@@ -164,11 +164,11 @@ async def parse_query(
 def _also(parsed: parser.ParsedQuery) -> AlsoSubject | None:
     """The guess the parse would not search by, when it is worth reading.
 
-    Not when it was believed — then it is the subject, and a section repeating
-    it would be the same list twice. Not when it is noise. And not when it was
-    believed and then removed for conflicting with the kind of help: a subject
-    that cannot go with what was asked for cannot go beside it either, which is
-    the whole reason that rule exists.
+    Not when it was believed — then it is the subject, and repeating it would be
+    the same list twice. Not when it is noise. And not when it conflicts with
+    the kind of help, believed or not: a subject that cannot go with what was
+    asked for cannot go beside it either, and the list behind it would be empty
+    by construction.
     """
     if not parsed.vector or parsed.vector_conflicted:
         return None
