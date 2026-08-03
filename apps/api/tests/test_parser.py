@@ -431,3 +431,76 @@ async def test_a_document_phrase_is_the_request_even_beside_a_named_subject(
 )
 def test_the_genitive_reaches_the_same_kind_as_the_nominative(text, expected):
     assert _match_service(normalise(text))[0] == expected
+
+
+# ── words that name a shelf, and words that name a brand ─────────────────
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("text", ["přijímačky", "prijimacky", "приймачки"])
+async def test_a_bare_prijimacky_names_the_kind_of_help(session, text) -> None:
+    """It is a category, and a category is not one of its members.
+
+    Carried as a synonym of «Поступление в технические вузы» it scored 1.00, so
+    a word that says nothing about a subject filtered the search by maths and
+    physics.
+    """
+    parsed = await parse(session, text, "ru", today=TODAY)
+    assert parsed.service_type == "entrance_prep"
+    assert parsed.subject is None, f"answered with {parsed.subject}"
+
+
+@pytest.mark.asyncio
+async def test_prijimacky_for_medicine_reaches_medicine(session) -> None:
+    """Written the way one language writes it, which is where this stops.
+
+    The mixed «přijímačky на медицину» still answers with the technical subject
+    at 0.67, because `find_subjects` compares one script at a time — the
+    institution lookup transliterates the query and the subject lookup does not,
+    so a Cyrillic word cannot reach a Latin-spelled synonym. That is a separate
+    change and is deferred with the measurement; what this one owes is that the
+    phrase resolves at all, rather than the category word deciding it.
+    """
+    parsed = await parse(session, "prijimacky na medicinu", "ru", today=TODAY)
+    assert parsed.service_type == "entrance_prep"
+    assert parsed.subject is not None
+    assert "медицин" in parsed.subject.label.lower(), parsed.subject.label
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text", ["pvzp na rok", "нужно оформить vzp", "slavia pojisteni"]
+)
+async def test_an_insurer_name_is_the_insurance_it_names(session, text) -> None:
+    """Nobody asks for «pojištění». They ask for VZP."""
+    parsed = await parse(session, text, "ru", today=TODAY)
+    assert parsed.service_type == "insurance"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "text",
+    [
+        "нужен репетитор по чешскому",
+        "doucovani cestiny",
+        "english tutor",
+        "потрібен репетитор з англійської",
+    ],
+)
+async def test_asking_for_a_language_tutor_finds_languages(session, text) -> None:
+    """The more specific kind of help wins the word it shares with tutoring."""
+    parsed = await parse(session, text, "ru", today=TODAY)
+    assert parsed.service_type == "language_tutoring"
+
+
+@pytest.mark.asyncio
+async def test_nostrification_is_nameable_in_english(session) -> None:
+    """Czech spells it with a k and English with a c.
+
+    The stem `nostrifik` covers «нострификация» and «nostrifikace» and misses
+    «nostrification», so the English word for this kind of help reached nothing
+    — the same "unnameable and therefore unfindable" failure as the five that
+    are not about studying.
+    """
+    parsed = await parse(session, "nostrification of a school certificate", "en")
+    assert parsed.service_type == "nostrification"

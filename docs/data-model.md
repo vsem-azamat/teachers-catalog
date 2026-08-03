@@ -233,6 +233,13 @@ something else:
   search by a subject nobody named. A synonym hit is kept, because a curated
   synonym is not a guess — "курсовая" and "нострификация" are written down
   against real subjects.
+- **A synonym names one row, so a word that names a whole shelf does not belong
+  in one.** `prijimacky` and `приймачки` sat on «Поступление в технические вузы»,
+  and a synonym scores 1.00 — so every «přijímačky …» query came back filtered by
+  maths and physics, including one that said medicine. The word names a kind of
+  help, and reaches `entrance_prep` through the keyword table, which is where a
+  category word belongs. What stays in `synonyms` is what names *that* row and
+  no other: «матан» is calculus, «приемка математика» is the maths entrance exam.
 - **A subject and a kind of help that carries none cannot both survive.** The
   `life` group's offers have no subject at all, while the search applies subject
   and kind of help together — so the pair matches nobody, and one of the two has
@@ -257,8 +264,15 @@ something else:
 A kind of help that cannot be named in words cannot be found, in any of the four
 languages. The five that are not about studying — insurance, a bank statement,
 a document translation, residence paperwork, housing — were offerable and
-unfindable, which is a listing nobody can reach. `language_tutoring` still has
-no keywords of its own and is reachable only as plain tutoring.
+unfindable, which is a listing nobody can reach. So is a kind of help named by
+the brands people actually say: an insurance policy is asked for as "VZP" or
+"PVZP" far more often than as "pojištění", and those are `Word`s rather than
+stems because `vzp` prefixes `vzpomínky`.
+
+Languages are the case where two kinds of help overlap: asking for a Czech
+tutor is `language_tutoring` and not plain `tutoring`, and the words that decide
+it are the languages themselves. Its keywords therefore sit above `tutoring` in
+the table, because the more specific kind has to win the same word.
 
 Above all this sits the query parser, which turns free text into ids. Because it
 does, the database rarely has to do linguistic work at all — it looks up

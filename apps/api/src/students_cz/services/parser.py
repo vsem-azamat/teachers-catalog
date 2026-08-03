@@ -102,6 +102,9 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "prijimaci",
         "entrance",
         "вступн",
+        # The Ukrainian spelling, which used to reach `entrance_prep` only
+        # because it was a synonym of one subject on this shelf.
+        "приймач",
         "tsp",
         "osp",
         "nastupni",
@@ -133,6 +136,10 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
     "nostrification": (
         "нострифик",
         "nostrifik",
+        # The English spells it with a c — "nostrification" — so the stem above
+        # misses it entirely, and the word that names this kind of help in
+        # English reached nothing at all.
+        "nostrific",
         "аттестат",
         "признание диплома",
         "uznani",
@@ -157,6 +164,31 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "thesis",
         "написати",
         "курсову",
+    ),
+    # Above `tutoring`, because the two share every word that asks for a teacher
+    # and only these say which subject: "репетитор по чешскому" is a language
+    # lesson, and reading it as plain tutoring loses the one thing it said.
+    "language_tutoring": (
+        "чешск",
+        "чеськ",
+        "cestin",
+        "češtin",
+        "cestiny",
+        "английск",
+        "англійськ",
+        "anglict",
+        "angličt",
+        Word("english"),
+        "немецк",
+        "німецьк",
+        "nemcin",
+        "němčin",
+        Word("german"),
+        # How a language course is named rather than the language itself.
+        "pro cizince",
+        "язык для иностран",
+        "language tutor",
+        "jazykov",
     ),
     "tutoring": (
         "репетитор",
@@ -189,6 +221,16 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "pojisten",
         "pojistk",
         "insurance",
+        # The names people actually say. Words and not stems, for the reason
+        # above and one more: "vzp" begins "vzpomínky", "vzpoura" and "vzpírání".
+        # Only the health insurers a student meets, and only the names that are
+        # nothing else in the catalog — "maxima" is a maths word, so it is not
+        # here.
+        Word("vzp"),
+        Word("pvzp"),
+        Word("slavia"),
+        Word("uniqa"),
+        Word("ergo"),
     ),
     "bank_letter": (
         "справка из банк",
