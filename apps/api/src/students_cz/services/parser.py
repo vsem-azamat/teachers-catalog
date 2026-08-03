@@ -595,7 +595,6 @@ FILLER_WORDS: frozenset[str] = frozenset(
         "онлайн",
         "оффлайн",
         "офлайн",
-        "офлайн",
         "очно",
         "дистанционно",
         "osobne",

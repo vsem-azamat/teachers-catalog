@@ -72,10 +72,14 @@ async def rebuild(session: AsyncSession, *, embedder: Embedder | None = None) ->
         for text in passages(subject):
             wanted[(subject.id, sha(text))] = text
 
+    # The two columns and not the rows: a thousand vectors of 768 floats each
+    # would be read off the disk on every deploy to build a set of keys.
     have = {
-        (row.subject_id, row.text_sha)
-        for row in await session.scalars(
-            select(SubjectEmbedding).where(SubjectEmbedding.model == model.name)
+        (subject_id, text_sha)
+        for subject_id, text_sha in await session.execute(
+            select(SubjectEmbedding.subject_id, SubjectEmbedding.text_sha).where(
+                SubjectEmbedding.model == model.name
+            )
         )
     }
 

@@ -640,10 +640,15 @@ async def test_a_query_the_rules_cannot_read_reaches_a_subject(session) -> None:
 
 @pytest.mark.asyncio
 async def test_an_unsure_vector_answers_nothing(session) -> None:
-    """Below the threshold it says nothing rather than something plausible.
+    """Nothing rather than something plausible, when nothing stands out.
 
-    A wrong subject is worse than no subject: `catalog.search` ANDs the subject
-    with everything else, so a guess turns a list into an empty screen.
+    The fake's vectors are all in the positive orthant, so everything scores
+    high and nothing leads — which is the lead rule's case, not the floor's.
+    `test_the_floor_is_what_stops_a_distant_nearest_neighbour` is the other one.
+
+    A wrong subject is worse than no subject either way: `catalog.search` ANDs
+    the subject with everything else, so a guess turns a list into an empty
+    screen.
     """
     from students_cz.db.embed import rebuild
     from students_cz.services import embedding
