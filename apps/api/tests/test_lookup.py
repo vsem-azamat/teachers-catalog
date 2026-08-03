@@ -2,7 +2,7 @@
 
 import pytest
 
-from students_cz.services.lookup import find_subjects, normalise
+from students_cz.services.lookup import find_subjects, mixes_scripts, normalise
 
 pytestmark = pytest.mark.asyncio  # every async test here; the one sync test opts out
 
@@ -128,3 +128,67 @@ def test_transliteration_is_czech_flavoured():
     assert transliterate("ЧВУТ") == "cvut"
     assert transliterate("вше") == "vse"
     assert transliterate("мфф ук") == "mff uk"
+
+
+# ── alphabets ───────────────────────────────────────────────────────────
+#
+# The sweep that produced the cases below is not here: it walks every name and
+# every synonym in the catalog, and seventy-four of them already reach a
+# different subject than their own — «javascript» reaches «Программирование на
+# Java», «статистика» reaches «Теория вероятностей и статистика». Those are the
+# catalog's own ambiguities and a test failing on them would fail on main too.
+# What is pinned here is the rule this file's change added, and the regression
+# it nearly shipped.
+
+
+@pytest.mark.parametrize(
+    ("text", "mixed"),
+    [
+        ("přijímačky на медицину", True),
+        ("матан ČVUT", True),
+        ("квантовая механика", False),
+        ("kvantova mechanika", False),
+        ("čeština B2", False),
+        ("", False),
+    ],
+)
+async def test_only_a_query_using_both_alphabets_is_transliterated(text, mixed) -> None:
+    """A single-alphabet query already reaches the names written in it.
+
+    Transliterating it anyway is a guess, and a guess that costs: it moved
+    nineteen catalog names onto the wrong subject, because generic words collide
+    once latinised.
+    """
+    assert mixes_scripts(text) is mixed
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # Every one of these reached the right subject before the change and was
+        # stolen by an unconditional transliteration — measured, not imagined.
+        "Статистика для экономистов",
+        "Электроника и схемотехника",
+        "Гидромеханика и механика жидкостей",
+        "Статика и строительная механика",
+        "квантовая механика",
+    ],
+)
+async def test_a_name_a_transliteration_would_have_stolen(session, text) -> None:
+    from sqlalchemy import select
+
+    from students_cz.db.models import Subject, SubjectI18n
+
+    rows = await find_subjects(session, text, "ru", limit=1)
+    assert rows, f"{text!r} reaches nothing"
+
+    owner = await session.scalar(
+        select(SubjectI18n.subject_id).where(SubjectI18n.name == text).limit(1)
+    )
+    if owner is None:
+        # A synonym rather than a name: it belongs to whichever subject lists it.
+        owner = await session.scalar(
+            select(Subject.id).where(Subject.synonyms.any(text)).limit(1)
+        )
+    assert owner is not None, f"{text!r} is not in the catalog any more"
+    assert rows[0].id == owner, f"{text!r} answered {rows[0].label}"

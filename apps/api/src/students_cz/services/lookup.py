@@ -27,6 +27,7 @@ asks how well the name matches *some part* of the query, which is the actual
 question.
 """
 
+import re
 import unicodedata
 from dataclasses import dataclass
 
@@ -110,6 +111,26 @@ _TRANSLIT = str.maketrans(
 )
 
 
+_CYRILLIC = re.compile(r"[\u0400-\u04ff]")
+_LATIN = re.compile(r"[a-z]")
+
+
+def mixes_scripts(value: str) -> bool:
+    """Does this query use both alphabets?
+
+    The one case neither comparison serves. A query written in one alphabet
+    already reaches the names written in it — and transliterating it is a guess
+    that costs: measured over every name and synonym in the catalog, offering a
+    transliteration of a single-alphabet query moved nineteen of them onto the
+    wrong subject, because generic words collide once they are latinised
+    («квантовая механика» became "mehanika" and reached «Теоретическая
+    механика»). A query that mixes them is served by neither, which is where
+    «přijímačky на медицину» sat.
+    """
+    lowered = normalise(value)
+    return bool(_CYRILLIC.search(lowered) and _LATIN.search(lowered))
+
+
 def transliterate(value: str) -> str:
     """Czech-style romanisation of Cyrillic, for matching acronyms."""
     return normalise(value).translate(_TRANSLIT)
@@ -138,27 +159,50 @@ _SUBJECT_SQL = text(
     f"""
     WITH q AS (
         SELECT {_NORM.format(expr="CAST(:qnorm AS text)")} AS raw,
-               {_TOKENS.format(expr=_NORM.format(expr="CAST(:qnorm AS text)"))} AS tokens
+               {_TOKENS.format(expr=_NORM.format(expr="CAST(:qnorm AS text)"))} AS tokens,
+               {_TOKENS.format(expr=_NORM.format(expr="CAST(:qlat AS text)"))}
+                   AS latin_tokens
     )
     SELECT id, label, score, hit FROM (
         SELECT s.id,
                COALESCE(pref.name, any_name.name) AS label,
                (EXISTS (
                    SELECT 1 FROM unnest(s.synonyms) syn
-                    WHERE btrim(syn) <> '' AND strpos(
+                    WHERE btrim(syn) <> '' AND (strpos(
                         q.tokens,
                         rtrim({_TOKENS.format(expr="immutable_unaccent(lower(syn))")})
                         || CASE WHEN length(btrim(syn)) >= 4 THEN '' ELSE ' ' END
-                    ) > 0
+                    ) > 0 OR strpos(
+                        q.latin_tokens,
+                        rtrim({_TOKENS.format(expr="immutable_unaccent(lower(syn))")})
+                        || CASE WHEN length(btrim(syn)) >= 4 THEN '' ELSE ' ' END
+                    ) > 0)
                )) AS hit,
                GREATEST(
+                   -- Both alphabets, and only here. A student in Prague writes
+                   -- «přijímačky на медицину» — a Czech word and a Russian
+                   -- object — and the synonym naming what they want may be
+                   -- spelled either way, so one comparison always misses.
+                   --
+                   -- The exact branch and not the two fuzzy ones below it. A
+                   -- transliteration is a *guess* at how a word would look in
+                   -- the other alphabet, and feeding a guess to a trigram
+                   -- multiplies it: measured over every name and synonym in the
+                   -- catalog, doing that moved 19 of them onto the wrong
+                   -- subject — "термех" transliterates near "termomechanika".
+                   -- Whole-word containment cannot do that: either the synonym
+                   -- is in the query or it is not.
                    CASE WHEN EXISTS (
                        SELECT 1 FROM unnest(s.synonyms) syn
-                        WHERE btrim(syn) <> '' AND strpos(
+                        WHERE btrim(syn) <> '' AND (strpos(
                             q.tokens,
                             rtrim({_TOKENS.format(expr="immutable_unaccent(lower(syn))")})
                             || CASE WHEN length(btrim(syn)) >= 4 THEN '' ELSE ' ' END
-                        ) > 0
+                        ) > 0 OR strpos(
+                            q.latin_tokens,
+                            rtrim({_TOKENS.format(expr="immutable_unaccent(lower(syn))")})
+                            || CASE WHEN length(btrim(syn)) >= 4 THEN '' ELSE ' ' END
+                        ) > 0)
                    ) THEN 1.0 ELSE 0.0 END,
                    -- Prefix matching handles a changed word *ending* only
                    -- when the ending is added, not when it is replaced:
@@ -191,7 +235,7 @@ _SUBJECT_SQL = text(
           ) any_name ON TRUE
          WHERE s.is_active AND s.kind = 'leaf'
          GROUP BY s.id, s.synonyms, s.external_code,
-                  pref.name, any_name.name, q.raw, q.tokens
+                  pref.name, any_name.name, q.raw, q.tokens, q.latin_tokens
     ) ranked
      WHERE score >= :threshold
      ORDER BY score DESC, id
@@ -297,6 +341,10 @@ async def find_subjects(
         _SUBJECT_SQL,
         {
             "qnorm": normalise(query),
+            # Only for a query that uses both alphabets; see `mixes_scripts`.
+            # An empty string here is a token string of one space, which nothing
+            # is ever found inside.
+            "qlat": transliterate(query) if mixes_scripts(query) else "",
             "lang": lang,
             "limit": limit,
             "threshold": threshold,

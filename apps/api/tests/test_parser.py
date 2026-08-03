@@ -748,3 +748,18 @@ async def test_the_floor_is_what_stops_a_distant_nearest_neighbour(
 
     assert parsed.vector is not None, "it always says what it proposed"
     assert (parsed.subject is not None) is answered
+
+
+@pytest.mark.asyncio
+async def test_a_query_that_mixes_alphabets_finds_the_subject(session) -> None:
+    """A Czech word and a Russian object, which is what people type here.
+
+    «přijímačky на медицину» answered «Поступление в технические вузы» at 0.67
+    on a trigram, while the same query transliterated answered the right subject
+    at 1.00 through a synonym — the lookup was only ever comparing one alphabet.
+    """
+    from students_cz.services.lookup import find_subjects
+
+    rows = await find_subjects(session, "přijímačky на медицину", "ru", limit=2)
+    assert rows, "nothing at all"
+    assert "медицин" in rows[0].label.lower(), rows[0].label

@@ -208,6 +208,14 @@ wrong language, misspelled. Three mechanisms handle it, cheapest first:
 3. `unaccent`, wrapped in an `IMMUTABLE` function so it can be used in
    expression indexes. This is what makes `prijimacky` match `Přijímačky`.
 
+The query is compared twice: as it was typed, and transliterated. A student in
+Prague writes «přijímačky на медицину» — Czech word, Russian object — and the
+name they need may be spelled in either alphabet, so one comparison always
+misses. Both subjects and institutions do it, and the better of the two scores
+is the score: transliteration is an extra way in, never a replacement. «чешский
+b2» finds its subject as typed and nothing at all transliterated, and taking
+only the transliteration would have lost it.
+
 Verified against a live database: `prijimacky` scores 1.00 against `Přijímačky`,
 `matematicka analyza` scores 1.00 against `Matematická analýza`.
 

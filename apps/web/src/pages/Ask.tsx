@@ -331,11 +331,14 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
   // where nobody offers that yet. The shelves are the half that promises supply,
   // and those are counted.
   //
-  // What an example must do is parse to what it says. Four of these have been
-  // replaced for failing that: «страховка на год» parsed to nothing at all, and
-  // «přijímačky на медицину» answered with the technical-university subject at
-  // full confidence, because the parser reads the first word and has nothing to
-  // say about medicine.
+  // What an example must do is parse to what it says. Several have been
+  // replaced for failing that — «страховка на год» parsed to nothing at all —
+  // and «přijímačky на медицину» was one of them until the subject lookup
+  // learned to compare both alphabets: it answered the technical-university
+  // subject at full confidence, because a Czech word beside a Russian object
+  // reached neither spelling of the right one. It answers «Поступление на
+  // медицину» at 1.00 now, and its English translation is not a translation of
+  // the words but the phrasing that parses: «medical admissions».
   //
   // The same bar applies to each **translation**, and it is not met by
   // translating the words: the parser matches against subject names in the
@@ -349,6 +352,7 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
     t`матан ČVUT`,
     t`čeština B2`,
     t`помощь на экзамене по матану`,
+    t`přijímačky на медицину`,
     t`нострификация аттестата`,
     t`курсовая работа`,
   ];

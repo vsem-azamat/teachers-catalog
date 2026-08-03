@@ -455,8 +455,8 @@ msgid "за штуку"
 msgstr "za kus"
 
 #: src/pages/Ask.tsx
-#~ msgid "přijímačky на медицину"
-#~ msgstr "přijímačky na medicínu"
+msgid "přijímačky на медицину"
+msgstr "přijímačky na medicínu"
 
 #: src/pages/MyHelper.tsx
 msgid "В каталоге"
