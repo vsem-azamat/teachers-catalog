@@ -83,7 +83,11 @@ export function dropRow(rows: Draft[], row: Draft, axis: Axis): Draft[] {
   // no axis left beside a row that has one, and a row whose remaining axis
   // another row of the service already names — that pair is one offer, and the
   // server's unique index says so.
-  if (siblings.some((other) => bare || keyOf(other) === keyOf(left))) return others;
+  if (
+    bare ? siblings.length > 0 : siblings.some((other) => keyOf(other) === keyOf(left))
+  ) {
+    return others;
+  }
   // Otherwise in place, so the row keeps its position among its neighbours, and
   // re-keyed from what it now holds: a key naming an axis the row no longer has
   // is one `addAxis` could mint a second time.
