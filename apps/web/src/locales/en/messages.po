@@ -377,6 +377,10 @@ msgstr "What the price is for"
 msgid "за работу"
 msgstr "per assignment"
 
+#: src/pages/Ask.tsx
+msgid "Посмотреть похожее"
+msgstr "See what is close"
+
 #: src/pages/MyHelper.tsx
 #~ msgid "Пока ни одного. Найди предмет ниже — без них тебя не найдут по поиску."
 #~ msgstr "None yet. Find a subject below — without them search cannot reach you."

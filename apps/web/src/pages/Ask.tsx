@@ -127,9 +127,15 @@ export default function AskPage() {
   // a chip that had no part in it.
   const ready = query !== '';
 
+  // Nothing to filter on, but the embedder had an idea about what the sentence
+  // is about. Without this the tier that idea exists for is unreachable from
+  // here: no chips means no count, no count means no button, and the button is
+  // the only way to the results screen.
+  const onlyGuess = !ready && parsed?.also != null;
+
   // Understood something, but nothing to search on. Saying nothing here would be
   // a dead end: chips on the screen, no count, no button, no explanation.
-  const stuck = !ready && kept.length > 0;
+  const stuck = !ready && !onlyGuess && kept.length > 0;
   const { filters, isError: filtersFailed } = useSearchFilters(query);
 
   const preview = useQuery({
@@ -160,7 +166,18 @@ export default function AskPage() {
           onClick: () =>
             navigate(total > 0 ? `/results?${target}` : `/results?${target}&ask=1`),
         }
-      : null,
+      : onlyGuess
+        ? {
+            // No number, because nothing is being filtered — the guess is shown
+            // beside the results rather than narrowing them, and a count here
+            // would be a promise about a list that does not exist.
+            text: t`Посмотреть похожее`,
+            isVisible: true,
+            isEnabled: true,
+            isLoaderVisible: parse.isPending,
+            onClick: () => navigate(`/results?${target}`),
+          }
+        : null,
   );
 
   return (

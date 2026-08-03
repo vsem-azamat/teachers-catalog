@@ -80,6 +80,15 @@ export default function ResultsPage() {
   const failed = isError || filtersFailed;
   const loading = (isPending || filters === null) && !failed;
 
+  // Everything the section needs except who is already on screen above it,
+  // which is the only thing that differs between the two branches below.
+  const alsoProps = {
+    cards: also.data?.results ?? [],
+    named: also.data?.chips.find((chip) => chip.kind === 'subject')?.label ?? null,
+    locale: i18n.locale,
+    onOpen: (id: number) => navigate(`/helper/${id}`),
+  };
+
   return (
     <>
       <Screen withTabs>
@@ -131,15 +140,7 @@ export default function ResultsPage() {
               body={<Trans>Никто пока не предлагает то, что ты ищешь.</Trans>}
             />
             <AskInstead onClick={() => setAsking(true)} found={0} />
-            <AlsoSection
-              cards={also.data?.results ?? []}
-              named={
-                also.data?.chips.find((chip) => chip.kind === 'subject')?.label ?? null
-              }
-              exclude={new Set()}
-              locale={i18n.locale}
-              onOpen={(id) => navigate(`/helper/${id}`)}
-            />
+            <AlsoSection {...alsoProps} exclude={new Set()} />
           </>
         ) : (
           <>
@@ -162,13 +163,8 @@ export default function ResultsPage() {
                 product. */}
             <AskInstead onClick={() => setAsking(true)} found={data.total} />
             <AlsoSection
-              cards={also.data?.results ?? []}
-              named={
-                also.data?.chips.find((chip) => chip.kind === 'subject')?.label ?? null
-              }
+              {...alsoProps}
               exclude={new Set(data.results.map((card) => card.user_id))}
-              locale={i18n.locale}
-              onOpen={(id) => navigate(`/helper/${id}`)}
             />
           </>
         )}

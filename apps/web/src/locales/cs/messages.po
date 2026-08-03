@@ -377,6 +377,10 @@ msgstr "Za co je cena"
 msgid "за работу"
 msgstr "za práci"
 
+#: src/pages/Ask.tsx
+msgid "Посмотреть похожее"
+msgstr "Zobrazit podobné"
+
 #: src/pages/MyHelper.tsx
 #~ msgid "Пока ни одного. Найди предмет ниже — без них тебя не найдут по поиску."
 #~ msgstr "Zatím žádný. Najdi předmět níž — bez nich tě vyhledávání nenajde."
