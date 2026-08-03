@@ -14,8 +14,10 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from students_cz.db.models import User, UserEvent
+from students_cz.db.models import Institution, User, UserEvent
 from students_cz.db.models.enums import UiLang, UserEventKind
+from students_cz.schemas import MeUpdate
+from students_cz.services.refs import require_row
 
 # Telegram sends a language tag that may carry a region ("en-US"), and may name
 # a language we do not ship.
@@ -170,3 +172,28 @@ def reachable(*, langs: list[str] | None = None, source: str | None = None):
     if source:
         stmt = stmt.where(User.source == source)
     return stmt
+
+
+async def update_profile(session: AsyncSession, user: User, spec: MeUpdate) -> None:
+    """Apply what the account screen sent, and nothing it did not send.
+
+    A field the payload leaves out — or leaves null — is a question the screen
+    did not ask, so it is not an answer to overwrite with. `institution_id: 0`
+    is the one exception and means "no school": it is how the picker says
+    cleared, since a null cannot be told from an omission here.
+
+    The institution is checked before it is written so an id nobody has ever
+    seen answers as the field it is, rather than as a foreign-key violation
+    from Postgres.
+    """
+    if spec.ui_lang is not None:
+        user.ui_lang = spec.ui_lang
+    if spec.spoken_langs is not None:
+        user.spoken_langs = spec.spoken_langs
+    if spec.city is not None:
+        user.city = spec.city or None
+    if spec.institution_id is not None:
+        await require_row(
+            session, Institution, spec.institution_id or None, "institution_id"
+        )
+        user.institution_id = spec.institution_id or None

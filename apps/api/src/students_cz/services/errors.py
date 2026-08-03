@@ -35,10 +35,10 @@ class Invalid(ServiceError):
 
 
 class BadRequest(ServiceError):
-    """Answers 400, and exists only because one endpoint already did.
+    """Answers 400, and exists only because two endpoints already did.
 
-    Not a category — `Invalid` is the category. This is here so that
-    "you cannot answer your own request", which answered 400 long before any
-    of this moved into services, still answers 400. Reach for `Invalid`
-    unless you are preserving an existing 400.
+    Not a category — `Invalid` is the category. This is here so that "you
+    cannot answer your own request" and "that is your own profile", which
+    answered 400 long before either moved into a service, still answer 400.
+    Reach for `Invalid` unless you are preserving an existing 400.
     """

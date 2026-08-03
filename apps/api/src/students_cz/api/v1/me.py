@@ -15,7 +15,7 @@ from students_cz.schemas import (
     MeUpdate,
 )
 from students_cz.services.catalog import avatar_for
-from students_cz.services.refs import require_row
+from students_cz.services.people import update_profile
 
 router = APIRouter()
 
@@ -52,15 +52,8 @@ async def read_me(user: UserDep, session: SessionDep, lang: LangDep) -> MeOut:
 async def update_me(
     payload: MeUpdate, user: UserDep, session: SessionDep, lang: LangDep
 ) -> MeOut:
-    if payload.ui_lang is not None:
-        user.ui_lang = payload.ui_lang
-    if payload.spoken_langs is not None:
-        user.spoken_langs = payload.spoken_langs
-    if payload.city is not None:
-        user.city = payload.city or None
-    if payload.institution_id is not None:
-        await require_row(
-            session, Institution, payload.institution_id or None, "institution_id"
-        )
-        user.institution_id = payload.institution_id or None
+    await update_profile(session, user, payload)
+    # The language the payload just set, not the one the request arrived with:
+    # `LangDep` was resolved before the change, so reading it back through the
+    # old one would answer the screen in the language it just left.
     return await read_me(user, session, payload.ui_lang or lang)
