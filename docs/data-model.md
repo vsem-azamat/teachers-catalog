@@ -269,10 +269,17 @@ the brands people actually say: an insurance policy is asked for as "VZP" or
 "PVZP" far more often than as "pojištění", and those are `Word`s rather than
 stems because `vzp` prefixes `vzpomínky`.
 
-Languages are the case where two kinds of help overlap: asking for a Czech
-tutor is `language_tutoring` and not plain `tutoring`, and the words that decide
-it are the languages themselves. Its keywords therefore sit above `tutoring` in
-the table, because the more specific kind has to win the same word.
+Languages are the case where two kinds of help overlap: asking for a Czech tutor
+is `language_tutoring` and not plain `tutoring`. It is the one kind of help with
+no keywords of its own, because the words that would name it — "чешск",
+"anglict" — also describe *whose* bank, *whose* visa and *whose* dormitory, and
+anything high enough in the table to beat tutoring takes all of those with it.
+It is a refinement instead: a language beside a match that was already a lesson
+makes it a language lesson, and a course word beside a language names one when
+nothing else claimed the query. Both halves are matched on their own, which is
+what carries «ищу репетитора по чешскому» and «kurzy cestiny» — a multi-word
+keyword tolerates inflection only on its last word, and these inflect the
+first.
 
 Above all this sits the query parser, which turns free text into ids. Because it
 does, the database rarely has to do linguistic work at all — it looks up

@@ -496,6 +496,8 @@ async def test_an_insurer_name_is_the_insurance_it_names(session, text) -> None:
         ("выписка со счета в чешском банке", "bank_letter"),
         ("потрібна чеська віза", "residence"),
         ("нужен репетитор по матану", "tutoring"),
+        ("репетитора по физике", "tutoring"),
+        ("нужен перевод диплома на чешский", "translation"),
     ],
 )
 async def test_a_language_beside_an_errand_is_not_a_lesson(
@@ -513,6 +515,18 @@ async def test_a_language_beside_an_errand_is_not_a_lesson(
         "doucovani cestiny",
         "english tutor",
         "потрібен репетитор з англійської",
+        # Every one of these is how it is actually typed, and every one of them
+        # inflects the *first* word — which a multi-word keyword cannot follow.
+        # Matching the language on its own is what carries them.
+        "ищу репетитора по чешскому",
+        "посоветуйте репетитора по немецкому",
+        "шукаю репетитора з англійської",
+        # A course is one too, in any of the forms both halves decline into.
+        "kurzy cestiny",
+        "курс чешского языка",
+        "на курсах чешского",
+        "курси чеської",
+        "czech language course",
     ],
 )
 async def test_asking_for_a_language_tutor_finds_languages(session, text) -> None:

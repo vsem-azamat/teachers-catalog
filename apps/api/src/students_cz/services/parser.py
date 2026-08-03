@@ -165,42 +165,6 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "написати",
         "курсову",
     ),
-    # Above `tutoring`, because the two share every word that asks for a
-    # teacher and only these say which subject: "репетитор по чешскому" is a
-    # language lesson, and reading it as plain tutoring loses the one thing it
-    # said.
-    #
-    # Phrases and not the bare adjective, which is the trap here: this block
-    # sits above the non-study one, so a lone "чешск" made "нужна чешская виза"
-    # a language lesson — a study kind with no subject, which is the empty
-    # screen that block's own comment exists to prevent. A language names this
-    # kind of help only next to the asking.
-    "language_tutoring": (
-        "репетитор по чешск",
-        "репетитор по английск",
-        "репетитор по немецк",
-        "репетитор з чеськ",
-        "репетитор з англійськ",
-        "репетитор з німецьк",
-        "doucovani cestiny",
-        "doucovani anglictiny",
-        "doucovani nemciny",
-        "czech tutor",
-        "english tutor",
-        "german tutor",
-        "language tutor",
-        # A course, named as one. Not "pro cizince" and not "для иностранцев":
-        # those belong to whatever comes before them, and "zdravotní pojištění
-        # pro cizince" is the literal name of the insurance product this same
-        # change taught the parser to recognise by its brand.
-        "kurz cestiny",
-        "kurz anglictiny",
-        "kurz nemciny",
-        "курсы чешского",
-        "курсы английского",
-        "языковые курсы",
-        "мовні курси",
-    ),
     "tutoring": (
         "репетитор",
         "объяснить",
@@ -321,6 +285,42 @@ ASIDES = SUBJECTLESS - {"translation"}
 # nothing about *which* kind of help. It counts as tutoring only when the text
 # gives no other clue — see _match_service.
 WEAK_HELP: tuple[str, ...] = ("помо", "pomo", "help", "допомо", "нужен", "потрібн")
+
+# The languages people learn, in the four interface languages plus the
+# transliterations, and the words that make a course a course.
+#
+# Not entries in the table above, and that is the whole point: the words naming
+# a language also describe *whose* bank, *whose* visa and *whose* dormitory, so
+# a keyword high enough to beat plain tutoring took «нужна чешская виза» and
+# «zdravotní pojištění pro cizince» with it. Written as a refinement instead —
+# see `_match_service` — it can only narrow a match that was already a lesson,
+# or name a course that nothing else claimed.
+LANGUAGE_WORDS: tuple[str, ...] = (
+    "чешск",
+    "чеськ",
+    "cestin",
+    "cestiny",
+    "английск",
+    "англійськ",
+    "anglict",
+    "немецк",
+    "німецьк",
+    "nemcin",
+    Word("czech"),
+    Word("english"),
+    Word("german"),
+    "язык",
+    "jazyk",
+    Word("мова"),
+    Word("мови"),
+    Word("мову"),
+)
+
+# A course, in any of the forms these decline into: both halves are matched
+# independently, so "курсы чешского", "kurzu cestiny" and "czech language
+# course" all reach the same place, which a multi-word keyword cannot do —
+# it tolerates inflection only on its last word.
+COURSE_WORDS: tuple[str, ...] = ("курс", "курси", "kurz", "course", "kurs")
 
 # Words that put an exam in the picture without saying whether the help is
 # wanted before it or during it. When one of these appears next to nothing but
@@ -454,13 +454,38 @@ def _match_service(
     SUBJECTLESS at the call site.
     """
     tokens = tokenise(norm)
+
+    def present(words: tuple[str, ...]) -> str | None:
+        for word in words:
+            match = is_whole_word if isinstance(word, Word) else starts_a_word
+            if match(tokens, word):
+                return word
+        return None
+
     for code, keywords in SERVICE_KEYWORDS.items():
         if code in ignore:
             continue
         for keyword in keywords:
             match = is_whole_word if isinstance(keyword, Word) else starts_a_word
             if match(tokens, keyword):
+                # A language beside an ask for a teacher is a language lesson,
+                # and reading it as plain tutoring loses the one thing the query
+                # said. A refinement rather than a keyword of its own, because
+                # the words that name a language describe far more than lessons
+                # — see LANGUAGE_WORDS. It only ever narrows a lesson.
+                if code == "tutoring" and "language_tutoring" not in ignore:
+                    language = present(LANGUAGE_WORDS)
+                    if language:
+                        return "language_tutoring", language
                 return code, keyword
+
+    # Nothing named a kind of help, but a course in a language is one: "kurzy
+    # cestiny", "курсы чешского", "czech language course". Both halves are
+    # matched on their own, which is what carries every form of both.
+    if "language_tutoring" not in ignore and present(COURSE_WORDS):
+        language = present(LANGUAGE_WORDS)
+        if language:
+            return "language_tutoring", language
 
     if any(starts_a_word(tokens, verb) for verb in WEAK_HELP):
         if any(starts_a_word(tokens, word) for word in EXAM_MENTION):
