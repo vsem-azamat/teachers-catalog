@@ -9,8 +9,8 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from students_cz.db.models import Contact, User, UserEvent
-from students_cz.db.models.enums import UiLang, UserEventKind
+from students_cz.db.models import Contact, HelperProfile, User, UserEvent
+from students_cz.db.models.enums import PublishStatus, UiLang, UserEventKind
 from students_cz.services import catalog, errors
 
 pytestmark = pytest.mark.asyncio
@@ -62,7 +62,7 @@ async def test_you_cannot_start_a_contact_with_yourself(
         await catalog.start_contact(session, viewer=helper, helper_id=helper.id)
 
 
-async def test_a_profile_that_is_not_published_cannot_be_written_to(
+async def test_somebody_who_is_not_a_helper_cannot_be_written_to(
     session: AsyncSession,
 ) -> None:
     student = await _person(session, 92104)
@@ -70,6 +70,22 @@ async def test_a_profile_that_is_not_published_cannot_be_written_to(
 
     with pytest.raises(errors.NotFound):
         await catalog.start_contact(session, viewer=student, helper_id=nobody.id)
+
+
+async def test_a_profile_that_is_not_published_cannot_be_written_to(
+    session: AsyncSession, helper_factory
+) -> None:
+    """A draft is not a listing. It exists, and to anyone outside it does not:
+    the same 404, so which of the two it is cannot be read off the answer."""
+    helper = await helper_factory(tg_id=92113)
+    profile = await session.get(HelperProfile, helper.id)
+    assert profile is not None
+    profile.status = PublishStatus.DRAFT
+    await session.flush()
+    student = await _person(session, 92114)
+
+    with pytest.raises(errors.NotFound):
+        await catalog.start_contact(session, viewer=student, helper_id=helper.id)
 
 
 async def test_a_helper_without_a_username_cannot_be_written_to(

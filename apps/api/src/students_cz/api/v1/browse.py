@@ -35,4 +35,10 @@ async def helper_detail(
     tags=["catalog"],
 )
 async def start_contact(user_id: int, session: SessionDep, user: UserDep) -> ContactOut:
+    """Record that someone is about to write, and hand back the link.
+
+    The rule is `catalog.start_contact`. This sentence stays here because it is
+    the operation's description in the OpenAPI document, which the client is
+    generated from.
+    """
     return await catalog.start_contact(session, viewer=user, helper_id=user_id)

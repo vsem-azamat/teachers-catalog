@@ -33,6 +33,12 @@ router = APIRouter()
 async def parse_query(
     payload: ParseRequest, session: SessionDep, lang: LangDep, user: UserDep
 ) -> ParseOut:
+    """Read a sentence and show back what we made of it.
+
+    The rule is `services/search.describe`. This sentence stays here because it
+    is the operation's description in the OpenAPI document, which the client is
+    generated from.
+    """
     return await search.describe(session, lang, viewer=user, text=payload.text)
 
 
