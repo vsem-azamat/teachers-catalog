@@ -175,8 +175,11 @@ export default function ResultsPage() {
               title={<Trans>Пока никого</Trans>}
               body={<Trans>Никто пока не предлагает то, что ты ищешь.</Trans>}
             />
+            {/* `alone` here too: there is no list above it to be "also" beside,
+                and the guess goes before the give-up row rather than after it —
+                the request is the last resort, not the middle of the screen. */}
+            <AlsoSection {...alsoProps} alone exclude={new Set()} />
             <AskInstead onClick={() => setAsking(true)} found={0} />
-            <AlsoSection {...alsoProps} exclude={new Set()} />
           </>
         ) : (
           <>
