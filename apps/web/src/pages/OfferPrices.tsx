@@ -25,7 +25,7 @@ import {
 import { hapticSelection, hapticSuccess, useMainButton } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
 import { groupRuns } from '@/lib/groups';
-import { type Draft, dropRow, serviceAnswers } from '@/lib/offerRows';
+import { type Axis, type Draft, dropRow, serviceAnswers } from '@/lib/offerRows';
 import { TURNAROUNDS, TurnaroundLabel } from '@/lib/turnaround';
 import type {
   Institution,
@@ -176,8 +176,8 @@ export default function OfferPricesPage() {
   if (!picked || picked.length === 0) return <Navigate to="/offer" replace />;
 
   // What survives a removed chip is `dropRow`'s rule, and it is tested there.
-  const removeRow = (row: Draft) => {
-    setRows((current) => dropRow(current, row));
+  const removeAxis = (row: Draft, axis: Axis) => {
+    setRows((current) => dropRow(current, row, axis));
   };
 
   // The checklist belongs to the service, not to one of its rows: a person who
@@ -343,7 +343,7 @@ export default function OfferPricesPage() {
                           <AxisChips
                             rows={mineHere.filter((row) => row.subject_id !== null)}
                             label={(row) => row.subject_name}
-                            onDrop={(row) => removeRow(row)}
+                            onDrop={(row) => removeAxis(row, 'subject')}
                             removeLabel={t`Убрать`}
                           />
                           <SubjectSearch
@@ -363,7 +363,7 @@ export default function OfferPricesPage() {
                           <AxisChips
                             rows={mineHere.filter((row) => row.institution_id !== null)}
                             label={(row) => row.institution_name}
-                            onDrop={(row) => removeRow(row)}
+                            onDrop={(row) => removeAxis(row, 'institution')}
                             removeLabel={t`Убрать`}
                           />
                           <InstitutionPicker

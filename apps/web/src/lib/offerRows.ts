@@ -45,36 +45,46 @@ export function serviceAnswers(rows: Draft[], serviceTypeId: number): Partial<Dr
   return { price, option_ids, note, turnaround_days };
 }
 
+/** The two axes a row can carry. `offers` is unique on both of them. */
+export type Axis = 'subject' | 'institution';
+
+const without = (row: Draft, axis: Axis): Draft =>
+  axis === 'subject'
+    ? { ...row, subject_id: null, subject_name: null }
+    : { ...row, institution_id: null, institution_name: null };
+
 /**
  * The rows left after one axis chip is removed.
  *
- * Removing the last subject — or the last school — must not remove the
- * service: the person ticked it, and a service with no axis is one search
- * cannot reach yet, not one they withdrew. So the last row of a service stays,
- * and only its axes are cleared.
+ * The tapped chip is the whole of what is being taken back, and two things
+ * follow from that.
  *
- * It keeps everything else it held. The checklist, the note and the turnaround
- * belong to the service type and not to one of its rows — that is what
- * `docs/data-model.md` says of those columns, and it is why the screen writes a
- * toggled option to every row of a service. A fresh blank row here would answer
- * «I do these five things, in three days, for 500» with silence, because a
- * subject chip was tapped off.
+ * One row can carry both axes — a school picked first and a subject after it
+ * fill the same row — and it appears in both chip lists. Removing the subject
+ * there leaves the school, rather than taking a school the person never touched.
+ *
+ * And a service whose last axis goes keeps its row, because the person ticked
+ * the service: one with no axis is a service search cannot reach yet, not one
+ * they withdrew. The row keeps everything else it held — the checklist, the
+ * note and the turnaround belong to the service type and not to one of its
+ * rows, which is what `docs/data-model.md` says of those columns and why the
+ * screen writes a toggled option to every row of a service. A fresh blank row
+ * here would answer «I do these five things, in three days, for 500» with
+ * silence, because a chip was tapped off.
  */
-export function dropRow(rows: Draft[], row: Draft): Draft[] {
-  const left = rows.filter((other) => other.key !== row.key);
-  if (left.some((other) => other.service_type_id === row.service_type_id)) return left;
-  return [
-    ...left,
-    {
-      ...row,
-      // The key a fresh row of this service would have: nothing else of this
-      // service is left to collide with it, and the chip that carried the old
-      // one is gone.
-      key: `${row.service_type_id}:new`,
-      subject_id: null,
-      subject_name: null,
-      institution_id: null,
-      institution_name: null,
-    },
-  ];
+export function dropRow(rows: Draft[], row: Draft, axis: Axis): Draft[] {
+  const left = without(row, axis);
+  const others = rows.filter((other) => other.key !== row.key);
+  const bare = left.subject_id === null && left.institution_id === null;
+  if (bare && others.some((other) => other.service_type_id === row.service_type_id)) {
+    return others;
+  }
+  // In place, so the row keeps its position among its neighbours. The key it
+  // takes when nothing is left to name it is the one a fresh row of this
+  // service would have, and nothing of this service is left to collide with it.
+  return rows.map((other) =>
+    other.key === row.key
+      ? { ...left, key: bare ? `${row.service_type_id}:new` : other.key }
+      : other,
+  );
 }
