@@ -514,6 +514,12 @@ async def test_an_insurer_name_is_the_insurance_it_names(session, text) -> None:
         ("marketing tutor in czech", "tutoring"),
         ("doucovani marketingu v cestine", "tutoring"),
         ("репетитор з маркетингу англійською", "tutoring"),
+        # And with a date beside it, which is where discounting month *words*
+        # rather than what the date matcher consumed went wrong.
+        ("нужен репетитор по маркетингу на чешском 14 марта", "tutoring"),
+        ("doucovani marketingu v cestine 14 unora", "tutoring"),
+        ("marketing tutor in czech 14 february", "tutoring"),
+        ("нужен репетитор по маркетингу на чешском 3.03", "tutoring"),
         ("репетитор з біології англійською", "tutoring"),
         ("репетитор по чешской литературе", "tutoring"),
         ("doucovani matematiky v cestine", "tutoring"),
@@ -571,6 +577,8 @@ async def test_a_language_beside_an_errand_is_not_a_lesson(
         # nowhere in the text.
         "репетитор по чешскому на чвуте",
         "репетитор по чешскому до 600 крон",
+        "doucovani cestiny do 600 korun",
+        "репетитор по чешскому 14 марта",
     ],
 )
 async def test_asking_for_a_language_tutor_finds_languages(session, text) -> None:

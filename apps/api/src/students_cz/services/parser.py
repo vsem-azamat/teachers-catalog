@@ -459,12 +459,17 @@ async def parse(
         spoken_for = [keyword or "", language or ""]
         if result.institution:
             spoken_for.append(result.institution.label)
+        # The date and the price come out by the spans that produced them, not
+        # by their words: "мар" is March and the first three letters of
+        # "маркетингу", so discounting month words made a marketing query a
+        # language lesson, and a currency list beside the one `_BUDGET` already
+        # holds is a second list to keep in step.
+        spoken = norm
         if result.deadline:
-            # The month it read, and only when it read one.
-            spoken_for.extend(
-                month for month in MONTHS if starts_a_word(tokenise(norm), month)
-            )
-        if language and not _left_over(norm, *spoken_for):
+            spoken = _DAY_MONTH_WORD.sub(" ", _DAY_MONTH_NUM.sub(" ", spoken))
+        if result.budget_max is not None:
+            spoken = _BUDGET.sub(" ", spoken)
+        if language and not _left_over(spoken, *spoken_for):
             result.service_type = "language_tutoring"
 
     result.unmatched = not any((result.subject, result.institution, result.service_type))
@@ -541,6 +546,9 @@ FILLER_WORDS: frozenset[str] = frozenset(
         "na",
         "pro",
         "si",
+        # "do 600 korun" — the Czech limit word, which `_BUDGET` does not
+        # consume the way it consumes the Russian "до".
+        "do",
         # The level, which says which row of the same language and never
         # another subject.
         "a1",
@@ -560,11 +568,6 @@ FILLER_WORDS: frozenset[str] = frozenset(
         "my",
         "me",
     )
-)
-
-
-CURRENCY_WORDS: frozenset[str] = frozenset(
-    ("kc", "czk", "kč", "крон", "kron", "eur", "euro", "usd")
 )
 
 
@@ -591,14 +594,11 @@ def _left_over(norm: str, *accounted: str) -> str:
     rest = [
         token
         for token in tokens
-        # A bare number is a price or a day and never a subject, and the
-        # currency beside it is neither. The month is *not* discounted here —
-        # "мар" is March and the first three letters of "маркетингу", and a
-        # month word alone is not a deadline anyway: the caller passes the one
-        # it actually parsed.
+        # A bare number names nothing: whatever it was — a price, a page count,
+        # a year — it is not a subject. What the date and the price matchers
+        # consumed is already gone; see the caller.
         if not token.isdigit()
         and token not in FILLER_WORDS
-        and token not in CURRENCY_WORDS
         and not any(token.startswith(normalise(word)) for word in FILLER)
     ]
     return " ".join(rest)
