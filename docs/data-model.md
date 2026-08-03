@@ -237,9 +237,11 @@ Gating on "the query mixes alphabets" does not help either: «матан ČVUT»
 alphabets, and so does most of what people type here.
 
 The catalog's own shape is what defeats it. Of 828 synonyms on active leaves,
-395 are more than one word, and once transliterated a great many of those are
-also a substring of some *other* subject's name or synonym — which is invisible
-while each alphabet is compared only with itself.
+395 are more than one word — and for 36 of those, transliterating them puts some
+*other* subject's synonym inside them as a whole word. One in eleven is enough:
+each is an exact hit, and an exact hit outranks everything the right subject can
+offer short of its own. None of it is visible while each alphabet is only ever
+compared with itself.
 
 What the failing query actually needs is the third mechanism below, which reads
 meaning rather than letters, and an arbitration between it and a weak trigram
