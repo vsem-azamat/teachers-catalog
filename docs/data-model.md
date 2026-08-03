@@ -499,3 +499,9 @@ Below 0.35 there is nothing to demote. The nearest subject at that distance is
 whatever happened to be closest, and a section of noise is worse than no
 section.
 
+Nor is there anything to demote beside a kind of help that carries no subject.
+The rule above that stops the two coexisting applies here for the same reason
+and with more force: a second list filtered by that subject is not merely
+narrower, it is empty by construction, because the search ANDs the two and no
+offer in that group has a subject at all.
+
