@@ -25,6 +25,7 @@ import {
 import { hapticSelection, hapticSuccess, useMainButton } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
 import { groupRuns } from '@/lib/groups';
+import { type Draft, dropRow, serviceAnswers } from '@/lib/offerRows';
 import { TURNAROUNDS, TurnaroundLabel } from '@/lib/turnaround';
 import type {
   Institution,
@@ -174,16 +175,9 @@ export default function OfferPricesPage() {
   // Arrived here directly — a reload, or a link. There is nothing to price.
   if (!picked || picked.length === 0) return <Navigate to="/offer" replace />;
 
-  // Removing the last subject — or the last school — must not remove the
-  // service: the person ticked it, and a service with no axis is one search
-  // cannot reach yet, not one they withdrew.
-  const dropRow = (type: ServiceType, row: Draft) => {
-    setRows((current) => {
-      const left = current.filter((other) => other.key !== row.key);
-      return left.some((other) => other.service_type_id === type.id)
-        ? left
-        : [...left, blank(type)];
-    });
+  // What survives a removed chip is `dropRow`'s rule, and it is tested there.
+  const removeRow = (row: Draft) => {
+    setRows((current) => dropRow(current, row));
   };
 
   // The checklist belongs to the service, not to one of its rows: a person who
@@ -266,22 +260,11 @@ export default function OfferPricesPage() {
       if (empty) {
         return current.map((row) => (row === empty ? { ...row, ...axis } : row));
       }
+      // Inherits what the person already said about this service; see
+      // `serviceAnswers`, which is where that list is tested.
       return [
         ...current,
-        {
-          ...blank(type),
-          ...axis,
-          key,
-          // Inherits what the person already said about this service — the
-          // price, and the checklist the ticks above wrote to its other rows.
-          // Asking the same price four times is asking three times too many,
-          // and a row added after the ticks were set would otherwise save an
-          // empty checklist.
-          price: current.find((row) => row.service_type_id === type.id)?.price ?? '',
-          option_ids:
-            current.find((row) => row.service_type_id === type.id)?.option_ids ?? [],
-          note: current.find((row) => row.service_type_id === type.id)?.note ?? '',
-        },
+        { ...blank(type), ...serviceAnswers(current, type.id), ...axis, key },
       ];
     });
   };
@@ -360,7 +343,7 @@ export default function OfferPricesPage() {
                           <AxisChips
                             rows={mineHere.filter((row) => row.subject_id !== null)}
                             label={(row) => row.subject_name}
-                            onDrop={(row) => dropRow(type, row)}
+                            onDrop={(row) => removeRow(row)}
                             removeLabel={t`Убрать`}
                           />
                           <SubjectSearch
@@ -380,7 +363,7 @@ export default function OfferPricesPage() {
                           <AxisChips
                             rows={mineHere.filter((row) => row.institution_id !== null)}
                             label={(row) => row.institution_name}
-                            onDrop={(row) => dropRow(type, row)}
+                            onDrop={(row) => removeRow(row)}
                             removeLabel={t`Убрать`}
                           />
                           <InstitutionPicker
@@ -647,25 +630,6 @@ function PriceRow({
       </select>
     </div>
   );
-}
-
-/** One offer while it is being edited. The price is a string: an input mid-typing
- *  legitimately holds "" and "4", and parsing on every keystroke turns both into
- *  something the field then has to render back. */
-interface Draft {
-  key: string;
-  service_type_id: number;
-  subject_id: number | null;
-  subject_name: string | null;
-  institution_id: number | null;
-  institution_name: string | null;
-  option_ids: number[];
-  note: string;
-  // `null` is «договоримся», which is an answer, so the field is never absent.
-  turnaround_days: number | null;
-  price: string;
-  unit: PriceUnit;
-  langs: string[];
 }
 
 /**
