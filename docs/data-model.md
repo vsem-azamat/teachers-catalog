@@ -218,22 +218,28 @@ as well as the original, and doing the same for subjects looks obviously right:
 student in Prague types — answers «Поступление в технические вузы» at 0.67,
 while the same query transliterated answers the right subject at 1.00.
 
-Three ways of doing it were built and measured against the whole catalog, and
-each moved more strings onto wrong subjects than it rescued:
+Three ways of doing it were built and measured against the whole catalog — every
+active leaf subject's names and synonyms, alone and beside a school name — and
+each moved more strings onto wrong subjects than it rescued. The mechanism is
+the same every time, and it is not fuzziness: a latinised word lands *exactly*
+on another subject's synonym and scores 1.00, which the right subject also
+scores, and the tie goes to the lower id.
 
-- compared everywhere, including the trigram branches — 19 names wrong, because
-  a transliteration is a guess and feeding a guess to a fuzzy scorer multiplies
-  it: "термех" lands near "termomechanika";
-- compared only for whole-word containment — the same, because a latinised
-  generic noun *is* another subject's synonym: «квантовая механика» becomes
-  "mechanika";
-- compared only against multi-word synonyms — 21 wrong, because a synonym's
-  second word is usually a school or a level: «Финансовая математика VŠE»
-  matched «matematika vse» and became «Математика для экономистов».
+- compared everywhere, including the trigram branches — 19 names wrong;
+- compared only for whole-word containment — 19 again, because the collisions
+  were exact all along: «квантовая механика» becomes "mechanika", which is a
+  synonym of «Теоретическая механика»;
+- compared only against multi-word synonyms — 21 wrong, because a phrase
+  collides too: «Финансовая математика VŠE» contains "matematika vse", which is
+  a synonym of «Математика для экономистов».
 
 Gating on "the query mixes alphabets" does not help either: «матан ČVUT» mixes
-alphabets, and so does most of what people type here. The shape of this catalog
-is against it — half of its synonyms end in a school abbreviation.
+alphabets, and so does most of what people type here.
+
+The catalog's own shape is what defeats it. Of 828 synonyms on active leaves,
+395 are more than one word, and once transliterated a great many of those are
+also a substring of some *other* subject's name or synonym — which is invisible
+while each alphabet is compared only with itself.
 
 What the failing query actually needs is the third mechanism below, which reads
 meaning rather than letters, and an arbitration between it and a weak trigram
