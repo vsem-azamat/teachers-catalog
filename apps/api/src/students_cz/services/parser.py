@@ -304,6 +304,12 @@ LANGUAGE_WORDS: tuple[str, ...] = (
     "чешск",
     "чеськ",
     "cestin",
+    # The adjective as well as the noun: "doucovani ceskeho jazyka" is how it is
+    # said in Czech, and the Russian and Ukrainian entries already carry both
+    # forms because their adjective is the stem.
+    "cesk",
+    "anglick",
+    "nemeck",
     "английск",
     "англійськ",
     "anglict",
@@ -565,6 +571,12 @@ FILLER_WORDS: frozenset[str] = frozenset(
         "in",
         "with",
         "and",
+        "i",
+        "am",
+        "is",
+        "are",
+        "to",
+        "of",
         "my",
         "me",
     )

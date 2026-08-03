@@ -520,6 +520,7 @@ async def test_an_insurer_name_is_the_insurance_it_names(session, text) -> None:
         ("doucovani marketingu v cestine 14 unora", "tutoring"),
         ("marketing tutor in czech 14 february", "tutoring"),
         ("нужен репетитор по маркетингу на чешском 3.03", "tutoring"),
+        ("i need a chemistry tutor in czech", "tutoring"),
         ("репетитор з біології англійською", "tutoring"),
         ("репетитор по чешской литературе", "tutoring"),
         ("doucovani matematiky v cestine", "tutoring"),
@@ -579,6 +580,12 @@ async def test_a_language_beside_an_errand_is_not_a_lesson(
         "репетитор по чешскому до 600 крон",
         "doucovani cestiny do 600 korun",
         "репетитор по чешскому 14 марта",
+        # English says it with a pronoun and an article, and Czech with the
+        # adjective rather than the noun.
+        "i need a czech tutor",
+        "i am looking for an english tutor",
+        "doucovani ceskeho jazyka",
+        "doucovani anglickeho jazyka",
     ],
 )
 async def test_asking_for_a_language_tutor_finds_languages(session, text) -> None:
