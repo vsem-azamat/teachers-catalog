@@ -383,3 +383,47 @@ async def test_a_line_dropped_from_the_checklist_is_retired_not_deleted(
     )
     assert dropped is not None, "the row was deleted, not retired"
     assert dropped.is_active is False
+
+
+def _seeded_synonyms() -> dict[str, set[str]]:
+    """Every subject's synonyms, out of the file the seed reads."""
+    import json
+
+    data = json.loads(
+        (Path(__file__).resolve().parents[1] / "seeds/subjects.json").read_text()
+    )
+
+    out: dict[str, set[str]] = {}
+
+    def walk(nodes: Any) -> None:
+        for node in nodes:
+            out[node["slug"]] = set(node.get("synonyms") or [])
+            walk(node.get("children", []))
+
+    walk(data["groups"])
+    return out
+
+
+def test_seed_and_migrations_agree_about_synonyms() -> None:
+    """The same rule the service types follow, for the words that find them.
+
+    Subjects are seeded from a file and never by a migration, so a migration
+    that edits `synonyms` is the only way a change reaches production — and the
+    two drifting apart is invisible until a production query answers differently
+    from every developer's. A migration declares what it touches under
+    `SYNONYM_ADDS` and `SYNONYM_REMOVES`; this holds the seed to it.
+    """
+    seeded = _seeded_synonyms()
+    checked = 0
+    for path in sorted(VERSIONS.glob("*.py")):
+        for slug, words in _constant(path, "SYNONYM_ADDS", {}).items():
+            assert slug in seeded, f"{path.name} names a subject the seed has not: {slug}"
+            missing = sorted(set(words) - seeded[slug])
+            assert missing == [], f"{path.name} adds synonyms the seed lacks: {missing}"
+            checked += 1
+        for slug, words in _constant(path, "SYNONYM_REMOVES", {}).items():
+            assert slug in seeded, f"{path.name} names a subject the seed has not: {slug}"
+            left = sorted(set(words) & seeded[slug])
+            assert left == [], f"{path.name} removes synonyms the seed still has: {left}"
+            checked += 1
+    assert checked, "no migration declares a synonym change"

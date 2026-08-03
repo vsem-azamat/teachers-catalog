@@ -165,30 +165,38 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "написати",
         "курсову",
     ),
-    # Above `tutoring`, because the two share every word that asks for a teacher
-    # and only these say which subject: "репетитор по чешскому" is a language
-    # lesson, and reading it as plain tutoring loses the one thing it said.
+    # Above `tutoring`, because the two share every word that asks for a
+    # teacher and only these say which subject: "репетитор по чешскому" is a
+    # language lesson, and reading it as plain tutoring loses the one thing it
+    # said.
+    #
+    # Phrases and not the bare adjective, which is the trap here: this block
+    # sits above the non-study one, so a lone "чешск" made "нужна чешская виза"
+    # a language lesson — a study kind with no subject, which is the empty
+    # screen that block's own comment exists to prevent. A language names this
+    # kind of help only next to the asking.
     "language_tutoring": (
-        "чешск",
-        "чеськ",
-        "cestin",
-        "češtin",
-        "cestiny",
-        "английск",
-        "англійськ",
-        "anglict",
-        "angličt",
-        Word("english"),
-        "немецк",
-        "німецьк",
-        "nemcin",
-        "němčin",
-        Word("german"),
-        # How a language course is named rather than the language itself.
-        "pro cizince",
-        "язык для иностран",
+        "репетитор по чешск",
+        "репетитор по английск",
+        "репетитор по немецк",
+        "репетитор з чеськ",
+        "репетитор з англійськ",
+        "репетитор з німецьк",
+        "doucovani cestiny",
+        "doucovani anglictiny",
+        "doucovani nemciny",
+        "czech tutor",
+        "english tutor",
+        "german tutor",
         "language tutor",
-        "jazykov",
+        # A course rather than the language: nobody says these about a visa.
+        "pro cizince",
+        "для иностранцев",
+        "для іноземців",
+        "jazykov kurz",
+        "kurz cestiny",
+        "языковые курсы",
+        "мовні курси",
     ),
     "tutoring": (
         "репетитор",
@@ -230,7 +238,6 @@ SERVICE_KEYWORDS: dict[str, tuple[str, ...]] = {
         Word("pvzp"),
         Word("slavia"),
         Word("uniqa"),
-        Word("ergo"),
     ),
     "bank_letter": (
         "справка из банк",

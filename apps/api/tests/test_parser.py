@@ -479,6 +479,27 @@ async def test_an_insurer_name_is_the_insurance_it_names(session, text) -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # An adjective is not an ask. This block sits above the non-study kinds,
+        # so a bare "чешск" made every one of these a language lesson — a study
+        # kind with no subject, which is an empty screen.
+        ("нужна чешская виза", "residence"),
+        ("нужна чешская страховка", "insurance"),
+        ("выписка со счета в чешском банке", "bank_letter"),
+        ("потрібна чеська віза", "residence"),
+        ("нужен репетитор по матану", "tutoring"),
+    ],
+)
+async def test_a_language_beside_an_errand_is_not_a_lesson(
+    session, text, expected
+) -> None:
+    parsed = await parse(session, text, "ru", today=TODAY)
+    assert parsed.service_type == expected
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
     "text",
     [
         "нужен репетитор по чешскому",
