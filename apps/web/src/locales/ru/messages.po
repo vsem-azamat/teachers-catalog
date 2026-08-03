@@ -49,6 +49,10 @@ msgstr "Пока ни одной. Добавь ниже — без них теб
 #~ msgid "Заявку увидят все, кто предлагает помощь."
 #~ msgstr "Заявку увидят все, кто предлагает помощь."
 
+#: src/pages/Results.tsx
+msgid "Похоже, речь о"
+msgstr "Похоже, речь о"
+
 #: src/pages/Offer.tsx
 #: src/pages/OfferPrices.tsx
 msgid "Проверь связь и попробуй ещё раз."
@@ -181,6 +185,10 @@ msgstr "Оставь заявку — ответят сами"
 msgid "Оформление: как в системе. Нажми, чтобы сменить"
 msgstr "Оформление: как в системе. Нажми, чтобы сменить"
 
+#: src/pages/Results.tsx
+msgid "Напиши иначе — или оставь заявку, и найдут тебя."
+msgstr "Напиши иначе — или оставь заявку, и найдут тебя."
+
 #: src/components/RequestSheet.tsx
 msgid "Не отправилось — попробуй ещё раз."
 msgstr "Не отправилось — попробуй ещё раз."
@@ -192,6 +200,10 @@ msgstr "Не отправилось — попробуй ещё раз."
 #: src/lib/turnaround.tsx
 msgid "Две недели"
 msgstr "Две недели"
+
+#: src/pages/Results.tsx
+msgid "Не поняли запрос"
+msgstr "Не поняли запрос"
 
 #: src/components/AppHeader.tsx
 msgid "Язык"

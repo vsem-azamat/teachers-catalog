@@ -54,6 +54,19 @@ export default function ResultsPage() {
   // preview this list, so the number it showed is the number that arrives here.
   const { filters, isError: filtersFailed } = useSearchFilters(params);
 
+  // Nothing to filter on and only a guess to go by. There is no list to show
+  // above the guess then, and running the search anyway would count the whole
+  // catalog under somebody's question — which is exactly what `/ask` refuses to
+  // do — and then subtract every one of those people from the guess's own list,
+  // leaving it empty. So the guess is the screen.
+  const onlyGuess =
+    guess !== null &&
+    filters !== null &&
+    !filters.subject_id &&
+    !filters.institution_id &&
+    !filters.service_type_id &&
+    !filters.max_price;
+
   // `filters` and not `{...filters}`: spread onto an object, a null — the
   // service code has not been resolved yet — becomes the same key as a search
   // with no filters at all. A warm cache from an unfiltered visit would then be
@@ -62,7 +75,7 @@ export default function ResultsPage() {
   const { data, isPending, isError } = useQuery({
     queryKey: ['search', filters, sort],
     queryFn: ({ signal }) => api.search({ ...filters, sort }, signal),
-    enabled: filters !== null,
+    enabled: filters !== null && !onlyGuess,
   });
 
   const also = useQuery({
@@ -78,7 +91,7 @@ export default function ResultsPage() {
   // Unknown filters are still loading, not loaded. The error takes precedence,
   // or a failed lookup would keep the skeleton up for ever.
   const failed = isError || filtersFailed;
-  const loading = (isPending || filters === null) && !failed;
+  const loading = (isPending || filters === null) && !failed && !onlyGuess;
 
   // Everything the section needs except who is already on screen above it,
   // which is the only thing that differs between the two branches below.
@@ -121,7 +134,12 @@ export default function ResultsPage() {
           ]}
         />
 
-        {loading ? (
+        {onlyGuess ? (
+          <>
+            <AlsoSection {...alsoProps} alone exclude={new Set()} />
+            <AskInstead onClick={() => setAsking(true)} found={0} />
+          </>
+        ) : loading ? (
           <>
             <Label>
               <Trans>Ищем…</Trans>
@@ -228,6 +246,7 @@ function AlsoSection({
   cards,
   named,
   exclude,
+  alone = false,
   locale,
   onOpen,
 }: {
@@ -235,19 +254,29 @@ function AlsoSection({
   /** The subject it guessed, as the server named it in the reader's language. */
   named: string | null;
   exclude: Set<number>;
+  /** Nothing above it, because the query gave nothing else to search by. */
+  alone?: boolean;
   locale: string;
   onOpen: (id: number) => void;
 }) {
   const rest = cards.filter((card) => !exclude.has(card.user_id));
-  if (rest.length === 0) return null;
+  if (rest.length === 0) {
+    return alone ? (
+      <Empty
+        title={<Trans>Не поняли запрос</Trans>}
+        body={<Trans>Напиши иначе — или оставь заявку, и найдут тебя.</Trans>}
+      />
+    ) : null;
+  }
 
   return (
     <>
       {/* Named, or the section is a shrug: «Также» alone leaves the reader to
           work out why these people are here, and the answer is that we guessed
-          this is what they meant. */}
+          this is what they meant. With nothing above it the word changes —
+          "also" beside nothing reads as a missing list. */}
       <Label aside={named}>
-        <Trans>Также</Trans>
+        {alone ? <Trans>Похоже, речь о</Trans> : <Trans>Также</Trans>}
       </Label>
       <Cards>
         {rest.map((card) => (
