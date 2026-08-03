@@ -35,10 +35,13 @@ async def parse_query(
 ) -> ParseOut:
     """Read a sentence and show back what we made of it.
 
-    The rule is `services/search.describe`. This sentence stays here because it
-    is the operation's description in the OpenAPI document, which the client is
-    generated from.
+    Every call is logged with its parse and result count. Queries that match
+    nothing are the ranked list of what the catalog is missing, and the raw
+    text next to the parse is what a better parser would be trained on.
     """
+    # Unchanged for the reason `browse.start_contact` gives: the docstring is
+    # the operation's description in the OpenAPI document. The rule itself is
+    # `services/search.describe`.
     return await search.describe(session, lang, viewer=user, text=payload.text)
 
 

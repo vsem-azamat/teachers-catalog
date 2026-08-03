@@ -37,8 +37,13 @@ async def helper_detail(
 async def start_contact(user_id: int, session: SessionDep, user: UserDep) -> ContactOut:
     """Record that someone is about to write, and hand back the link.
 
-    The rule is `catalog.start_contact`. This sentence stays here because it is
-    the operation's description in the OpenAPI document, which the client is
-    generated from.
+    The conversation itself happens in Telegram, where both people already are.
+    What we keep is that it started — which is the only honest basis for the
+    response times and deal counts shown on a card. Self-reported numbers would
+    be worth nothing.
     """
+    # Word for word what it was before the rule moved to `catalog.start_contact`:
+    # a route's docstring is the operation's description in the OpenAPI
+    # document, so rewriting it here would change the contract, and it is
+    # addressed to whoever reads /docs rather than to whoever reads this file.
     return await catalog.start_contact(session, viewer=user, helper_id=user_id)
