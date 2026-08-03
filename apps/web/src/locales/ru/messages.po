@@ -957,6 +957,11 @@ msgstr "Заявок пока нет"
 msgid "Убрать"
 msgstr "Убрать"
 
+#. placeholder {0}: alsoProps.named
+#: src/pages/Results.tsx
+msgid "Сверху — кто ведёт «{0}»"
+msgstr "Сверху — кто ведёт «{0}»"
+
 #: src/pages/Ask.tsx
 msgid "По этому пока не найти"
 msgstr "По этому пока не найти"

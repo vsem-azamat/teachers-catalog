@@ -15,6 +15,7 @@ import {
   Screen,
   Segmented,
   SkeletonRows,
+  Sub,
   ui,
 } from '@/components/Ui';
 import { useSearchFilters } from '@/hooks/useSearchFilters';
@@ -110,10 +111,13 @@ export default function ResultsPage() {
   // «Также», which is the honest word for "these matched what you typed, but
   // not what we think you meant".
   const guessed = new Set((also.data?.results ?? []).map((card) => card.user_id));
-  const closest = guessed.size
-    ? (data?.results ?? []).filter((card) => guessed.has(card.user_id))
-    : (data?.results ?? []);
-  const rest = guessed.size
+  const matching = (data?.results ?? []).filter((card) => guessed.has(card.user_id));
+  // Split only when the guess actually lifted somebody. It can match people the
+  // main search ranked past its first page, and then the top group would be an
+  // empty list under a heading counting everybody.
+  const split = matching.length > 0;
+  const closest = split ? matching : (data?.results ?? []);
+  const rest = split
     ? (data?.results ?? []).filter((card) => !guessed.has(card.user_id))
     : [];
 
@@ -180,7 +184,10 @@ export default function ResultsPage() {
           ) : (
             <>
               <AlsoSection {...alsoProps} />
-              <AskInstead onClick={() => setAsking(true)} found={0} />
+              <AskInstead
+                onClick={() => setAsking(true)}
+                found={alsoProps.cards.length}
+              />
             </>
           )
         ) : loading ? (
@@ -208,6 +215,13 @@ export default function ResultsPage() {
             <Label aside={<Trans>всего {data.total}</Trans>}>
               <Trans>Кто может помочь</Trans>
             </Label>
+            {/* Why these are first. Two unexplained groups is worse than one
+                list: the reader is owed the guess that reordered them. */}
+            {split && alsoProps.named ? (
+              <Sub>
+                <Trans>Сверху — кто ведёт «{alsoProps.named}»</Trans>
+              </Sub>
+            ) : null}
             <Cards>
               {closest.map((card) => (
                 <HelperCardView

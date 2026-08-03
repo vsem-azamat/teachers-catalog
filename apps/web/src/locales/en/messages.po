@@ -957,6 +957,11 @@ msgstr "No requests yet"
 msgid "Убрать"
 msgstr "Remove"
 
+#. placeholder {0}: alsoProps.named
+#: src/pages/Results.tsx
+msgid "Сверху — кто ведёт «{0}»"
+msgstr "First — who teaches “{0}”"
+
 #: src/pages/Ask.tsx
 msgid "По этому пока не найти"
 msgstr "Not enough to search on"

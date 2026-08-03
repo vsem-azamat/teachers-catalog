@@ -957,6 +957,11 @@ msgstr "Zatím žádné poptávky"
 msgid "Убрать"
 msgstr "Odebrat"
 
+#. placeholder {0}: alsoProps.named
+#: src/pages/Results.tsx
+msgid "Сверху — кто ведёт «{0}»"
+msgstr "Nahoře — kdo učí „{0}“"
+
 #: src/pages/Ask.tsx
 msgid "По этому пока не найти"
 msgstr "Podle tohohle to zatím nenajdeme"
