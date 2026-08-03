@@ -151,6 +151,17 @@ export default function ResultsPage() {
               title={<Trans>Не получилось загрузить</Trans>}
               body={<Trans>Проверь соединение и попробуй ещё раз.</Trans>}
             />
+          ) : (also.data?.results.length ?? 0) === 0 ? (
+            // Nothing to filter by and nothing behind the guess either: the
+            // honest thing is to say the query was not understood, which is
+            // the one screen where that is true.
+            <>
+              <Empty
+                title={<Trans>Не поняли запрос</Trans>}
+                body={<Trans>Напиши иначе — или оставь заявку, и найдут тебя.</Trans>}
+              />
+              <AskInstead onClick={() => setAsking(true)} found={0} />
+            </>
           ) : (
             <>
               <AlsoSection {...alsoProps} alone exclude={new Set()} />
@@ -281,14 +292,7 @@ function AlsoSection({
   onOpen: (id: number) => void;
 }) {
   const rest = cards.filter((card) => !exclude.has(card.user_id));
-  if (rest.length === 0) {
-    return alone ? (
-      <Empty
-        title={<Trans>Не поняли запрос</Trans>}
-        body={<Trans>Напиши иначе — или оставь заявку, и найдут тебя.</Trans>}
-      />
-    ) : null;
-  }
+  if (rest.length === 0) return null;
 
   return (
     <>

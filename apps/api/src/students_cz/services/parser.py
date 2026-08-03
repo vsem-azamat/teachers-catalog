@@ -472,10 +472,14 @@ async def parse(
         if _is_named(subjects[0]) and result.service_type in ASIDES:
             result.service_type, _ = _match_service(norm, ignore=SUBJECTLESS)
         else:
-            result.vector_conflicted = bool(
-                result.vector and subjects and subjects[0] is result.vector[0]
-            )
             subjects = []
+
+    # A kind of help that carries no subject cannot be shown beside one either.
+    # Whether the proposal was believed and then dropped above, or never reached
+    # the bar at all, a second list filtered by it is guaranteed to be empty —
+    # the search ANDs the two and no offer in that group has a subject.
+    if result.vector and result.service_type in SUBJECTLESS:
+        result.vector_conflicted = True
 
     if subjects:
         result.subject = subjects[0]

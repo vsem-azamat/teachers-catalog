@@ -1376,3 +1376,33 @@ async def test_a_guess_the_rules_removed_is_not_shown_either(client, session):
         embedding.set_embedder(None)
 
     assert body["also"] is None, "a conflicting guess came back as a section"
+
+
+async def test_a_guess_beside_a_subjectless_kind_is_never_shown(client, session):
+    """Whether it was believed and dropped, or never believed at all.
+
+    A second list filtered by that subject is guaranteed to be empty: the search
+    ANDs the subject with the kind of help, and no offer in the non-study group
+    has one.
+    """
+    from students_cz.db.embed import rebuild
+    from students_cz.services import embedding
+
+    from .test_embedding import RiggedEmbedder
+
+    # Worth demoting on confidence — and still not worth showing here.
+    rigged = RiggedEmbedder("Чешский язык B2 (для вуза и нострификации)", 0.40)
+    await rebuild(session, embedder=rigged)
+    embedding.set_embedder(rigged)
+    try:
+        body = (
+            await client.post(
+                "/api/v1/search/parse",
+                json={"text": "нужна страховка зззз"},
+                headers=auth_header(90904),
+            )
+        ).json()
+    finally:
+        embedding.set_embedder(None)
+
+    assert body["also"] is None
