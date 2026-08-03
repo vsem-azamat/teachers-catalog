@@ -423,14 +423,6 @@ async def parse(
     if result.service_type == "tutoring" or (
         result.service_type is None and _mentions(norm, COURSE_WORDS)
     ):
-        # Which subject it is about decides it. A language beside a lesson is a
-        # language lesson; maths taught in Czech is maths, and reading that as a
-        # language lesson would carry a subject no language offer has — an empty
-        # screen for a query that worked.
-        #
-        # With no subject resolved the words are all there is, and that is the
-        # commonest phrasing of all: "репетитор по чешскому" says which language
-        # and not which level, so no subject can match it.
         # A language lesson is a lesson whose request is the language, and
         # nothing else. "репетитор по химии на чешском" names the medium of
         # instruction, "репетитор по чешской литературе" a nationality, and
@@ -442,10 +434,13 @@ async def parse(
         # has, and `catalog.search` ANDs the two: an empty screen for a query
         # that worked.
         #
-        # The words and not the resolved subject, because the commonest
-        # phrasing resolves none: "репетитор по чешскому" says which language
-        # and not which level, and a bare «чешский» names five subjects and
-        # belongs to none of them.
+        # Lexical, and not a question about the resolved subject, for two
+        # reasons. The commonest phrasing resolves none — "репетитор по
+        # чешскому" says which language and not which level, and a bare
+        # «чешский» names five subjects and belongs to none of them. And where
+        # one does resolve it is as often the wrong one: "chemistry tutor in
+        # czech" scores Czech C1 at 0.69 against chemistry at 0.55, by name in
+        # both cases, so neither the score nor how it matched separates the two.
         language = _first(norm, LANGUAGE_WORDS)
         if language and not _left_over(norm, keyword or "", language):
             result.service_type = "language_tutoring"
@@ -498,6 +493,14 @@ FILLER: tuple[str, ...] = (
     "jazyk",
     "language",
     *COURSE_WORDS,
+    # A shade of the language rather than another subject.
+    "разговорн",
+    "розмовн",
+    "konverzac",
+    "conversational",
+    # And any *other* language: "репетитор по чешскому и английскому" asks for
+    # two of these and for nothing else.
+    *LANGUAGE_WORDS,
 )
 
 # Single letters and prepositions, which a stem list cannot hold: "по" would
@@ -514,6 +517,7 @@ FILLER_WORDS: frozenset[str] = frozenset(
         "о",
         "от",
         "из",
+        "и",
         "мне",
         # uk
         "і",
@@ -529,6 +533,14 @@ FILLER_WORDS: frozenset[str] = frozenset(
         "na",
         "pro",
         "si",
+        # The level, which says which row of the same language and never
+        # another subject.
+        "a1",
+        "a2",
+        "b1",
+        "b2",
+        "c1",
+        "c2",
         # en
         "for",
         "a",

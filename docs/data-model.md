@@ -287,7 +287,10 @@ rule above makes of a keyword that was the whole query.
 
 "What is left" ignores the words that ask rather than name — verbs of searching,
 prepositions, the word "language" itself, and the word "course", which is what
-makes "kurzy cestiny" and "курс чешского языка" lessons as well.
+makes "kurzy cestiny" and "курс чешского языка" lessons as well. It also ignores
+the words that say the *same* request more precisely: a level ("B2"), a shade
+("разговорный", "konverzace") and a second language, so "doucovani cestiny B2"
+and "репетитор по чешскому и английскому" are language lessons too.
 
 The words and not the resolved subject, because the commonest phrasing resolves
 none: "репетитор по чешскому" says which language and not which level, and a

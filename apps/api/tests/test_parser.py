@@ -506,6 +506,7 @@ async def test_an_insurer_name_is_the_insurance_it_names(session, text) -> None:
         # language lessons carrying a subject no language offer has.
         ("нужен репетитор по химии на чешском", "tutoring"),
         ("chemistry tutor in czech", "tutoring"),
+        ("physics tutor in english", "tutoring"),
         ("репетитор з біології англійською", "tutoring"),
         ("репетитор по чешской литературе", "tutoring"),
         ("doucovani matematiky v cestine", "tutoring"),
@@ -545,6 +546,13 @@ async def test_a_language_beside_an_errand_is_not_a_lesson(
         # subject says what it is about.
         "помогите с чешским языком",
         "нужен чешский",
+        # A level, a shade and a second language all say the same thing more
+        # precisely; none of them names another subject, so none of them stops
+        # this being a language lesson.
+        "doucovani cestiny B2",
+        "репетитор по разговорному чешскому",
+        "conversational czech tutor",
+        "нужен репетитор по чешскому и английскому",
     ],
 )
 async def test_asking_for_a_language_tutor_finds_languages(session, text) -> None:
