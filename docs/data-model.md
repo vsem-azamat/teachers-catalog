@@ -220,8 +220,9 @@ while the same query transliterated answers the right subject at 1.00.
 
 Three ways of doing it were built and measured against the whole catalog: every
 active leaf subject's name and synonyms, 1,176 strings, each on its own and
-after each of four school names — 8,232 probes, compared with the answers the
-lookup gives without transliteration. **All three moved strings onto wrong
+after each of four school names, two of them spelled both with and without
+diacritics — 8,232 probes, compared with the answers the lookup gives without
+transliteration. **All three moved strings onto wrong
 subjects, and not one of them rescued a single string in the catalog.** The
 mechanism is the same every time, and it is not fuzziness: a latinised word
 lands *exactly* on another subject's synonym and scores 1.00, which the right
