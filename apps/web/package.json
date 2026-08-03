@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "pnpm@11.17.0",
   "engines": {
-    "node": ">=20.19"
+    "node": ">=22.18"
   },
   "scripts": {
     "dev": "vite",
@@ -14,7 +14,8 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "typecheck": "tsc -b",
+    "typecheck": "tsc -b && tsc -p tsconfig.test.json",
+    "test": "node scripts/test.mjs",
     "check:scroll": "node scripts/check-scroll.mjs",
     "i18n:extract": "lingui extract",
     "i18n:compile": "lingui compile",

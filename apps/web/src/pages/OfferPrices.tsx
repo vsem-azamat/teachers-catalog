@@ -25,6 +25,7 @@ import {
 import { hapticSelection, hapticSuccess, useMainButton } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
 import { groupRuns } from '@/lib/groups';
+import { type Axis, addAxis, type Draft, dropRow, keyOf } from '@/lib/offerRows';
 import { TURNAROUNDS, TurnaroundLabel } from '@/lib/turnaround';
 import type {
   Institution,
@@ -174,16 +175,9 @@ export default function OfferPricesPage() {
   // Arrived here directly — a reload, or a link. There is nothing to price.
   if (!picked || picked.length === 0) return <Navigate to="/offer" replace />;
 
-  // Removing the last subject — or the last school — must not remove the
-  // service: the person ticked it, and a service with no axis is one search
-  // cannot reach yet, not one they withdrew.
-  const dropRow = (type: ServiceType, row: Draft) => {
-    setRows((current) => {
-      const left = current.filter((other) => other.key !== row.key);
-      return left.some((other) => other.service_type_id === type.id)
-        ? left
-        : [...left, blank(type)];
-    });
+  // What survives a removed chip is `dropRow`'s rule, and it is tested there.
+  const removeAxis = (row: Draft, axis: Axis) => {
+    setRows((current) => dropRow(current, row, axis));
   };
 
   // The checklist belongs to the service, not to one of its rows: a person who
@@ -242,71 +236,25 @@ export default function OfferPricesPage() {
     );
   };
 
-  /**
-   * Attach a subject or a school to this service.
-   *
-   * One function for both, because they are the same move: `offers` is unique
-   * on its four axes, so calculus and physics — or ČVUT and VŠE — are two rows
-   * of the same service, and the first row of a service that takes an axis
-   * starts without one.
-   */
-  const addAxis = (
+  // Which row it lands on, what it inherits and how it is keyed are
+  // `addAxis`'s rules, and they are tested there.
+  const attach = (
     type: ServiceType,
-    key: string,
-    axis: Partial<Draft>,
-    hasNoAxis: (row: Draft) => boolean,
+    axis: Axis,
+    picked: { id: number; name: string },
   ) => {
     hapticSelection();
-    setRows((current) => {
-      // Fill the empty first row rather than leaving it behind, which would
-      // save as "this service, no subject" alongside the real ones.
-      const empty = current.find(
-        (row) => row.service_type_id === type.id && hasNoAxis(row),
-      );
-      if (empty) {
-        return current.map((row) => (row === empty ? { ...row, ...axis } : row));
-      }
-      return [
-        ...current,
-        {
-          ...blank(type),
-          ...axis,
-          key,
-          // Inherits what the person already said about this service — the
-          // price, and the checklist the ticks above wrote to its other rows.
-          // Asking the same price four times is asking three times too many,
-          // and a row added after the ticks were set would otherwise save an
-          // empty checklist.
-          price: current.find((row) => row.service_type_id === type.id)?.price ?? '',
-          option_ids:
-            current.find((row) => row.service_type_id === type.id)?.option_ids ?? [],
-          note: current.find((row) => row.service_type_id === type.id)?.note ?? '',
-        },
-      ];
-    });
+    setRows((current) => addAxis(current, blank(type), axis, picked));
   };
 
   const addSubject = (type: ServiceType, subject: Subject) =>
-    addAxis(
-      type,
-      `${type.id}:${subject.id}`,
-      { subject_id: subject.id, subject_name: subject.name },
-      (row) => row.subject_id === null,
-    );
+    attach(type, 'subject', { id: subject.id, name: subject.name });
 
   const addInstitution = (type: ServiceType, institution: Institution) =>
-    addAxis(
-      type,
-      `${type.id}:inst:${institution.id}`,
-      {
-        institution_id: institution.id,
-        // The server's own `institution_name`, not the short form: a chip that
-        // reads ČVUT until the screen reloads and then reads the full name is
-        // one school looking like two.
-        institution_name: institution.name,
-      },
-      (row) => row.institution_id === null,
-    );
+    // The server's own `institution.name`, not the short form: a chip that
+    // reads ČVUT until the screen reloads and then reads the full name is one
+    // school looking like two.
+    attach(type, 'institution', { id: institution.id, name: institution.name });
 
   return (
     <Screen>
@@ -360,7 +308,7 @@ export default function OfferPricesPage() {
                           <AxisChips
                             rows={mineHere.filter((row) => row.subject_id !== null)}
                             label={(row) => row.subject_name}
-                            onDrop={(row) => dropRow(type, row)}
+                            onDrop={(row) => removeAxis(row, 'subject')}
                             removeLabel={t`Убрать`}
                           />
                           <SubjectSearch
@@ -380,7 +328,7 @@ export default function OfferPricesPage() {
                           <AxisChips
                             rows={mineHere.filter((row) => row.institution_id !== null)}
                             label={(row) => row.institution_name}
-                            onDrop={(row) => dropRow(type, row)}
+                            onDrop={(row) => removeAxis(row, 'institution')}
                             removeLabel={t`Убрать`}
                           />
                           <InstitutionPicker
@@ -649,31 +597,11 @@ function PriceRow({
   );
 }
 
-/** One offer while it is being edited. The price is a string: an input mid-typing
- *  legitimately holds "" and "4", and parsing on every keystroke turns both into
- *  something the field then has to render back. */
-interface Draft {
-  key: string;
-  service_type_id: number;
-  subject_id: number | null;
-  subject_name: string | null;
-  institution_id: number | null;
-  institution_name: string | null;
-  option_ids: number[];
-  note: string;
-  // `null` is «договоримся», which is an answer, so the field is never absent.
-  turnaround_days: number | null;
-  price: string;
-  unit: PriceUnit;
-  langs: string[];
-}
-
 /**
  * The rows of one service that already carry an axis, as removable chips.
  *
  * One component for subjects and schools: the two blocks were byte-identical
- * apart from the field they read, down to the closure that puts the service
- * back when its last axis goes.
+ * apart from the field they read and the axis they name when a chip goes.
  */
 function AxisChips({
   rows,
@@ -704,8 +632,8 @@ function AxisChips({
 }
 
 function blank(type: ServiceType): Draft {
-  return {
-    key: `${type.id}:new`,
+  const row: Draft = {
+    key: '',
     service_type_id: type.id,
     subject_id: null,
     subject_name: null,
@@ -720,11 +648,13 @@ function blank(type: ServiceType): Draft {
     unit: type.default_price_unit ?? 'hour',
     langs: [],
   };
+  // Keyed like every other row, from its axes — see `keyOf`.
+  return { ...row, key: keyOf(row) };
 }
 
 function fromOffer(type: ServiceType, offer: MyOffer): Draft {
-  return {
-    key: `${offer.service_type_id}:${offer.subject_id}:${offer.institution_id}`,
+  const row: Draft = {
+    key: '',
     service_type_id: offer.service_type_id,
     subject_id: offer.subject_id,
     subject_name: offer.subject_name,
@@ -739,6 +669,7 @@ function fromOffer(type: ServiceType, offer: MyOffer): Draft {
     unit: offer.price_unit ?? type.default_price_unit ?? 'hour',
     langs: offer.langs,
   };
+  return { ...row, key: keyOf(row) };
 }
 
 /** An offer we are not editing, sent back exactly as it came. */

@@ -93,8 +93,9 @@ tunnel: tunnel-tool  ## Expose the mini app over HTTPS so Telegram can reach it
 # ── checks ──────────────────────────────────────────────────────────────
 
 .PHONY: test
-test:  ## Run the API test suite (needs the database up)
+test:  ## Run both test suites (the API's needs the database up)
 	cd $(API) && uv run pytest -q
+	cd $(WEB) && pnpm test
 
 .PHONY: lint
 lint:  ## Lint and type-check both apps

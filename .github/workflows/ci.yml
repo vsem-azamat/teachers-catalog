@@ -141,7 +141,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
           cache-dependency-path: apps/web/pnpm-lock.yaml
 
@@ -173,7 +173,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # 24, because `pnpm test` runs TypeScript through node's own test
+          # runner and its type stripping is only unflagged from 22.18.
+          node-version: 24
           cache: pnpm
           cache-dependency-path: apps/web/pnpm-lock.yaml
 
@@ -184,6 +186,9 @@ jobs:
 
       - name: Type-check
         run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
 
       - name: Check every message is translated
         # An untranslated string falls back to the Russian source *and* to

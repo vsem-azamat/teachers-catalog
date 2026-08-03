@@ -100,12 +100,16 @@ two ways to break production are in [docs/deploy.md](docs/deploy.md).
 
 ```sh
 make check                # everything CI runs
-make test                 # just the API suite
+make test                 # both test suites
 ```
 
-Tests run against a real Postgres, each inside a transaction that is rolled
-back. The interesting logic here is SQL — trigram matching, word-boundary
-synonym matching, exclusion constraints — and none of it survives being mocked.
+The API's tests run against a real Postgres, each inside a transaction that is
+rolled back. The interesting logic there is SQL — trigram matching,
+word-boundary matching of synonyms, exclusion constraints — and none of it
+survives being mocked.
+
+The mini app's tests run on node's own runner, on the modules that hold a rule
+rather than a layout: `pnpm test` in `apps/web`, no test framework installed.
 
 The tooling is [uv](https://docs.astral.sh/uv/) and
 [ruff](https://docs.astral.sh/ruff/) plus [ty](https://docs.astral.sh/ty/) on
