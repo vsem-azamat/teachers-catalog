@@ -275,18 +275,23 @@ because the words that would name it — "чешск", "anglict" — also say *w
 bank, *whose* visa and *whose* dormitory, and anything placed high enough to beat
 tutoring takes all of those with it.
 
-It is a refinement of a lesson instead, and **the subject decides it**: a
-tutoring match whose subject is one of the languages is a language lesson, while
-maths taught in Czech stays maths — read the other way it would carry a subject
-no language offer has, which is the same empty screen the asides rule exists to
-prevent. A course word does the same for a query that named no kind of help at
-all: "kurzy cestiny" is a lesson because of what it is about.
+It is a refinement of a lesson instead, and the test is **whether the language
+is the whole request**. Take out the words that asked and the language itself,
+and what is left decides: "репетитор по чешскому" leaves nothing, while
+"репетитор по химии на чешском" leaves chemistry, "репетитор по чешской
+литературе" leaves literature and "репетитор по матану на чешском" leaves maths
+— a medium of instruction and a nationality, not a request for a language. Read
+the other way they would carry a subject no language offer has, and the search
+ANDs the two: an empty screen for a query that worked. It is the same test the
+rule above makes of a keyword that was the whole query.
 
-The words are the fallback for the one case a subject cannot settle: "репетитор
-по чешскому" says which language and not which level, and a bare «чешский» names
-five subjects and belongs to none of them, so nothing resolves. There the
-language word is all there is — and it is consulted only when no subject was
-found, which is what keeps it away from the bank and the visa.
+"What is left" ignores the words that ask rather than name — verbs of searching,
+prepositions, the word "language" itself, and the word "course", which is what
+makes "kurzy cestiny" and "курс чешского языка" lessons as well.
+
+The words and not the resolved subject, because the commonest phrasing resolves
+none: "репетитор по чешскому" says which language and not which level, and a
+bare «чешский» names five subjects and belongs to none of them.
 
 Above all this sits the query parser, which turns free text into ids. Because it
 does, the database rarely has to do linguistic work at all — it looks up

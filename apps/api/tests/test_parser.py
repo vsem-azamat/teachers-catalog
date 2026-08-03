@@ -501,6 +501,13 @@ async def test_an_insurer_name_is_the_insurance_it_names(session, text) -> None:
         # these as language lessons would carry a maths subject no language
         # offer has — an empty screen for a query that worked.
         ("нужен репетитор по матану на чешском", "tutoring"),
+        # The same, where the subject scores far lower than the language does:
+        # the guard cannot be "the subject won", or these three would be
+        # language lessons carrying a subject no language offer has.
+        ("нужен репетитор по химии на чешском", "tutoring"),
+        ("chemistry tutor in czech", "tutoring"),
+        ("репетитор з біології англійською", "tutoring"),
+        ("репетитор по чешской литературе", "tutoring"),
         ("doucovani matematiky v cestine", "tutoring"),
         ("потрібен репетитор з матану чеською", "tutoring"),
         ("calculus tutor in czech", "tutoring"),

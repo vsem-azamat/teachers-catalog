@@ -14,7 +14,6 @@ import re
 from dataclasses import dataclass, field
 from datetime import date
 
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from students_cz.services.lookup import Match, find_institutions, find_subjects, normalise
@@ -432,10 +431,23 @@ async def parse(
         # With no subject resolved the words are all there is, and that is the
         # commonest phrasing of all: "репетитор по чешскому" says which language
         # and not which level, so no subject can match it.
-        if subjects:
-            if await _is_a_language(session, subjects[0].id):
-                result.service_type = "language_tutoring"
-        elif _mentions(norm, LANGUAGE_WORDS):
+        # A language lesson is a lesson whose request is the language, and
+        # nothing else. "репетитор по химии на чешском" names the medium of
+        # instruction, "репетитор по чешской литературе" a nationality, and
+        # "репетитор по матану на чешском" both — each leaves a subject named
+        # once the asking and the language are taken out, which is the same test
+        # the subject filter above makes of a keyword that was the whole query.
+        #
+        # Read as language lessons they would carry a subject no language offer
+        # has, and `catalog.search` ANDs the two: an empty screen for a query
+        # that worked.
+        #
+        # The words and not the resolved subject, because the commonest
+        # phrasing resolves none: "репетитор по чешскому" says which language
+        # and not which level, and a bare «чешский» names five subjects and
+        # belongs to none of them.
+        language = _first(norm, LANGUAGE_WORDS)
+        if language and not _left_over(norm, keyword or "", language):
             result.service_type = "language_tutoring"
 
     institutions = await find_institutions(session, text, lang, limit=3)
@@ -456,39 +468,109 @@ async def parse(
     return result
 
 
-# The slug of the shelf every language sits on. A subject rather than a service
-# type: what makes a query a language lesson is which subject it is about.
-LANGUAGES_GROUP = "languages"
+# The words that ask rather than name: verbs of searching, prepositions,
+# articles, the word "language" itself and the word "course". What is left after
+# these and after the words a rule already accounted for is the part of the
+# query that names something else — see the language refinement in `parse`.
+FILLER: tuple[str, ...] = (
+    *WEAK_HELP,
+    # WEAK_HELP carries "нужен" and "потрібн", which between them miss "нужна",
+    # "нужно" and "потрібен" — forms that matter here, where what is left over
+    # is the whole question.
+    "нужн",
+    "потріб",
+    "ищу",
+    "найти",
+    "хочу",
+    "подскаж",
+    "посовет",
+    "шукаю",
+    "знайти",
+    "hledam",
+    "potrebuj",
+    "looking",
+    "need",
+    "want",
+    "язык",
+    "мова",
+    "мови",
+    "мову",
+    "jazyk",
+    "language",
+    *COURSE_WORDS,
+)
 
-
-async def _is_a_language(session: AsyncSession, subject_id: int) -> bool:
-    """Is this subject one of the languages?
-
-    Asked of the resolved subject rather than of the words, and asked only when
-    the answer can change anything — a tutoring match, or a course with no kind
-    of help named. The materialised path makes it one indexed comparison: every
-    descendant of the group carries its id at the head of `path`.
-    """
-    return bool(
-        await session.scalar(
-            text(
-                "SELECT EXISTS ("
-                "  SELECT 1 FROM subjects child, subjects grp"
-                "   WHERE child.id = :id AND grp.slug = :group"
-                "     AND child.path LIKE grp.id::text || '.%'"
-                ")"
-            ),
-            {"id": subject_id, "group": LANGUAGES_GROUP},
-        )
+# Single letters and prepositions, which a stem list cannot hold: "по" would
+# match "поступление" and "s" would match every Czech word beginning with it.
+FILLER_WORDS: frozenset[str] = frozenset(
+    (
+        # ru
+        "по",
+        "на",
+        "с",
+        "у",
+        "для",
+        "в",
+        "о",
+        "от",
+        "из",
+        "мне",
+        # uk
+        "і",
+        "з",
+        "до",
+        "та",
+        "мені",
+        # cs
+        "z",
+        "s",
+        "v",
+        "k",
+        "na",
+        "pro",
+        "si",
+        # en
+        "for",
+        "a",
+        "an",
+        "the",
+        "in",
+        "with",
+        "and",
+        "my",
+        "me",
     )
+)
+
+
+def _left_over(norm: str, *accounted: str) -> str:
+    """What the query still names once these words and the filler are gone."""
+    text_left = norm
+    for word in accounted:
+        if word:
+            text_left = _without(text_left, word)
+    tokens = tokenise(text_left).split()
+    rest = [
+        token
+        for token in tokens
+        if token not in FILLER_WORDS
+        and not any(token.startswith(normalise(word)) for word in FILLER)
+    ]
+    return " ".join(rest)
+
+
+def _first(norm: str, words: tuple[str, ...]) -> str | None:
+    """The first of `words` the text contains, or None."""
+    tokens = tokenise(norm)
+    for word in words:
+        match = is_whole_word if isinstance(word, Word) else starts_a_word
+        if match(tokens, word):
+            return word
+    return None
 
 
 def _mentions(norm: str, words: tuple[str, ...]) -> bool:
-    tokens = tokenise(norm)
-    return any(
-        (is_whole_word if isinstance(word, Word) else starts_a_word)(tokens, word)
-        for word in words
-    )
+    return _first(norm, words) is not None
 
 
 def _match_service(
