@@ -94,10 +94,42 @@ export function dropRow(rows: Draft[], row: Draft, axis: Axis): Draft[] {
 
 /**
  * A row's key, from its axes — the same pair `offers` is unique on, so two rows
- * of one service that agree on it are one offer. `dropRow` is what keeps that
- * true: a clearing that would produce a key another row already has drops the
- * row instead of minting a twin.
+ * of one service that agree on it are one offer.
+ *
+ * Every row that exists is keyed through here, which is what makes the key
+ * readable as the row's identity: a key minted once and left alone while the
+ * row's axes change is a key that can be minted again for a different row, and
+ * two rows sharing one would share a price field and save as a duplicate.
+ * `dropRow` keeps the other half of it — a clearing that would produce a key
+ * the service already has drops the row instead of minting a twin.
  */
-function keyOf(row: Draft): string {
+export function keyOf(row: Draft): string {
   return `${row.service_type_id}:${row.subject_id}:${row.institution_id}`;
+}
+
+/**
+ * Attach a subject or a school to a service.
+ *
+ * One function for both, because they are the same move: `offers` is unique on
+ * its axes, so calculus and physics — or ČVUT and VŠE — are two rows of the
+ * same service, and the first row of a service that takes an axis starts
+ * without one.
+ *
+ * That first row is filled rather than left behind, which would otherwise save
+ * as "this service, no subject" beside the real ones. A row that is added
+ * instead starts from `serviceAnswers`.
+ */
+export function addAxis(rows: Draft[], blank: Draft, axis: Partial<Draft>): Draft[] {
+  const service = blank.service_type_id;
+  const naming: keyof Draft = 'subject_id' in axis ? 'subject_id' : 'institution_id';
+  const empty = rows.find(
+    (row) => row.service_type_id === service && row[naming] === null,
+  );
+  if (empty) {
+    return rows.map((row) =>
+      row === empty ? { ...row, ...axis, key: keyOf({ ...row, ...axis }) } : row,
+    );
+  }
+  const added = { ...blank, ...serviceAnswers(rows, service), ...axis };
+  return [...rows, { ...added, key: keyOf(added) }];
 }
