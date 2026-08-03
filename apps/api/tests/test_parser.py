@@ -507,6 +507,7 @@ async def test_an_insurer_name_is_the_insurance_it_names(session, text) -> None:
         ("нужен репетитор по химии на чешском", "tutoring"),
         ("chemistry tutor in czech", "tutoring"),
         ("physics tutor in english", "tutoring"),
+        ("нужен репетитор по химии на чешском 500 kc", "tutoring"),
         ("репетитор з біології англійською", "tutoring"),
         ("репетитор по чешской литературе", "tutoring"),
         ("doucovani matematiky v cestine", "tutoring"),
@@ -553,6 +554,13 @@ async def test_a_language_beside_an_errand_is_not_a_lesson(
         "репетитор по разговорному чешскому",
         "conversational czech tutor",
         "нужен репетитор по чешскому и английскому",
+        # Everything else the query said is a field of its own by the time this
+        # is asked — a budget, a date, a school — so none of them can make a
+        # language request look like something else.
+        "репетитор по чешскому 500 kc",
+        "doucovani cestiny 14 unora",
+        "doucovani cestiny na ČVUT",
+        "репетитор по чешскому до 600 крон",
     ],
 )
 async def test_asking_for_a_language_tutor_finds_languages(session, text) -> None:

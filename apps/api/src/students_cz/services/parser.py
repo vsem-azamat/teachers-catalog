@@ -411,40 +411,6 @@ async def parse(
         else:
             subjects = []
 
-    # A language *as the subject* is a language lesson rather than plain
-    # tutoring. Decided here and not in `_match_service`, because it takes the
-    # subject to tell the two apart: "нужен репетитор по чешскому" is one, and
-    # "нужен репетитор по матану на чешском" is maths taught in Czech — read as
-    # a language lesson it would carry a maths subject no language offer has,
-    # which is an empty screen for a query that worked.
-    #
-    # A course word carries it the rest of the way: "kurzy cestiny" names no
-    # kind of help at all, and the subject is what says which course.
-    if result.service_type == "tutoring" or (
-        result.service_type is None and _mentions(norm, COURSE_WORDS)
-    ):
-        # A language lesson is a lesson whose request is the language, and
-        # nothing else. "репетитор по химии на чешском" names the medium of
-        # instruction, "репетитор по чешской литературе" a nationality, and
-        # "репетитор по матану на чешском" both — each leaves a subject named
-        # once the asking and the language are taken out, which is the same test
-        # the subject filter above makes of a keyword that was the whole query.
-        #
-        # Read as language lessons they would carry a subject no language offer
-        # has, and `catalog.search` ANDs the two: an empty screen for a query
-        # that worked.
-        #
-        # Lexical, and not a question about the resolved subject, for two
-        # reasons. The commonest phrasing resolves none — "репетитор по
-        # чешскому" says which language and not which level, and a bare
-        # «чешский» names five subjects and belongs to none of them. And where
-        # one does resolve it is as often the wrong one: "chemistry tutor in
-        # czech" scores Czech C1 at 0.69 against chemistry at 0.55, by name in
-        # both cases, so neither the score nor how it matched separates the two.
-        language = _first(norm, LANGUAGE_WORDS)
-        if language and not _left_over(norm, keyword or "", language):
-            result.service_type = "language_tutoring"
-
     institutions = await find_institutions(session, text, lang, limit=3)
 
     if subjects:
@@ -458,6 +424,37 @@ async def parse(
 
     result.deadline = _match_deadline(norm, today or date.today())
     result.budget_max = _match_budget(norm)
+
+    # A language lesson is a lesson whose request is the language, and nothing
+    # else. "репетитор по химии на чешском" names the medium of instruction,
+    # "репетитор по чешской литературе" a nationality, and "репетитор по матану
+    # на чешском" both — each leaves a subject named once the asking and the
+    # language are taken out, which is the same test the subject filter above
+    # makes of a keyword that was the whole query. Read as language lessons they
+    # would carry a subject no language offer has, and `catalog.search` ANDs the
+    # two: an empty screen for a query that worked.
+    #
+    # Last, because "what is left" has to mean *left over from everything the
+    # query said*: a budget, a date and a school are all already fields by now,
+    # and counting their words would have made "doucovani cestiny na ČVUT" plain
+    # tutoring.
+    #
+    # Lexical, and not a question about the resolved subject, for two reasons.
+    # The commonest phrasing resolves none — "репетитор по чешскому" says which
+    # language and not which level, and a bare «чешский» names five subjects and
+    # belongs to none of them. And where one does resolve it is as often the
+    # wrong one: "chemistry tutor in czech" scores Czech C1 at 0.69 against
+    # chemistry at 0.55, by name in both cases, so neither the score nor how it
+    # matched separates the two.
+    if result.service_type == "tutoring" or (
+        result.service_type is None and _mentions(norm, COURSE_WORDS)
+    ):
+        language = _first(norm, LANGUAGE_WORDS)
+        spoken_for = [keyword or "", language or ""]
+        if result.institution:
+            spoken_for.append(result.institution.label)
+        if language and not _left_over(norm, *spoken_for):
+            result.service_type = "language_tutoring"
 
     result.unmatched = not any((result.subject, result.institution, result.service_type))
     return result
@@ -555,6 +552,11 @@ FILLER_WORDS: frozenset[str] = frozenset(
 )
 
 
+CURRENCY_WORDS: frozenset[str] = frozenset(
+    ("kc", "czk", "kč", "крон", "kron", "eur", "euro", "usd")
+)
+
+
 def _left_over(norm: str, *accounted: str) -> str:
     """What the query still names once these words and the filler are gone."""
     text_left = norm
@@ -565,7 +567,12 @@ def _left_over(norm: str, *accounted: str) -> str:
     rest = [
         token
         for token in tokens
-        if token not in FILLER_WORDS
+        # A number is a price or a day, and both are fields of their own by the
+        # time anyone asks this — as is a month and the currency beside it.
+        if not token.isdigit()
+        and token not in FILLER_WORDS
+        and token not in CURRENCY_WORDS
+        and not any(token.startswith(month) for month in MONTHS)
         and not any(token.startswith(normalise(word)) for word in FILLER)
     ]
     return " ".join(rest)
