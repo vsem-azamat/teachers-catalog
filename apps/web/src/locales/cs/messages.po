@@ -627,6 +627,10 @@ msgstr "Co potřebuješ?"
 msgid "Не удалось загрузить каталог"
 msgstr "Nepodařilo se načíst katalog"
 
+#: src/pages/Results.tsx
+msgid "Также"
+msgstr "Také"
+
 #: src/pages/Chats.tsx
 #~ msgid "Мы сводим людей и запоминаем, что контакт состоялся — по этому считается время ответа. Сама переписка остаётся в Telegram."
 #~ msgstr "Spojujeme lidi a zaznamenáváme, že ke kontaktu došlo — podle toho počítáme dobu odezvy. Samotná konverzace zůstává v Telegramu."

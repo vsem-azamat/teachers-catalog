@@ -197,6 +197,13 @@ export interface ParseResult {
   matches: number;
   /** Set when nothing was recognised, so the screen can say so plainly. */
   note: Phrase | null;
+  /**
+   * A subject the parser guessed at and would not search by.
+   *
+   * Never a filter — narrowing by a subject nobody named shows nobody. The
+   * results screen asks for it separately and shows it under its own heading.
+   */
+  also: { subject_id: number; label: string } | null;
 }
 
 export interface SearchFilters {

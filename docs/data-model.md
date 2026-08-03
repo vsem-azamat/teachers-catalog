@@ -487,3 +487,15 @@ They are set by eye because there was nothing to set them from: `search_queries`
 holds five rows. Every parse writes what the vector proposed into `parsed`,
 whether or not it was used, so in a month they can be set from data.
 
+**Below the bar the proposal is demoted rather than dropped.** A guess that
+cannot be trusted to *filter* can still be worth reading — narrowing a search by
+a wrong subject shows nobody, but a second list under its own heading costs the
+reader nothing and says plainly what it is. So a proposal that scores at least
+**0.35** and fails either of the two tests above comes back as `also`: never a
+filter, always a separate section, and always named, so the screen can say which
+subject it guessed rather than quietly reordering the results.
+
+Below 0.35 there is nothing to demote. The nearest subject at that distance is
+whatever happened to be closest, and a section of noise is worse than no
+section.
+

@@ -21,7 +21,7 @@ import { useSearchFilters } from '@/hooks/useSearchFilters';
 import { hapticSelection } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
 import { chipKey, chipLabel } from '@/lib/chips';
-import type { SearchSort } from '@/lib/types';
+import type { HelperCard, SearchSort } from '@/lib/types';
 
 /**
  * The results list.
@@ -45,6 +45,11 @@ export default function ResultsPage() {
   // all — the request is the person's own sentence either way.
   const words = params.get('q') ?? '';
 
+  // A subject the parser guessed at and would not search by. It never touches
+  // the query above — the list stays the search the person asked for — and this
+  // is a second, ordinary search shown under its own heading.
+  const guess = Number(params.get('also_subject_id')) || null;
+
   // The same reading of the query string the search screen used to count and
   // preview this list, so the number it showed is the number that arrives here.
   const { filters, isError: filtersFailed } = useSearchFilters(params);
@@ -58,6 +63,12 @@ export default function ResultsPage() {
     queryKey: ['search', filters, sort],
     queryFn: ({ signal }) => api.search({ ...filters, sort }, signal),
     enabled: filters !== null,
+  });
+
+  const also = useQuery({
+    queryKey: ['search-also', guess, sort],
+    queryFn: ({ signal }) => api.search({ subject_id: guess ?? undefined, sort }, signal),
+    enabled: guess !== null,
   });
 
   // Unknown filters are still loading, not loaded. The error takes precedence,
@@ -139,6 +150,14 @@ export default function ResultsPage() {
             <AskInstead onClick={() => setAsking(true)} found={data.total} />
           </>
         )}
+
+        <AlsoSection
+          cards={also.data?.results ?? []}
+          named={also.data?.chips.find((chip) => chip.kind === 'subject')?.label ?? null}
+          exclude={new Set((data?.results ?? []).map((card) => card.user_id))}
+          locale={i18n.locale}
+          onOpen={(id) => navigate(`/helper/${id}`)}
+        />
       </Screen>
       {asking ? (
         <RequestSheet
@@ -181,5 +200,55 @@ function AskInstead({ onClick, found }: { onClick: () => void; found: number }) 
         <Trans>Оставить</Trans>
       </span>
     </button>
+  );
+}
+
+/**
+ * The guess, under its own heading.
+ *
+ * Below the confidence the parser needs to *filter* by a subject, and above the
+ * confidence at which it is noise. Drawn apart from the results and named, so
+ * the screen says "this might be what you meant" rather than quietly mixing it
+ * into an answer.
+ *
+ * People already in the list above are left out: the same card twice reads as a
+ * bug, and the second appearance says nothing the first did not.
+ */
+function AlsoSection({
+  cards,
+  named,
+  exclude,
+  locale,
+  onOpen,
+}: {
+  cards: HelperCard[];
+  /** The subject it guessed, as the server named it in the reader's language. */
+  named: string | null;
+  exclude: Set<number>;
+  locale: string;
+  onOpen: (id: number) => void;
+}) {
+  const rest = cards.filter((card) => !exclude.has(card.user_id));
+  if (rest.length === 0) return null;
+
+  return (
+    <>
+      {/* Named, or the section is a shrug: «Также» alone leaves the reader to
+          work out why these people are here, and the answer is that we guessed
+          this is what they meant. */}
+      <Label aside={named}>
+        <Trans>Также</Trans>
+      </Label>
+      <Cards>
+        {rest.map((card) => (
+          <HelperCardView
+            key={card.user_id}
+            card={card}
+            locale={locale}
+            onClick={() => onOpen(card.user_id)}
+          />
+        ))}
+      </Cards>
+    </>
   );
 }

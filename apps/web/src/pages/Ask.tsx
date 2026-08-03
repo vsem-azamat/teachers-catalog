@@ -116,7 +116,10 @@ export default function AskPage() {
   // filter, and putting them in the string this screen measures would make
   // every query "ready" from the first letter — a count of the whole catalog
   // under a screen that has understood nothing yet.
-  const target = useMemo(() => withWords(query, text), [query, text]);
+  const target = useMemo(
+    () => withGuess(withWords(query, text), parsed?.also ?? null),
+    [query, text, parsed],
+  );
 
   // Empty when nothing the parse understood is something the search can filter
   // on — a lone deadline is the real case, since there is no date filter to send
@@ -474,6 +477,20 @@ function Preview({
  * is the sentence rather than the filters — rebuilt from chips it would read
  * like a form.
  */
+/**
+ * The guess the parse would not search by, carried to the results screen.
+ *
+ * Its own parameter and not `subject_id`: the difference between "this is what
+ * you asked for" and "this might be what you meant" is the whole point, and one
+ * of them filters the list while the other sits under it.
+ */
+function withGuess(query: string, also: ParseResult['also']): string {
+  if (!also) return query;
+  const params = new URLSearchParams(query);
+  params.set('also_subject_id', String(also.subject_id));
+  return params.toString();
+}
+
 function withWords(query: string, text: string): string {
   const words = text.trim();
   if (!words) return query;
