@@ -37,6 +37,7 @@ from students_cz.db.models.taxonomy import (
     ServiceTypeI18n,
     StudentChat,
     Subject,
+    SubjectEmbedding,
     SubjectI18n,
 )
 
@@ -69,6 +70,7 @@ __all__ = [
     "ServiceTypeI18n",
     "StudentChat",
     "Subject",
+    "SubjectEmbedding",
     "SubjectI18n",
     "User",
     "UserEducation",

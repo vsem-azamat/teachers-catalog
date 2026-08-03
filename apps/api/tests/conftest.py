@@ -38,6 +38,25 @@ from students_cz.db.models import (
 from students_cz.db.models.enums import PublishStatus, UiLang
 
 
+@pytest.fixture(autouse=True)
+def no_embedding_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The suite answers the same on a machine that has the model and one that
+    does not.
+
+    Without this the disk decides: `EMBEDDING_MODEL_DIR` pointing at a real
+    model turned the semantic fallback on for every test, and two of them —
+    written to pin that a bare «přijímačky» names no subject — failed only
+    there. Tests that want an embedder set one explicitly.
+    """
+    from pathlib import Path
+
+    from students_cz.services import embedding
+
+    monkeypatch.setattr(embedding, "MODEL_DIR", Path("/nonexistent"))
+    monkeypatch.setattr(embedding, "_embedder", None)
+    monkeypatch.setattr(embedding, "_looked", False)
+
+
 @pytest.fixture(scope="session")
 def settings() -> Settings:
     return get_settings()

@@ -17,7 +17,10 @@ from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from students_cz.services.lookup import (
+    VECTOR_FLOOR,
+    VECTOR_LEAD,
     Match,
+    find_by_meaning,
     find_institutions,
     find_subjects,
     normalise,
@@ -381,6 +384,11 @@ class ParsedQuery:
     budget_max: float | None = None
     unmatched: bool = False
     alternatives: dict[str, list[Match]] = field(default_factory=dict)
+    # What the embedder proposed and by how much it led the next subject —
+    # recorded whether or not it was believed, so the two thresholds it is
+    # judged by can be set from data instead of by eye. Logged into
+    # `search_queries.parsed`; see `api/v1/search`.
+    vector: tuple[Match, float] | None = None
 
 
 async def parse(
@@ -391,6 +399,14 @@ async def parse(
 
     result.service_type, keyword = _match_service(norm)
 
+    institutions = await find_institutions(session, text, lang, limit=3)
+    if institutions:
+        result.institution = institutions[0]
+        result.alternatives["institution"] = institutions[1:]
+
+    result.deadline = _match_deadline(norm, today or date.today())
+    result.budget_max = _match_budget(norm)
+
     subjects = await find_subjects(session, text, lang, limit=4)
     # When the words naming the kind of help were the whole query, there is no
     # subject in it to find, and a trigram guess is the scorer answering a
@@ -400,6 +416,35 @@ async def parse(
     # dropping them would lose a certainty to protect against a maybe.
     if keyword and not _without(norm, keyword):
         subjects = [match for match in subjects if _is_named(match)]
+
+    # The third mechanism, and the last asked. Only where the first two found
+    # nothing: a synonym or an exact name is curated and scores 1.00, and the
+    # embedder loses to both on slang — it answers «Математика для экономистов»
+    # to «матан». What it proposes is logged either way, because the two numbers
+    # it is judged by were set by eye and `search_queries` is where the ones to
+    # replace them will come from.
+    #
+    # Before the reconciliation below and not after, so its answer is subject to
+    # the same rules: it is a guess by construction, and «нужна чешская виза»
+    # proposed «Чешский язык B2» at 0.50 — a subject beside a kind of help that
+    # has none, which the rule below is exactly for.
+    #
+    # And only when the query says something nothing else has accounted for.
+    # Silence has two meanings: "the rules could not read this" and "there is
+    # nothing here to read". A bare «přijímačky» is the second — the word is the
+    # whole query and it names a kind of help — and asking anyway answered
+    # «Поступление в экономические вузы» at 0.53, the very mistake the synonym
+    # was taken off that subject to stop. So is «репетитор ČVUT», where the
+    # school is already a field and what is left is a word for teaching: the
+    # embedder answered «Поступление в технические вузы» at 0.45 and narrowed a
+    # list of tutors to the people who prepare for entrance exams.
+    if not subjects and not _accounted_for(result, norm, keyword):
+        proposed, runner_up = await find_by_meaning(session, text, lang)
+        if proposed:
+            lead = proposed.score - (runner_up.score if runner_up else 0.0)
+            result.vector = (proposed, lead)
+            if proposed.score >= VECTOR_FLOOR and lead >= VECTOR_LEAD:
+                subjects = [proposed]
 
     # A kind of help that never carries a subject cannot be the answer to a
     # query that *names* one. `catalog.search` ANDs the two, and no offer in the
@@ -423,19 +468,11 @@ async def parse(
         else:
             subjects = []
 
-    institutions = await find_institutions(session, text, lang, limit=3)
-
     if subjects:
         result.subject = subjects[0]
         # Keep the runners-up so the chip can offer "did you mean" instead of
         # silently committing to a 0.52-confidence guess.
         result.alternatives["subject"] = subjects[1:]
-    if institutions:
-        result.institution = institutions[0]
-        result.alternatives["institution"] = institutions[1:]
-
-    result.deadline = _match_deadline(norm, today or date.today())
-    result.budget_max = _match_budget(norm)
 
     # A language lesson is a lesson whose request is the language, and nothing
     # else. "репетитор по химии на чешском" names the medium of instruction,
@@ -462,20 +499,7 @@ async def parse(
         result.service_type is None and _mentions(norm, COURSE_WORDS)
     ):
         language = _first(norm, LANGUAGE_WORDS)
-        spoken_for = [keyword or "", language or ""]
-        if result.institution:
-            spoken_for.append(result.institution.label)
-        # The date and the price come out by the spans that produced them, not
-        # by their words: "мар" is March and the first three letters of
-        # "маркетингу", so discounting month words made a marketing query a
-        # language lesson, and a currency list beside the one `_BUDGET` already
-        # holds is a second list to keep in step.
-        spoken = norm
-        if result.deadline:
-            spoken = _DAY_MONTH_WORD.sub(" ", _DAY_MONTH_NUM.sub(" ", spoken))
-        if result.budget_max is not None:
-            spoken = _BUDGET.sub(" ", spoken)
-        if language and not _left_over(spoken, *spoken_for):
+        if language and _accounted_for(result, norm, keyword, language):
             result.service_type = "language_tutoring"
 
     result.unmatched = not any((result.subject, result.institution, result.service_type))
@@ -563,8 +587,28 @@ FILLER_WORDS: frozenset[str] = frozenset(
         "b2",
         "c1",
         "c2",
+        # How something is done rather than what it is about. The catalog
+        # stores this per offer and the query has nowhere to put it, so a word
+        # nobody reads is not a subject nobody named: "doucovani online"
+        # answered «Компьютерные сети» at 0.46.
+        "online",
+        "онлайн",
+        "оффлайн",
+        "офлайн",
+        "очно",
+        "дистанционно",
+        "osobne",
+        "prezencne",
+        "remote",
+        "offline",
         # en
         "for",
+        "at",
+        "on",
+        "by",
+        "from",
+        "about",
+        "please",
         "a",
         "an",
         "the",
@@ -581,6 +625,30 @@ FILLER_WORDS: frozenset[str] = frozenset(
         "me",
     )
 )
+
+
+def _accounted_for(
+    result: "ParsedQuery", norm: str, keyword: str | None, *also: str
+) -> bool:
+    """Has everything in the query already been read by something else?
+
+    The question both derived rules ask, and they have to ask it the same way:
+    the kind of help's own words, the school, the date and the price are fields
+    by now, and what is left over is the part nobody has explained.
+
+    The date and the price come out by the spans that produced them and not by
+    words that look like them — "мар" is March and the first three letters of
+    "маркетингу".
+    """
+    spoken = norm
+    if result.deadline:
+        spoken = _DAY_MONTH_WORD.sub(" ", _DAY_MONTH_NUM.sub(" ", spoken))
+    if result.budget_max is not None:
+        spoken = _BUDGET.sub(" ", spoken)
+    accounted = [keyword or "", *also]
+    if result.institution:
+        accounted.append(result.institution.label)
+    return not _left_over(spoken, *accounted)
 
 
 def _left_over(norm: str, *accounted: str) -> str:
@@ -675,8 +743,12 @@ def _is_named(match: Match) -> bool:
     narrow: "Чешский язык B1, нужна виза" names the subject in full, scores 1.0,
     and reports `name` — so the subject the person typed out was thrown away as
     a guess.
+
+    A vector match is never named, whatever it scores: its number is a cosine
+    and not a claim that the query said the words. The two happen to share a
+    scale and mean nothing alike.
     """
-    return match.score >= 1.0
+    return match.matched_on != "vector" and match.score >= 1.0
 
 
 def _without(norm: str, keyword: str) -> str:

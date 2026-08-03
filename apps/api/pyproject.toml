@@ -11,9 +11,13 @@ dependencies = [
     # 0.132 rejects JSON bodies without a proper Content-Type, 0.138 added
     # app.frontend() for serving the mini app's build output.
     "fastapi>=0.140",
+    "numpy>=2.5.1",
+    "onnxruntime>=1.28.0",
+    "pgvector>=0.5.0",
     "pydantic>=2.13",
     "pydantic-settings>=2.14",
     "sqlalchemy[asyncio]>=2.0.51",
+    "tokenizers>=0.23.1",
     "uvicorn[standard]>=0.51",
 ]
 

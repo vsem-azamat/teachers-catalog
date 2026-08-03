@@ -129,6 +129,21 @@ async def parse_query(
                 "service_type": parsed.service_type,
                 "deadline": parsed.deadline.isoformat() if parsed.deadline else None,
                 "budget_max": parsed.budget_max,
+                # What the embedder proposed, and whether it was believed.
+                # Logged even when refused: the two thresholds it is judged by
+                # were set by eye, and this is the only place the numbers to
+                # replace them can come from.
+                "vector": (
+                    {
+                        "subject_id": parsed.vector[0].id,
+                        "score": round(parsed.vector[0].score, 3),
+                        "lead": round(parsed.vector[1], 3),
+                        "used": parsed.subject is not None
+                        and parsed.subject.matched_on == "vector",
+                    }
+                    if parsed.vector
+                    else None
+                ),
             },
             results_count=total,
             parser="rules.v1",
