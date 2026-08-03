@@ -508,6 +508,12 @@ async def test_an_insurer_name_is_the_insurance_it_names(session, text) -> None:
         ("chemistry tutor in czech", "tutoring"),
         ("physics tutor in english", "tutoring"),
         ("нужен репетитор по химии на чешском 500 kc", "tutoring"),
+        # "мар" is March and the first three letters of "маркетингу", so a
+        # month must be discounted only when one was actually read.
+        ("нужен репетитор по маркетингу на чешском", "tutoring"),
+        ("marketing tutor in czech", "tutoring"),
+        ("doucovani marketingu v cestine", "tutoring"),
+        ("репетитор з маркетингу англійською", "tutoring"),
         ("репетитор з біології англійською", "tutoring"),
         ("репетитор по чешской литературе", "tutoring"),
         ("doucovani matematiky v cestine", "tutoring"),
@@ -560,6 +566,10 @@ async def test_a_language_beside_an_errand_is_not_a_lesson(
         "репетитор по чешскому 500 kc",
         "doucovani cestiny 14 unora",
         "doucovani cestiny na ČVUT",
+        # The same school as the person typed it: it resolves through a code or
+        # through the transliterated query, so the label's own characters are
+        # nowhere in the text.
+        "репетитор по чешскому на чвуте",
         "репетитор по чешскому до 600 крон",
     ],
 )

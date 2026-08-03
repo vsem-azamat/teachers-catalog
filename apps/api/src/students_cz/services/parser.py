@@ -16,7 +16,13 @@ from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from students_cz.services.lookup import Match, find_institutions, find_subjects, normalise
+from students_cz.services.lookup import (
+    Match,
+    find_institutions,
+    find_subjects,
+    normalise,
+    transliterate,
+)
 
 _NON_WORD = re.compile(r"[^a-z0-9\u0400-\u04ff]+")
 
@@ -453,6 +459,11 @@ async def parse(
         spoken_for = [keyword or "", language or ""]
         if result.institution:
             spoken_for.append(result.institution.label)
+        if result.deadline:
+            # The month it read, and only when it read one.
+            spoken_for.extend(
+                month for month in MONTHS if starts_a_word(tokenise(norm), month)
+            )
         if language and not _left_over(norm, *spoken_for):
             result.service_type = "language_tutoring"
 
@@ -558,21 +569,36 @@ CURRENCY_WORDS: frozenset[str] = frozenset(
 
 
 def _left_over(norm: str, *accounted: str) -> str:
-    """What the query still names once these words and the filler are gone."""
+    """What the query still names once these words and the filler are gone.
+
+    An accounted word is removed as it stands and, failing that, by its
+    transliteration: a school resolves through its code or through the
+    transliterated query, so "на чвуте" carries none of the label's characters
+    and would otherwise be left over as a word that names something.
+    """
     text_left = norm
     for word in accounted:
         if word:
             text_left = _without(text_left, word)
-    tokens = tokenise(text_left).split()
+    tokens = [
+        token
+        for token in tokenise(text_left).split()
+        if not any(
+            word and transliterate(token).startswith(transliterate(normalise(word)))
+            for word in accounted
+        )
+    ]
     rest = [
         token
         for token in tokens
-        # A number is a price or a day, and both are fields of their own by the
-        # time anyone asks this — as is a month and the currency beside it.
+        # A bare number is a price or a day and never a subject, and the
+        # currency beside it is neither. The month is *not* discounted here —
+        # "мар" is March and the first three letters of "маркетингу", and a
+        # month word alone is not a deadline anyway: the caller passes the one
+        # it actually parsed.
         if not token.isdigit()
         and token not in FILLER_WORDS
         and token not in CURRENCY_WORDS
-        and not any(token.startswith(month) for month in MONTHS)
         and not any(token.startswith(normalise(word)) for word in FILLER)
     ]
     return " ".join(rest)
