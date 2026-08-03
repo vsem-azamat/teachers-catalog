@@ -135,10 +135,28 @@ export default function ResultsPage() {
         />
 
         {onlyGuess ? (
-          <>
-            <AlsoSection {...alsoProps} alone exclude={new Set()} />
-            <AskInstead onClick={() => setAsking(true)} found={0} />
-          </>
+          // The guess *is* the list here, so it owns the states an ordinary
+          // list has: a skeleton while it is in flight, and the load failure
+          // when it fails. Without that the screen said «Не поняли запрос»
+          // during the round trip, and kept saying it when the request failed.
+          also.isPending ? (
+            <>
+              <Label>
+                <Trans>Ищем…</Trans>
+              </Label>
+              <SkeletonRows count={3} />
+            </>
+          ) : also.isError ? (
+            <Empty
+              title={<Trans>Не получилось загрузить</Trans>}
+              body={<Trans>Проверь соединение и попробуй ещё раз.</Trans>}
+            />
+          ) : (
+            <>
+              <AlsoSection {...alsoProps} alone exclude={new Set()} />
+              <AskInstead onClick={() => setAsking(true)} found={0} />
+            </>
+          )
         ) : loading ? (
           <>
             <Label>
