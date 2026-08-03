@@ -10,6 +10,7 @@ from students_cz.db.models.enums import UiLang
 from students_cz.db.session import session_scope
 from students_cz.services.notify import Notifier
 from students_cz.services.people import remember
+from students_cz.services.telegram import BotHandle
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 SessionDep = Annotated[AsyncSession, Depends(session_scope, scope="function")]
@@ -109,3 +110,22 @@ async def current_notifier(http: Request, settings: SettingsDep) -> Notifier:
 
 
 NotifierDep = Annotated[Notifier, Depends(current_notifier)]
+
+
+def current_handle(http: Request) -> BotHandle:
+    """The bot's own handle, as one object per process.
+
+    Built where the bot is built, and only found here — but built on demand as
+    well, because the lifespan does not run under the test client and an app
+    with a bot on its state and no handle beside it would otherwise have no
+    handle at all. Either way there is one, and it is the same one for every
+    request, which is what makes remembering the answer worth anything.
+    """
+    handle = getattr(http.app.state, "bot_handle", None)
+    if handle is None:
+        handle = BotHandle(getattr(http.app.state, "bot", None))
+        http.app.state.bot_handle = handle
+    return handle
+
+
+HandleDep = Annotated[BotHandle, Depends(current_handle)]

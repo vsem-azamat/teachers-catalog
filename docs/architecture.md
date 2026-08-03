@@ -132,6 +132,16 @@ route in `main.py`, which is defined inside `create_app` and hands the update
 to the dispatcher the lifespan put there — it is the seam between the two
 runtimes rather than a handler.
 
+**State the process keeps is a service, not an attribute.** `Notifier` is one:
+a bot and an address, decided once. `telegram.BotHandle` is the other, and it
+was the harder case — it holds the bot's own handle and the cooldown that
+stops a failing Telegram being asked again on every landing visit, which is
+per-process state rather than a value. It lives on `app.state` still, but as
+one object built where the bot is built, and `api/deps.py` is what reaches for
+it. A route asks for `HandleDep` and cannot tell whether there is a bot at
+all — a handle with no bot answers `None`, which the route already had to
+answer for anyway.
+
 **A schema** is a leaf. `students_cz/schemas.py` — the package root, not inside
 `api/` — describes what goes over the wire. A service may return one without
 that pointing the domain layer at the HTTP layer, which is the whole reason it
@@ -326,10 +336,6 @@ finds, and a rule with silent exceptions is worse than no rule.
   arriving. The product decision it waits on is whether to narrow the feed
   first, since notifying every helper about every request is how a feed becomes
   something people mute.
-- **`public.py` still reaches into `app.state`** — for the bot, and for the
-  per-process cache of its username. The cache is genuinely app-scoped, so
-  this one needs somewhere for that state to live before it can become a
-  dependency; it is not simply an unconverted call site.
 
 Each of these is a separate change with its own tests. None of them is a
 reason to write new code the old way.
