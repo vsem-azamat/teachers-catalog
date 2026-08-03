@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from students_cz.db.models import (
     AvailabilitySlot,
+    Contact,
     HelperProfile,
     Institution,
     Offer,
@@ -18,9 +19,10 @@ from students_cz.db.models import (
     User,
     UserEducation,
 )
-from students_cz.db.models.enums import PublishStatus, UiLang
+from students_cz.db.models.enums import PublishStatus, UiLang, UserEventKind
 from students_cz.schemas import (
     Avatar,
+    ContactOut,
     HelperCardOut,
     HelperDetailOut,
     HomeSection,
@@ -29,7 +31,9 @@ from students_cz.schemas import (
     Price,
     Stat,
 )
+from students_cz.services import errors
 from students_cz.services.naming import rows_by_id, short_form, translated
+from students_cz.services.people import log_event
 
 SortKey = Literal["relevance", "price", "available"]
 
@@ -612,9 +616,75 @@ async def _offers_out(
     return out
 
 
+async def open_home(
+    session: AsyncSession, lang: UiLang, *, viewer: User
+) -> tuple[list[HomeSection], list[HomeSection]]:
+    """The home screen, and the fact that somebody opened the app.
+
+    Separate from `home_sections` rather than folded into it: the sections are
+    a read the bot may want without claiming anybody opened anything, and this
+    is the screen standing in for "opened the app". Logging every request would
+    drown that signal in taxonomy fetches.
+    """
+    sections = await home_sections(session, lang)
+    await log_event(session, viewer.id, UserEventKind.APP_OPEN, lang=lang.value)
+    return sections
+
+
+async def view_helper(
+    session: AsyncSession, user_id: int, lang: UiLang, *, viewer: User
+) -> HelperDetailOut | None:
+    """One person's page, and the fact that it was read.
+
+    Nothing is recorded when there is no such page: an event here would count
+    views of profiles that do not exist as views of profiles.
+    """
+    detail = await helper_detail(session, user_id, lang)
+    if detail is None:
+        return None
+    await log_event(session, viewer.id, UserEventKind.HELPER_VIEW, helper_id=user_id)
+    return detail
+
+
+async def start_contact(
+    session: AsyncSession, *, viewer: User, helper_id: int
+) -> ContactOut:
+    """Record that someone is about to write, and hand back the link.
+
+    The conversation itself happens in Telegram, where both people already are.
+    What we keep is that it started — which is the only honest basis for the
+    response times and deal counts shown on a card. Self-reported numbers would
+    be worth nothing.
+
+    `BadRequest` rather than `Invalid` for writing to yourself: it answered 400
+    before this moved out of the route, and a status code is not the thing this
+    change is allowed to alter.
+    """
+    if helper_id == viewer.id:
+        raise errors.BadRequest("that is your own profile")
+
+    helper = await session.scalar(
+        select(HelperProfile)
+        .where(HelperProfile.user_id == helper_id)
+        .options(selectinload(HelperProfile.user))
+    )
+    if helper is None or helper.status != PublishStatus.PUBLISHED:
+        raise errors.NotFound("no such published profile")
+    if not helper.user.tg_username:
+        raise errors.Conflict("this person has no public username")
+
+    session.add(Contact(student_id=viewer.id, helper_id=helper_id, intro_text=None))
+    await log_event(session, viewer.id, UserEventKind.CONTACT, helper_id=helper_id)
+
+    return ContactOut(telegram_url=f"https://t.me/{helper.user.tg_username}")
+
+
 __all__ = [
     "avatar_for",
     "helper_detail",
     "home_sections",
+    "open_home",
     "search",
+    "start_contact",
+    "view_helper",
 ]
