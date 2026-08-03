@@ -488,12 +488,17 @@ holds five rows. Every parse writes what the vector proposed into `parsed`,
 whether or not it was used, so in a month they can be set from data.
 
 **Below the bar the proposal is demoted rather than dropped.** A guess that
-cannot be trusted to *filter* can still be worth reading — narrowing a search by
-a wrong subject shows nobody, but a second list under its own heading costs the
-reader nothing and says plainly what it is. So a proposal that scores at least
-**0.35** and fails either of the two tests above comes back as `also`: never a
-filter, always a separate section, and always named, so the screen can say which
-subject it guessed rather than quietly reordering the results.
+cannot be trusted to *filter* can still be trusted to **sort**. So a proposal
+that scores at least **0.35** and fails either of the two tests above comes back
+as `also`, and the results screen uses it to split the list it already has: the
+people who offer that subject first, everybody else the search found under
+«Также». One list, ordered by a guess, with the guess named.
+
+Not a second list — that was the first shape and it is empty by construction.
+The guess narrows the same search, so its people are a subset of the people
+already on screen, and a section that leaves out everyone already shown has
+nothing left to show. The exception is a query that gave nothing else to search
+by at all: there the guess *is* the list, under a heading that says so.
 
 Below 0.35 there is nothing to demote. The nearest subject at that distance is
 whatever happened to be closest, and a section of noise is worse than no

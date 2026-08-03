@@ -93,14 +93,29 @@ export default function ResultsPage() {
   const failed = isError || filtersFailed;
   const loading = (isPending || filters === null) && !failed && !onlyGuess;
 
-  // Everything the section needs except who is already on screen above it,
-  // which is the only thing that differs between the two branches below.
   const alsoProps = {
     cards: also.data?.results ?? [],
     named: also.data?.chips.find((chip) => chip.kind === 'subject')?.label ?? null,
     locale: i18n.locale,
     onOpen: (id: number) => navigate(`/helper/${id}`),
   };
+
+  // The guess sorts the list it cannot filter.
+  //
+  // A second list was the obvious shape and the wrong one: the guess search is
+  // this search plus a subject, so its people are a subset of these people and
+  // a section that leaves out everyone already shown is always empty. What the
+  // guess is actually good for is order — the people who teach the subject we
+  // think was meant go first, and everybody else the search found goes under
+  // «Также», which is the honest word for "these matched what you typed, but
+  // not what we think you meant".
+  const guessed = new Set((also.data?.results ?? []).map((card) => card.user_id));
+  const closest = guessed.size
+    ? (data?.results ?? []).filter((card) => guessed.has(card.user_id))
+    : (data?.results ?? []);
+  const rest = guessed.size
+    ? (data?.results ?? []).filter((card) => !guessed.has(card.user_id))
+    : [];
 
   return (
     <>
@@ -164,7 +179,7 @@ export default function ResultsPage() {
             </>
           ) : (
             <>
-              <AlsoSection {...alsoProps} alone exclude={new Set()} />
+              <AlsoSection {...alsoProps} />
               <AskInstead onClick={() => setAsking(true)} found={0} />
             </>
           )
@@ -186,10 +201,6 @@ export default function ResultsPage() {
               title={<Trans>Пока никого</Trans>}
               body={<Trans>Никто пока не предлагает то, что ты ищешь.</Trans>}
             />
-            {/* `alone` here too: there is no list above it to be "also" beside,
-                and the guess goes before the give-up row rather than after it —
-                the request is the last resort, not the middle of the screen. */}
-            <AlsoSection {...alsoProps} alone exclude={new Set()} />
             <AskInstead onClick={() => setAsking(true)} found={0} />
           </>
         ) : (
@@ -198,7 +209,7 @@ export default function ResultsPage() {
               <Trans>Кто может помочь</Trans>
             </Label>
             <Cards>
-              {data.results.map((card) => (
+              {closest.map((card) => (
                 <HelperCardView
                   key={card.user_id}
                   card={card}
@@ -207,15 +218,28 @@ export default function ResultsPage() {
                 />
               ))}
             </Cards>
+            {rest.length > 0 ? (
+              <>
+                <Label>
+                  <Trans>Также</Trans>
+                </Label>
+                <Cards>
+                  {rest.map((card) => (
+                    <HelperCardView
+                      key={card.user_id}
+                      card={card}
+                      locale={i18n.locale}
+                      onClick={() => navigate(`/helper/${card.user_id}`)}
+                    />
+                  ))}
+                </Cards>
+              </>
+            ) : null}
             {/* Not only when the search failed. Choosing from a list and
                 letting the list choose you are two ways of doing the same
                 thing, and the second one is the whole other half of the
                 product. */}
             <AskInstead onClick={() => setAsking(true)} found={data.total} />
-            <AlsoSection
-              {...alsoProps}
-              exclude={new Set(data.results.map((card) => card.user_id))}
-            />
           </>
         )}
       </Screen>
@@ -264,47 +288,37 @@ function AskInstead({ onClick, found }: { onClick: () => void; found: number }) 
 }
 
 /**
- * The guess, under its own heading.
+ * The guess, when it is the whole screen.
  *
- * Below the confidence the parser needs to *filter* by a subject, and above the
- * confidence at which it is noise. Drawn apart from the results and named, so
- * the screen says "this might be what you meant" rather than quietly mixing it
- * into an answer.
- *
- * People already in the list above are left out: the same card twice reads as a
- * bug, and the second appearance says nothing the first did not.
+ * Only for a query that gave nothing else to search by: there is no list for
+ * these people to be sorted into, so they are the list, and the heading says
+ * where they came from. When the query *did* give something to search by, the
+ * guess sorts that list instead — see `closest` and `rest` above.
  */
 function AlsoSection({
   cards,
   named,
-  exclude,
-  alone = false,
   locale,
   onOpen,
 }: {
   cards: HelperCard[];
   /** The subject it guessed, as the server named it in the reader's language. */
   named: string | null;
-  exclude: Set<number>;
-  /** Nothing above it, because the query gave nothing else to search by. */
-  alone?: boolean;
   locale: string;
   onOpen: (id: number) => void;
 }) {
-  const rest = cards.filter((card) => !exclude.has(card.user_id));
-  if (rest.length === 0) return null;
+  if (cards.length === 0) return null;
 
   return (
     <>
-      {/* Named, or the section is a shrug: «Также» alone leaves the reader to
-          work out why these people are here, and the answer is that we guessed
-          this is what they meant. With nothing above it the word changes —
-          "also" beside nothing reads as a missing list. */}
+      {/* Named, or the heading is a shrug: the reader is owed the reason these
+          people are on a screen their query did not describe, and the reason is
+          that this is what we think they meant. */}
       <Label aside={named}>
-        {alone ? <Trans>Похоже, речь о</Trans> : <Trans>Также</Trans>}
+        <Trans>Похоже, речь о</Trans>
       </Label>
       <Cards>
-        {rest.map((card) => (
+        {cards.map((card) => (
           <HelperCardView
             key={card.user_id}
             card={card}
