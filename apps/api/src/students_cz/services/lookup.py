@@ -27,7 +27,6 @@ asks how well the name matches *some part* of the query, which is the actual
 question.
 """
 
-import re
 import unicodedata
 from dataclasses import dataclass
 
@@ -111,26 +110,6 @@ _TRANSLIT = str.maketrans(
 )
 
 
-_CYRILLIC = re.compile(r"[\u0400-\u04ff]")
-_LATIN = re.compile(r"[a-z]")
-
-
-def mixes_scripts(value: str) -> bool:
-    """Does this query use both alphabets?
-
-    The one case neither comparison serves. A query written in one alphabet
-    already reaches the names written in it — and transliterating it is a guess
-    that costs: measured over every name and synonym in the catalog, offering a
-    transliteration of a single-alphabet query moved nineteen of them onto the
-    wrong subject, because generic words collide once they are latinised
-    («квантовая механика» became "mehanika" and reached «Теоретическая
-    механика»). A query that mixes them is served by neither, which is where
-    «přijímačky на медицину» sat.
-    """
-    lowered = normalise(value)
-    return bool(_CYRILLIC.search(lowered) and _LATIN.search(lowered))
-
-
 def transliterate(value: str) -> str:
     """Czech-style romanisation of Cyrillic, for matching acronyms."""
     return normalise(value).translate(_TRANSLIT)
@@ -172,37 +151,44 @@ _SUBJECT_SQL = text(
                         q.tokens,
                         rtrim({_TOKENS.format(expr="immutable_unaccent(lower(syn))")})
                         || CASE WHEN length(btrim(syn)) >= 4 THEN '' ELSE ' ' END
-                    ) > 0 OR strpos(
+                    ) > 0 OR (strpos(btrim(syn), ' ') > 0 AND strpos(
                         q.latin_tokens,
                         rtrim({_TOKENS.format(expr="immutable_unaccent(lower(syn))")})
-                        || CASE WHEN length(btrim(syn)) >= 4 THEN '' ELSE ' ' END
-                    ) > 0)
+                    ) > 0))
                )) AS hit,
                GREATEST(
-                   -- Both alphabets, and only here. A student in Prague writes
-                   -- «přijímačky на медицину» — a Czech word and a Russian
-                   -- object — and the synonym naming what they want may be
-                   -- spelled either way, so one comparison always misses.
+                   -- The query transliterated as well as as typed. A student
+                   -- in Prague writes «přijímačky на медицину» — a Czech word
+                   -- and a Russian object — and the synonym naming what they
+                   -- want is spelled one way or the other, so a single
+                   -- comparison always misses.
                    --
-                   -- The exact branch and not the two fuzzy ones below it. A
-                   -- transliteration is a *guess* at how a word would look in
-                   -- the other alphabet, and feeding a guess to a trigram
-                   -- multiplies it: measured over every name and synonym in the
-                   -- catalog, doing that moved 19 of them onto the wrong
-                   -- subject — "термех" transliterates near "termomechanika".
-                   -- Whole-word containment cannot do that: either the synonym
-                   -- is in the query or it is not.
+                   -- Two restrictions, both bought with measurements over every
+                   -- name and synonym in the catalog:
+                   --
+                   -- The exact branch only, never the two fuzzy ones below. A
+                   -- transliteration is a guess at how a word would look in
+                   -- another alphabet, and feeding a guess to a trigram
+                   -- multiplies it — that moved 19 strings onto the wrong
+                   -- subject.
+                   --
+                   -- And multi-word synonyms only. A latinised generic noun
+                   -- collides: "квантовая механика" becomes "mechanika", which
+                   -- is a synonym of «Теоретическая механика», and beside a
+                   -- school name — "квантовая механика ČVUT", the ordinary
+                   -- shape of a query here — it won at 1.00. A phrase does not
+                   -- collide by accident, and restricting to phrases moved
+                   -- nothing wrong and 57 strings right.
                    CASE WHEN EXISTS (
                        SELECT 1 FROM unnest(s.synonyms) syn
                         WHERE btrim(syn) <> '' AND (strpos(
                             q.tokens,
                             rtrim({_TOKENS.format(expr="immutable_unaccent(lower(syn))")})
                             || CASE WHEN length(btrim(syn)) >= 4 THEN '' ELSE ' ' END
-                        ) > 0 OR strpos(
+                        ) > 0 OR (strpos(btrim(syn), ' ') > 0 AND strpos(
                             q.latin_tokens,
                             rtrim({_TOKENS.format(expr="immutable_unaccent(lower(syn))")})
-                            || CASE WHEN length(btrim(syn)) >= 4 THEN '' ELSE ' ' END
-                        ) > 0)
+                        ) > 0))
                    ) THEN 1.0 ELSE 0.0 END,
                    -- Prefix matching handles a changed word *ending* only
                    -- when the ending is added, not when it is replaced:
@@ -341,10 +327,7 @@ async def find_subjects(
         _SUBJECT_SQL,
         {
             "qnorm": normalise(query),
-            # Only for a query that uses both alphabets; see `mixes_scripts`.
-            # An empty string here is a token string of one space, which nothing
-            # is ever found inside.
-            "qlat": transliterate(query) if mixes_scripts(query) else "",
+            "qlat": transliterate(query),
             "lang": lang,
             "limit": limit,
             "threshold": threshold,

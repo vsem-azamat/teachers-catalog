@@ -211,10 +211,20 @@ wrong language, misspelled. Three mechanisms handle it, cheapest first:
 The query is compared twice: as it was typed, and transliterated. A student in
 Prague writes «přijímačky на медицину» — Czech word, Russian object — and the
 name they need may be spelled in either alphabet, so one comparison always
-misses. Both subjects and institutions do it, and the better of the two scores
-is the score: transliteration is an extra way in, never a replacement. «чешский
-b2» finds its subject as typed and nothing at all transliterated, and taking
-only the transliteration would have lost it.
+misses. The better of the two scores is the score: transliteration is an extra
+way in, never a replacement. «чешский b2» finds its subject as typed and nothing
+at all transliterated, and taking only the transliteration would have lost it.
+
+For institutions the transliteration is compared everywhere. For subjects it is
+compared **only against multi-word synonyms, and only for whole-word
+containment** — two restrictions each bought by measuring every name and synonym
+in the catalog. A transliteration is a guess at how a word looks in another
+alphabet, and feeding a guess to a trigram multiplies it: nineteen strings moved
+onto the wrong subject. A latinised generic noun collides even without a
+trigram: «квантовая механика» becomes "mechanika", which is a synonym of
+«Теоретическая механика», and beside a school name — the ordinary shape of a
+query here — it won outright. A phrase does not collide by accident. With both
+restrictions the change moves nothing wrong and fifty-seven strings right.
 
 Verified against a live database: `prijimacky` scores 1.00 against `Přijímačky`,
 `matematicka analyza` scores 1.00 against `Matematická analýza`.

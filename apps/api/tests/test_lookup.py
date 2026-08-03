@@ -2,7 +2,7 @@
 
 import pytest
 
-from students_cz.services.lookup import find_subjects, mixes_scripts, normalise
+from students_cz.services.lookup import find_subjects, normalise
 
 pytestmark = pytest.mark.asyncio  # every async test here; the one sync test opts out
 
@@ -142,53 +142,63 @@ def test_transliteration_is_czech_flavoured():
 
 
 @pytest.mark.parametrize(
-    ("text", "mixed"),
+    ("query", "expect_slug"),
     [
-        ("přijímačky на медицину", True),
-        ("матан ČVUT", True),
-        ("квантовая механика", False),
-        ("kvantova mechanika", False),
-        ("čeština B2", False),
-        ("", False),
+        # A Czech word and a Russian object, which is what people type here.
+        # The synonym that names this subject is written in Latin, and neither
+        # half of the query reaches it on its own.
+        ("přijímačky на медицину", "prijimacky-medicina"),
+        ("přijímačky na medicínu", "prijimacky-medicina"),
     ],
 )
-async def test_only_a_query_using_both_alphabets_is_transliterated(text, mixed) -> None:
-    """A single-alphabet query already reaches the names written in it.
+async def test_a_query_that_mixes_alphabets_reaches_a_latin_synonym(
+    session, query, expect_slug
+) -> None:
+    rows = await find_subjects(session, query, "ru", limit=1)
+    assert rows, f"{query!r} reaches nothing"
 
-    Transliterating it anyway is a guess, and a guess that costs: it moved
-    nineteen catalog names onto the wrong subject, because generic words collide
-    once latinised.
-    """
-    assert mixes_scripts(text) is mixed
+    from sqlalchemy import select
+
+    from students_cz.db.models import Subject
+
+    wanted = await session.scalar(select(Subject.id).where(Subject.slug == expect_slug))
+    assert rows[0].id == wanted, f"{query!r} answered {rows[0].label}"
 
 
 @pytest.mark.parametrize(
-    "text",
+    ("query", "owned_by"),
     [
-        # Every one of these reached the right subject before the change and was
-        # stolen by an unconditional transliteration — measured, not imagined.
-        "Статистика для экономистов",
-        "Электроника и схемотехника",
-        "Гидромеханика и механика жидкостей",
-        "Статика и строительная механика",
-        "квантовая механика",
+        # Each reached the right subject before the change, and each was stolen
+        # by a transliteration allowed to match a single generic word —
+        # measured, not imagined. The second half is the same words beside a
+        # school name, which is the ordinary shape of a query here and where the
+        # first attempt at a fix stole them all over again.
+        ("Статистика для экономистов", "Статистика для экономистов"),
+        ("Электроника и схемотехника", "Электроника и схемотехника"),
+        ("Гидромеханика и механика жидкостей", "Гидромеханика и механика жидкостей"),
+        ("квантовая механика", "квантовая механика"),
+        ("квантовая механика ČVUT", "квантовая механика"),
+        ("электроника ČVUT", "электроника"),
+        ("статистика для экономистов VŠE", "Статистика для экономистов"),
     ],
 )
-async def test_a_name_a_transliteration_would_have_stolen(session, text) -> None:
+async def test_a_name_a_transliteration_would_have_stolen(
+    session, query, owned_by
+) -> None:
     from sqlalchemy import select
 
     from students_cz.db.models import Subject, SubjectI18n
 
-    rows = await find_subjects(session, text, "ru", limit=1)
-    assert rows, f"{text!r} reaches nothing"
+    rows = await find_subjects(session, query, "ru", limit=1)
+    assert rows, f"{query!r} reaches nothing"
 
     owner = await session.scalar(
-        select(SubjectI18n.subject_id).where(SubjectI18n.name == text).limit(1)
+        select(SubjectI18n.subject_id).where(SubjectI18n.name == owned_by).limit(1)
     )
     if owner is None:
         # A synonym rather than a name: it belongs to whichever subject lists it.
         owner = await session.scalar(
-            select(Subject.id).where(Subject.synonyms.any(text)).limit(1)
+            select(Subject.id).where(Subject.synonyms.any(owned_by)).limit(1)
         )
-    assert owner is not None, f"{text!r} is not in the catalog any more"
-    assert rows[0].id == owner, f"{text!r} answered {rows[0].label}"
+    assert owner is not None, f"{owned_by!r} is not in the catalog any more"
+    assert rows[0].id == owner, f"{query!r} answered {rows[0].label}"
