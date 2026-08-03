@@ -471,13 +471,6 @@ function Preview({
 }
 
 /**
- * The same query with the person's own sentence attached.
- *
- * The results screen offers to turn the search into a request, and a request
- * is the sentence rather than the filters — rebuilt from chips it would read
- * like a form.
- */
-/**
  * The guess the parse would not search by, carried to the results screen.
  *
  * Its own parameter and not `subject_id`: the difference between "this is what
@@ -491,6 +484,13 @@ function withGuess(query: string, also: ParseResult['also']): string {
   return params.toString();
 }
 
+/**
+ * The same query with the person's own sentence attached.
+ *
+ * The results screen offers to turn the search into a request, and a request is
+ * the sentence rather than the filters — rebuilt from chips it would read like
+ * a form.
+ */
 function withWords(query: string, text: string): string {
   const words = text.trim();
   if (!words) return query;

@@ -1345,3 +1345,34 @@ async def test_noise_is_not_demoted_either(client, session):
         embedding.set_embedder(None)
 
     assert body["also"] is None
+
+
+async def test_a_guess_the_rules_removed_is_not_shown_either(client, session):
+    """Refused for want of confidence is worth showing. Refused for conflicting
+    with the kind of help is not.
+
+    A subject cannot go beside a kind of help that carries none — the search
+    ANDs them and the pair matches nobody — so a section of those people answers
+    a question the person did not ask.
+    """
+    from students_cz.db.embed import rebuild
+    from students_cz.services import embedding
+
+    from .test_embedding import RiggedEmbedder
+
+    # Confident enough to be believed, and then removed by the rule.
+    rigged = RiggedEmbedder("Чешский язык B2 (для вуза и нострификации)", 0.60)
+    await rebuild(session, embedder=rigged)
+    embedding.set_embedder(rigged)
+    try:
+        body = (
+            await client.post(
+                "/api/v1/search/parse",
+                json={"text": "нужна страховка зззз"},
+                headers=auth_header(90903),
+            )
+        ).json()
+    finally:
+        embedding.set_embedder(None)
+
+    assert body["also"] is None, "a conflicting guess came back as a section"

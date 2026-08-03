@@ -389,6 +389,12 @@ class ParsedQuery:
     # judged by can be set from data instead of by eye. Logged into
     # `search_queries.parsed`; see `api/v1/search`.
     vector: tuple[Match, float] | None = None
+    # Set when the vector's subject was good enough to believe and was then
+    # removed for a reason that has nothing to do with confidence — a kind of
+    # help that carries no subject. Anything downstream that would show the
+    # guess has to know the difference: "we were not sure" is worth showing,
+    # "this cannot go with what you asked for" is not.
+    vector_conflicted: bool = False
 
 
 async def parse(
@@ -466,6 +472,9 @@ async def parse(
         if _is_named(subjects[0]) and result.service_type in ASIDES:
             result.service_type, _ = _match_service(norm, ignore=SUBJECTLESS)
         else:
+            result.vector_conflicted = bool(
+                result.vector and subjects and subjects[0] is result.vector[0]
+            )
             subjects = []
 
     if subjects:

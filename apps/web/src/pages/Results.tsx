@@ -66,9 +66,13 @@ export default function ResultsPage() {
   });
 
   const also = useQuery({
-    queryKey: ['search-also', guess, sort],
-    queryFn: ({ signal }) => api.search({ subject_id: guess ?? undefined, sort }, signal),
-    enabled: guess !== null,
+    queryKey: ['search-also', filters, guess, sort],
+    // Every filter the parse *was* sure about still applies: the guess replaces
+    // the subject and nothing else. A query that named a school and a budget
+    // means them in this list too.
+    queryFn: ({ signal }) =>
+      api.search({ ...filters, subject_id: guess ?? undefined, sort }, signal),
+    enabled: guess !== null && filters !== null,
   });
 
   // Unknown filters are still loading, not loaded. The error takes precedence,
@@ -127,6 +131,15 @@ export default function ResultsPage() {
               body={<Trans>Никто пока не предлагает то, что ты ищешь.</Trans>}
             />
             <AskInstead onClick={() => setAsking(true)} found={0} />
+            <AlsoSection
+              cards={also.data?.results ?? []}
+              named={
+                also.data?.chips.find((chip) => chip.kind === 'subject')?.label ?? null
+              }
+              exclude={new Set()}
+              locale={i18n.locale}
+              onOpen={(id) => navigate(`/helper/${id}`)}
+            />
           </>
         ) : (
           <>
@@ -148,16 +161,17 @@ export default function ResultsPage() {
                 thing, and the second one is the whole other half of the
                 product. */}
             <AskInstead onClick={() => setAsking(true)} found={data.total} />
+            <AlsoSection
+              cards={also.data?.results ?? []}
+              named={
+                also.data?.chips.find((chip) => chip.kind === 'subject')?.label ?? null
+              }
+              exclude={new Set(data.results.map((card) => card.user_id))}
+              locale={i18n.locale}
+              onOpen={(id) => navigate(`/helper/${id}`)}
+            />
           </>
         )}
-
-        <AlsoSection
-          cards={also.data?.results ?? []}
-          named={also.data?.chips.find((chip) => chip.kind === 'subject')?.label ?? null}
-          exclude={new Set((data?.results ?? []).map((card) => card.user_id))}
-          locale={i18n.locale}
-          onOpen={(id) => navigate(`/helper/${id}`)}
-        />
       </Screen>
       {asking ? (
         <RequestSheet
