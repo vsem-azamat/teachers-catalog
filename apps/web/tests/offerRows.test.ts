@@ -159,7 +159,7 @@ function blank(over: Partial<Draft> = {}): Draft {
 }
 
 test('the first axis of a service fills its empty row', () => {
-  const rows = addAxis([blank()], blank(), { subject_id: 12, subject_name: 'Матан' });
+  const rows = addAxis([blank()], blank(), 'subject', { id: 12, name: 'Матан' });
   assert.equal(rows.length, 1);
   assert.equal(rows[0]?.subject_id, 12);
 });
@@ -168,16 +168,13 @@ test('a filled row is re-keyed, or the next one can be minted onto it', () => {
   // The defect this pins: filling a row without re-keying leaves the key
   // naming axes the row no longer has, and `keyOf` can then mint it again for
   // a different row — two rows, one key, one price field between them.
-  const rows = addAxis([blank()], blank(), {
-    institution_id: 4,
-    institution_name: 'ČVUT',
-  });
+  const rows = addAxis([blank()], blank(), 'institution', { id: 4, name: 'ČVUT' });
   assert.equal(rows[0]?.key, keyOf(rows[0] as Draft));
   assert.equal(new Set(rows.map((r) => r.key)).size, rows.length);
 });
 
 test('a second axis is added, and starts from what the service says', () => {
-  const rows = addAxis([row()], blank(), { subject_id: 13, subject_name: 'Физика' });
+  const rows = addAxis([row()], blank(), 'subject', { id: 13, name: 'Физика' });
   assert.equal(rows.length, 2);
   assert.equal(rows[1]?.price, '500');
   assert.deepEqual(rows[1]?.option_ids, [3, 4]);
@@ -195,7 +192,7 @@ test('every row of a service keeps a key of its own through both moves', () => {
   rows = dropRow(rows, first, 'institution');
   const emptied = rows.find((candidate) => candidate.institution_id === null) as Draft;
   assert.ok(emptied);
-  rows = addAxis(rows, blank(), { institution_id: 7, institution_name: 'UK' });
+  rows = addAxis(rows, blank(), 'institution', { id: 7, name: 'UK' });
   const second = rows.find((candidate) => candidate.institution_id === 9) as Draft;
   rows = dropRow(rows, second, 'institution');
   assert.equal(new Set(rows.map((r) => r.key)).size, rows.length);

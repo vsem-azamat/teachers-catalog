@@ -118,18 +118,30 @@ export function keyOf(row: Draft): string {
  * That first row is filled rather than left behind, which would otherwise save
  * as "this service, no subject" beside the real ones. A row that is added
  * instead starts from `serviceAnswers`.
+ *
+ * The axis is named rather than read off the fields being set, so a caller
+ * that names neither is a type error instead of a row filled with nothing.
  */
-export function addAxis(rows: Draft[], blank: Draft, axis: Partial<Draft>): Draft[] {
+export function addAxis(
+  rows: Draft[],
+  blank: Draft,
+  axis: Axis,
+  picked: { id: number; name: string },
+): Draft[] {
   const service = blank.service_type_id;
-  const naming: keyof Draft = 'subject_id' in axis ? 'subject_id' : 'institution_id';
+  const named: Partial<Draft> =
+    axis === 'subject'
+      ? { subject_id: picked.id, subject_name: picked.name }
+      : { institution_id: picked.id, institution_name: picked.name };
+  const holds: keyof Draft = axis === 'subject' ? 'subject_id' : 'institution_id';
   const empty = rows.find(
-    (row) => row.service_type_id === service && row[naming] === null,
+    (row) => row.service_type_id === service && row[holds] === null,
   );
   if (empty) {
     return rows.map((row) =>
-      row === empty ? { ...row, ...axis, key: keyOf({ ...row, ...axis }) } : row,
+      row === empty ? { ...row, ...named, key: keyOf({ ...row, ...named }) } : row,
     );
   }
-  const added = { ...blank, ...serviceAnswers(rows, service), ...axis };
+  const added = { ...blank, ...serviceAnswers(rows, service), ...named };
   return [...rows, { ...added, key: keyOf(added) }];
 }

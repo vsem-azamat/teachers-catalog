@@ -238,22 +238,23 @@ export default function OfferPricesPage() {
 
   // Which row it lands on, what it inherits and how it is keyed are
   // `addAxis`'s rules, and they are tested there.
-  const attach = (type: ServiceType, axis: Partial<Draft>) => {
+  const attach = (
+    type: ServiceType,
+    axis: Axis,
+    picked: { id: number; name: string },
+  ) => {
     hapticSelection();
-    setRows((current) => addAxis(current, blank(type), axis));
+    setRows((current) => addAxis(current, blank(type), axis, picked));
   };
 
   const addSubject = (type: ServiceType, subject: Subject) =>
-    attach(type, { subject_id: subject.id, subject_name: subject.name });
+    attach(type, 'subject', { id: subject.id, name: subject.name });
 
   const addInstitution = (type: ServiceType, institution: Institution) =>
-    attach(type, {
-      institution_id: institution.id,
-      // The server's own `institution_name`, not the short form: a chip that
-      // reads ČVUT until the screen reloads and then reads the full name is one
-      // school looking like two.
-      institution_name: institution.name,
-    });
+    // The server's own `institution.name`, not the short form: a chip that
+    // reads ČVUT until the screen reloads and then reads the full name is one
+    // school looking like two.
+    attach(type, 'institution', { id: institution.id, name: institution.name });
 
   return (
     <Screen>
