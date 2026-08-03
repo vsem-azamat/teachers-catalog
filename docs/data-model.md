@@ -487,3 +487,26 @@ They are set by eye because there was nothing to set them from: `search_queries`
 holds five rows. Every parse writes what the vector proposed into `parsed`,
 whether or not it was used, so in a month they can be set from data.
 
+**Below the bar the proposal is demoted rather than dropped.** A guess that
+cannot be trusted to *filter* can still be trusted to **sort**. So a proposal
+that scores at least **0.35** and fails either of the two tests above comes back
+as `also`, and the results screen uses it to split the list it already has: the
+people who offer that subject first, everybody else the search found under
+«Также». One list, ordered by a guess, with the guess named.
+
+Not a second list — that was the first shape and it is empty by construction.
+The guess narrows the same search, so its people are a subset of the people
+already on screen, and a section that leaves out everyone already shown has
+nothing left to show. The exception is a query that gave nothing else to search
+by at all: there the guess *is* the list, under a heading that says so.
+
+Below 0.35 there is nothing to demote. The nearest subject at that distance is
+whatever happened to be closest, and a section of noise is worse than no
+section.
+
+Nor is there anything to demote beside a kind of help that carries no subject.
+The rule above that stops the two coexisting applies here for the same reason
+and with more force: a second list filtered by that subject is not merely
+narrower, it is empty by construction, because the search ANDs the two and no
+offer in that group has a subject at all.
+

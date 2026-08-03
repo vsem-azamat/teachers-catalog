@@ -19,6 +19,7 @@ from students_cz.db.models.enums import (
     UserEventKind,
 )
 from students_cz.schemas import (
+    AlsoSubject,
     Chip,
     Clarify,
     ClarifyOption,
@@ -29,6 +30,7 @@ from students_cz.schemas import (
     SearchOut,
 )
 from students_cz.services import catalog, parser
+from students_cz.services.lookup import VECTOR_ALSO_FLOOR
 from students_cz.services.naming import short_form, translated
 from students_cz.services.people import log_event
 
@@ -155,7 +157,27 @@ async def parse_query(
         clarify=_clarify_for(parsed),
         matches=total,
         note=Phrase(code="parse.nothing_recognised") if not chips else None,
+        also=_also(parsed),
     )
+
+
+def _also(parsed: parser.ParsedQuery) -> AlsoSubject | None:
+    """The guess the parse would not search by, when it is worth reading.
+
+    Not when it was believed — then it is the subject, and repeating it would be
+    the same list twice. Not when it is noise. And not when it conflicts with
+    the kind of help, believed or not: a subject that cannot go with what was
+    asked for cannot go beside it either, and the list behind it would be empty
+    by construction.
+    """
+    if not parsed.vector or parsed.vector_conflicted:
+        return None
+    proposed, _ = parsed.vector
+    if parsed.subject and parsed.subject.id == proposed.id:
+        return None
+    if proposed.score < VECTOR_ALSO_FLOOR:
+        return None
+    return AlsoSubject(subject_id=proposed.id, label=proposed.label)
 
 
 def _clarify_for(parsed: parser.ParsedQuery) -> Clarify | None:

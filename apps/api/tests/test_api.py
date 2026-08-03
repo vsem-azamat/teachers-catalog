@@ -1287,3 +1287,122 @@ async def test_the_same_checklist_line_twice_is_stored_once(client, session):
     )
     mine = (await client.get("/api/v1/helper", headers=headers)).json()
     assert mine["offers"][0]["option_ids"] == [option.id]
+
+
+async def test_an_unsure_guess_comes_back_as_also(client, session):
+    """A guess that cannot filter can still be worth reading.
+
+    Below the bar the embedder's proposal used to be dropped. It comes back
+    named instead, so the screen can show it as its own section rather than
+    narrowing the search by something it is not sure of.
+    """
+    from students_cz.db.embed import rebuild
+    from students_cz.services import embedding
+
+    from .test_embedding import RiggedEmbedder
+
+    # Above the demotion floor, below the bar that would let it filter.
+    rigged = RiggedEmbedder("Теория вероятностей и статистика", 0.40)
+    await rebuild(session, embedder=rigged)
+    embedding.set_embedder(rigged)
+    try:
+        body = (
+            await client.post(
+                "/api/v1/search/parse",
+                json={"text": "не понимаю как считать вероятности"},
+                headers=auth_header(90901),
+            )
+        ).json()
+    finally:
+        embedding.set_embedder(None)
+
+    assert body["also"] is not None, "the guess was dropped"
+    assert "вероятност" in body["also"]["label"].lower()
+    assert all(chip["kind"] != "subject" for chip in body["chips"]), (
+        "an unsure guess must not become a filter"
+    )
+
+
+async def test_noise_is_not_demoted_either(client, session):
+    """Below the floor the nearest subject is whatever happened to be closest."""
+    from students_cz.db.embed import rebuild
+    from students_cz.services import embedding
+
+    from .test_embedding import RiggedEmbedder
+
+    rigged = RiggedEmbedder("Теория вероятностей и статистика", 0.20)
+    await rebuild(session, embedder=rigged)
+    embedding.set_embedder(rigged)
+    try:
+        body = (
+            await client.post(
+                "/api/v1/search/parse",
+                json={"text": "не понимаю как считать вероятности"},
+                headers=auth_header(90902),
+            )
+        ).json()
+    finally:
+        embedding.set_embedder(None)
+
+    assert body["also"] is None
+
+
+async def test_a_guess_the_rules_removed_is_not_shown_either(client, session):
+    """Refused for want of confidence is worth showing. Refused for conflicting
+    with the kind of help is not.
+
+    A subject cannot go beside a kind of help that carries none — the search
+    ANDs them and the pair matches nobody — so a section of those people answers
+    a question the person did not ask.
+    """
+    from students_cz.db.embed import rebuild
+    from students_cz.services import embedding
+
+    from .test_embedding import RiggedEmbedder
+
+    # Confident enough to be believed, and then removed by the rule.
+    rigged = RiggedEmbedder("Чешский язык B2 (для вуза и нострификации)", 0.60)
+    await rebuild(session, embedder=rigged)
+    embedding.set_embedder(rigged)
+    try:
+        body = (
+            await client.post(
+                "/api/v1/search/parse",
+                json={"text": "нужна страховка зззз"},
+                headers=auth_header(90903),
+            )
+        ).json()
+    finally:
+        embedding.set_embedder(None)
+
+    assert body["also"] is None, "a conflicting guess came back as a section"
+
+
+async def test_a_guess_beside_a_subjectless_kind_is_never_shown(client, session):
+    """Whether it was believed and dropped, or never believed at all.
+
+    A second list filtered by that subject is guaranteed to be empty: the search
+    ANDs the subject with the kind of help, and no offer in the non-study group
+    has one.
+    """
+    from students_cz.db.embed import rebuild
+    from students_cz.services import embedding
+
+    from .test_embedding import RiggedEmbedder
+
+    # Worth demoting on confidence — and still not worth showing here.
+    rigged = RiggedEmbedder("Чешский язык B2 (для вуза и нострификации)", 0.40)
+    await rebuild(session, embedder=rigged)
+    embedding.set_embedder(rigged)
+    try:
+        body = (
+            await client.post(
+                "/api/v1/search/parse",
+                json={"text": "нужна страховка зззз"},
+                headers=auth_header(90904),
+            )
+        ).json()
+    finally:
+        embedding.set_embedder(None)
+
+    assert body["also"] is None

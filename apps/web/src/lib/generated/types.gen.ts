@@ -5,6 +5,22 @@ export type ClientOptions = {
 };
 
 /**
+ * AlsoSubject
+ *
+ * A subject the parser guessed at but would not search by.
+ */
+export type AlsoSubject = {
+    /**
+     * Subject Id
+     */
+    subject_id: number;
+    /**
+     * Label
+     */
+    label: string;
+};
+
+/**
  * Avatar
  *
  * Enough to draw the little circle without fetching anything.
@@ -659,6 +675,7 @@ export type ParseOut = {
      * Matches
      */
     matches: number;
+    also: AlsoSubject | null;
     note?: Phrase | null;
 };
 

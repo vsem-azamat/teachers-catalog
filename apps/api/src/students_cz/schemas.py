@@ -242,10 +242,21 @@ class Clarify(BaseModel):
     options: list[ClarifyOption]
 
 
+class AlsoSubject(BaseModel):
+    """A subject the parser guessed at but would not search by."""
+
+    subject_id: int
+    label: str
+
+
 class ParseOut(BaseModel):
     chips: list[Chip]
     clarify: Clarify | None = None
     matches: int
+    # What the embedder proposed and was not sure enough to filter by. The
+    # screen shows it as its own section, named — a guess that narrows a search
+    # shows nobody, and a guess that says it is one costs the reader nothing.
+    also: AlsoSubject | None
     # Set when nothing was recognised, so the screen can say so plainly
     # instead of showing an empty list and looking broken.
     note: Phrase | None = None

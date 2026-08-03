@@ -321,6 +321,12 @@ async def find_subjects(
 VECTOR_FLOOR = 0.45
 VECTOR_LEAD = 0.04
 
+# Below the two above the proposal is shown rather than used — a guess that
+# cannot narrow a search can still be worth reading. Below this it is not even
+# that: at that distance the nearest subject is whatever happened to be closest,
+# and a section of noise is worse than no section.
+VECTOR_ALSO_FLOOR = 0.35
+
 
 async def find_by_meaning(
     session: AsyncSession, query: str, lang: str

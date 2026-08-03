@@ -49,6 +49,10 @@ msgstr "Поки жодної. Додай нижче — без них тебе 
 #~ msgid "Заявку увидят все, кто предлагает помощь."
 #~ msgstr "Заявку побачать усі, хто пропонує допомогу."
 
+#: src/pages/Results.tsx
+msgid "Похоже, речь о"
+msgstr "Схоже, йдеться про"
+
 #: src/pages/Offer.tsx
 #: src/pages/OfferPrices.tsx
 msgid "Проверь связь и попробуй ещё раз."
@@ -181,6 +185,10 @@ msgstr "Залиш заявку — відгукнуться самі"
 msgid "Оформление: как в системе. Нажми, чтобы сменить"
 msgstr "Оформлення: як у системі. Натисни, щоб змінити"
 
+#: src/pages/Results.tsx
+msgid "Напиши иначе — или оставь заявку, и найдут тебя."
+msgstr "Напиши інакше — або залиш заявку, і знайдуть тебе."
+
 #: src/components/RequestSheet.tsx
 msgid "Не отправилось — попробуй ещё раз."
 msgstr "Не надіслалося — спробуй ще раз."
@@ -192,6 +200,10 @@ msgstr "Не надіслалося — спробуй ще раз."
 #: src/lib/turnaround.tsx
 msgid "Две недели"
 msgstr "Два тижні"
+
+#: src/pages/Results.tsx
+msgid "Не поняли запрос"
+msgstr "Не зрозуміли запит"
 
 #: src/components/AppHeader.tsx
 msgid "Язык"
@@ -376,6 +388,10 @@ msgstr "За що ціна"
 #: src/pages/OfferPrices.tsx
 msgid "за работу"
 msgstr "за роботу"
+
+#: src/pages/Ask.tsx
+msgid "Посмотреть похожее"
+msgstr "Подивитися схоже"
 
 #: src/pages/MyHelper.tsx
 #~ msgid "Пока ни одного. Найди предмет ниже — без них тебя не найдут по поиску."
@@ -626,6 +642,10 @@ msgstr "Що потрібно?"
 #: src/pages/Home.tsx
 msgid "Не удалось загрузить каталог"
 msgstr "Не вдалося завантажити каталог"
+
+#: src/pages/Results.tsx
+msgid "Также"
+msgstr "Також"
 
 #: src/pages/Chats.tsx
 #~ msgid "Мы сводим людей и запоминаем, что контакт состоялся — по этому считается время ответа. Сама переписка остаётся в Telegram."
@@ -936,6 +956,11 @@ msgstr "Заявок поки немає"
 #: src/pages/OfferPrices.tsx
 msgid "Убрать"
 msgstr "Прибрати"
+
+#. placeholder {0}: alsoProps.named
+#: src/pages/Results.tsx
+msgid "Сверху — кто ведёт «{0}»"
+msgstr "Зверху — хто веде «{0}»"
 
 #: src/pages/Ask.tsx
 msgid "По этому пока не найти"

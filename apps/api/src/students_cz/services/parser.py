@@ -389,6 +389,13 @@ class ParsedQuery:
     # judged by can be set from data instead of by eye. Logged into
     # `search_queries.parsed`; see `api/v1/search`.
     vector: tuple[Match, float] | None = None
+    # Set when the proposal cannot go with the kind of help at all — one that
+    # carries no subject — whether it was believed and then removed or never
+    # reached the bar. Anything downstream that would show the guess has to know
+    # the difference: "we were not sure" is worth showing, "this cannot go with
+    # what you asked for" is not, because the list behind it is empty by
+    # construction.
+    vector_conflicted: bool = False
 
 
 async def parse(
@@ -467,6 +474,13 @@ async def parse(
             result.service_type, _ = _match_service(norm, ignore=SUBJECTLESS)
         else:
             subjects = []
+
+    # A kind of help that carries no subject cannot be shown beside one either.
+    # Whether the proposal was believed and then dropped above, or never reached
+    # the bar at all, a second list filtered by it is guaranteed to be empty —
+    # the search ANDs the two and no offer in that group has a subject.
+    if result.vector and result.service_type in SUBJECTLESS:
+        result.vector_conflicted = True
 
     if subjects:
         result.subject = subjects[0]

@@ -49,6 +49,10 @@ msgstr "None yet. Add one below — without them search cannot find you."
 #~ msgid "Заявку увидят все, кто предлагает помощь."
 #~ msgstr "Everyone who offers help will see it."
 
+#: src/pages/Results.tsx
+msgid "Похоже, речь о"
+msgstr "This looks like"
+
 #: src/pages/Offer.tsx
 #: src/pages/OfferPrices.tsx
 msgid "Проверь связь и попробуй ещё раз."
@@ -181,6 +185,10 @@ msgstr "Post a request — they answer you"
 msgid "Оформление: как в системе. Нажми, чтобы сменить"
 msgstr "Appearance: follows the system. Tap to change"
 
+#: src/pages/Results.tsx
+msgid "Напиши иначе — или оставь заявку, и найдут тебя."
+msgstr "Try other words — or post a request and let them find you."
+
 #: src/components/RequestSheet.tsx
 msgid "Не отправилось — попробуй ещё раз."
 msgstr "It did not go through — try again."
@@ -192,6 +200,10 @@ msgstr "It did not go through — try again."
 #: src/lib/turnaround.tsx
 msgid "Две недели"
 msgstr "Two weeks"
+
+#: src/pages/Results.tsx
+msgid "Не поняли запрос"
+msgstr "We did not understand"
 
 #: src/components/AppHeader.tsx
 msgid "Язык"
@@ -376,6 +388,10 @@ msgstr "What the price is for"
 #: src/pages/OfferPrices.tsx
 msgid "за работу"
 msgstr "per assignment"
+
+#: src/pages/Ask.tsx
+msgid "Посмотреть похожее"
+msgstr "See what is close"
 
 #: src/pages/MyHelper.tsx
 #~ msgid "Пока ни одного. Найди предмет ниже — без них тебя не найдут по поиску."
@@ -626,6 +642,10 @@ msgstr "What do you need?"
 #: src/pages/Home.tsx
 msgid "Не удалось загрузить каталог"
 msgstr "Couldn't load the catalog"
+
+#: src/pages/Results.tsx
+msgid "Также"
+msgstr "Also"
 
 #: src/pages/Chats.tsx
 #~ msgid "Мы сводим людей и запоминаем, что контакт состоялся — по этому считается время ответа. Сама переписка остаётся в Telegram."
@@ -936,6 +956,11 @@ msgstr "No requests yet"
 #: src/pages/OfferPrices.tsx
 msgid "Убрать"
 msgstr "Remove"
+
+#. placeholder {0}: alsoProps.named
+#: src/pages/Results.tsx
+msgid "Сверху — кто ведёт «{0}»"
+msgstr "First — who teaches “{0}”"
 
 #: src/pages/Ask.tsx
 msgid "По этому пока не найти"
