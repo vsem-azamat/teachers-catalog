@@ -15,7 +15,7 @@ from aiogram.types import User as TgUser
 from students_cz.bot.middleware import RememberUserMiddleware
 from students_cz.core.config import get_settings
 from students_cz.db.models import User, UserEvent
-from students_cz.db.models.enums import UserEventKind
+from students_cz.db.models.enums import UiLang, UserEventKind
 from students_cz.services.people import mark_unreachable, reachable, remember
 
 pytestmark = pytest.mark.asyncio
@@ -192,3 +192,44 @@ async def test_starting_again_makes_someone_reachable_once_more(session):
     await run_middleware(session, update_from(700021, "/start"))
     user = await session.scalar(select(User).where(User.tg_id == 700021))
     assert user.bot_can_message is True
+
+
+async def test_an_unknown_institution_is_named_rather_than_a_foreign_key_error(
+    session,
+):
+    from students_cz.schemas import MeUpdate
+    from students_cz.services import errors
+    from students_cz.services.people import update_profile
+
+    user = User(tg_id=700030, first_name="Nina", ui_lang=UiLang.RU)
+    session.add(user)
+    await session.flush()
+
+    with pytest.raises(errors.Invalid):
+        await update_profile(session, user, MeUpdate(institution_id=10**9))
+
+
+async def test_a_field_the_payload_does_not_mention_is_left_alone(session):
+    """What the form did not ask about, the save does not answer.
+
+    The same rule as the helper profile: a screen that shows three fields must
+    not clear the fourth on its way out.
+    """
+    from students_cz.schemas import MeUpdate
+    from students_cz.services.people import update_profile
+
+    user = User(
+        tg_id=700031,
+        first_name="Oleg",
+        ui_lang=UiLang.RU,
+        spoken_langs=["ru", "cs"],
+        city="Praha",
+    )
+    session.add(user)
+    await session.flush()
+
+    await update_profile(session, user, MeUpdate(ui_lang=UiLang.CS))
+
+    assert user.ui_lang is UiLang.CS
+    assert user.city == "Praha"
+    assert user.spoken_langs == ["ru", "cs"]

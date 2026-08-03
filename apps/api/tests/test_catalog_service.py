@@ -24,11 +24,13 @@ async def _person(session: AsyncSession, tg_id: int) -> User:
 
 
 async def _events(session: AsyncSession, user_id: int, kind: UserEventKind) -> int:
-    return await session.scalar(
-        select(func.count())
-        .select_from(UserEvent)
-        .where(UserEvent.user_id == user_id, UserEvent.kind == kind)
-    )
+    return (
+        await session.scalar(
+            select(func.count())
+            .select_from(UserEvent)
+            .where(UserEvent.user_id == user_id, UserEvent.kind == kind)
+        )
+    ) or 0
 
 
 async def test_starting_a_contact_records_it_and_hands_back_the_link(

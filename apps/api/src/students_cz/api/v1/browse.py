@@ -34,7 +34,5 @@ async def helper_detail(
     response_model=ContactOut,
     tags=["catalog"],
 )
-async def start_contact(
-    user_id: int, session: SessionDep, user: UserDep
-) -> ContactOut:
+async def start_contact(user_id: int, session: SessionDep, user: UserDep) -> ContactOut:
     return await catalog.start_contact(session, viewer=user, helper_id=user_id)

@@ -68,7 +68,7 @@ neighbours about where it lives.
 | `public.py` | `/open` — the only route without init data |
 | `me.py` | the account behind the init data |
 | `taxonomy.py` | service types, subjects, institutions, languages |
-| `search.py` | free-text parse, and the search it feeds |
+| `search.py` | free-text parse — the rule is `services/search.py` — and the search it feeds |
 | `browse.py` | the home screen, a person's page, starting a contact |
 | `cabinet.py` | a helper's own profile: reading it and saving it |
 | `requests.py` | the catalog in reverse — post, answer, accept, close |
@@ -90,6 +90,14 @@ and renders a schema. If it contains a rule — a permission check beyond
 "logged in", a multi-step write, ranking, a state machine — that rule belongs
 in a service, where a test can reach it without an HTTP client and a live
 database.
+
+**A write is a rule**, even a one-line one. An endpoint does not add a row: a
+row added in a handler is a fact about the product that only an HTTP test can
+reach, and the bot cannot reach it at all. The two that read like exceptions
+are not: `catalog.open_home` and `catalog.view_helper` are the plain readers
+plus the event each records, kept apart from `home_sections` and
+`helper_detail` so that reading the sections is not itself a claim that
+somebody opened the app.
 
 **A service** takes a session and plain values, and returns DTOs. It does not
 raise `HTTPException`: an HTTP status is a fact about a protocol, and a
@@ -309,11 +317,6 @@ is visible if the licence ever matters.
 Written down because an agent greps this tree and builds against what it
 finds, and a rule with silent exceptions is worse than no rule.
 
-- **Some endpoints still write in the route body**: `browse.start_contact`,
-  `me.update_me`, and the event logging behind `browse.home`,
-  `browse.helper_detail` and `search.parse`. Named rather than counted — a
-  number here is one nobody remembers to correct, and the last three attempts
-  at one were all wrong.
 - **Nothing tells a helper that a request exists.** `requests.feed_for` filters
   on status, authorship, expiry and whether you already answered, and uses the
   subject only for *ranking*, so every helper profile sees every open request —
