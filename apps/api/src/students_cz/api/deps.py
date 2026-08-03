@@ -112,7 +112,7 @@ async def current_notifier(http: Request, settings: SettingsDep) -> Notifier:
 NotifierDep = Annotated[Notifier, Depends(current_notifier)]
 
 
-def current_handle(http: Request) -> BotHandle:
+async def current_handle(http: Request) -> BotHandle:
     """The bot's own handle, as one object per process.
 
     Built here rather than in the lifespan, and kept: what a handler needs is
@@ -124,6 +124,10 @@ def current_handle(http: Request) -> BotHandle:
     Built on the first request rather than at import, because that is when the
     bot exists: the lifespan has already run by then, so a `None` cached here
     means the process really has no token.
+
+    `async` like every other dependency here, and not only for symmetry: a
+    plain `def` would be dispatched to a worker thread, and two first requests
+    landing together would each build a handle and each ask Telegram.
     """
     handle = getattr(http.app.state, "bot_handle", None)
     if handle is None:
