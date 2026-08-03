@@ -695,13 +695,15 @@ async def test_the_vector_is_a_guess_and_loses_to_a_subjectless_kind(session) ->
 
     from .test_embedding import PointedEmbedder
 
-    pointed = PointedEmbedder(
-        {"нужна чешская виза": "Чешский язык B2 (для вуза и нострификации)"}
-    )
+    # Something is left over beside the visa, so the vector *is* asked — and
+    # what it proposes still cannot survive next to a kind of help that carries
+    # no subject.
+    query = "нужна виза зззз ыыыы"
+    pointed = PointedEmbedder({query: "Чешский язык B2 (для вуза и нострификации)"})
     await rebuild(session, embedder=pointed)
     embedding.set_embedder(pointed)
     try:
-        parsed = await parse(session, "нужна чешская виза", "ru", today=TODAY)
+        parsed = await parse(session, query, "ru", today=TODAY)
     finally:
         embedding.set_embedder(None)
 

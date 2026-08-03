@@ -49,10 +49,17 @@ RUN python -c "from huggingface_hub import snapshot_download; snapshot_download(
 # Flattened, but kept under the names the repository publishes: the graph names
 # its own weight file from inside itself, so a tidier pair breaks the reference
 # and the failure shows only when the first query opens the session.
+#
+# Then checked against the bytes this was built and measured with. The revision
+# above already pins the content, so this is the second lock on the same door —
+# it is what turns a mirror that changed under us, or a download that ended
+# early, into a failed build instead of a search that quietly answers worse.
+COPY model.sha256 /model.sha256
 RUN mv /model/onnx/model_q4.onnx /model/onnx/model_q4.onnx_data /model/ \
     && rmdir /model/onnx \
-    && test -s /model/model_q4.onnx_data \
-    && test -s /model/tokenizer.json
+    && cd /model \
+    && sha256sum --check --strict /model.sha256 \
+    && rm /model.sha256
 
 
 FROM python:3.14-slim-bookworm AS runtime

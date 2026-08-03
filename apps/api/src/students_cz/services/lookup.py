@@ -346,24 +346,33 @@ async def find_by_meaning(
 
     # Distance rather than similarity, because that is the operator pgvector
     # indexes; cosine similarity is one minus it.
+    # The best row of each subject, and then the best two subjects. `DISTINCT
+    # ON` rather than a window over the closest rows: a subject with two dozen
+    # passages could fill any window by itself, and then the runner-up the lead
+    # is measured against would be nothing at all.
     distance = SubjectEmbedding.embedding.cosine_distance(vector)
+    nearest = (
+        select(
+            SubjectEmbedding.subject_id,
+            distance.label("distance"),
+        )
+        .join(Subject, Subject.id == SubjectEmbedding.subject_id)
+        .where(SubjectEmbedding.model == model.name, Subject.is_active)
+        .distinct(SubjectEmbedding.subject_id)
+        .order_by(SubjectEmbedding.subject_id, "distance")
+        .subquery()
+    )
     rows = (
         await session.execute(
-            select(SubjectEmbedding.subject_id, distance.label("distance"))
-            .where(SubjectEmbedding.model == model.name)
-            .order_by("distance")
-            .limit(40)
+            select(nearest.c.subject_id, nearest.c.distance)
+            .order_by(nearest.c.distance)
+            .limit(2)
         )
     ).all()
     if not rows:
         return None, None
 
-    best: dict[int, float] = {}
-    for subject_id, dist in rows:
-        score = 1.0 - float(dist)
-        if score > best.get(subject_id, -1.0):
-            best[subject_id] = score
-    ranked = sorted(best.items(), key=lambda item: item[1], reverse=True)[:2]
+    ranked = [(subject_id, 1.0 - float(dist)) for subject_id, dist in rows]
 
     labelled: list[Match] = []
     for subject_id, score in ranked:

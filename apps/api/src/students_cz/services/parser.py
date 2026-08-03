@@ -420,7 +420,15 @@ async def parse(
     # the same rules: it is a guess by construction, and «нужна чешская виза»
     # proposed «Чешский язык B2» at 0.50 — a subject beside a kind of help that
     # has none, which the rule below is exactly for.
-    if not subjects:
+    #
+    # And only when the query says something the kind of help did not already
+    # account for. Silence has two meanings: "the rules could not read this" and
+    # "there is nothing here to read". A bare «přijímačky» is the second — the
+    # word is the whole query and it names a kind of help — and asking anyway
+    # answered «Поступление в экономические вузы» at 0.53, which is the very
+    # mistake the synonym was taken off that subject to stop. The same test the
+    # trigram filter above makes, for the same reason.
+    if not subjects and _left_over(norm, keyword or ""):
         proposed, runner_up = await find_by_meaning(session, text, lang)
         if proposed:
             lead = proposed.score - (runner_up.score if runner_up else 0.0)

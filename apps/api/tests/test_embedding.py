@@ -1,8 +1,15 @@
 """The embedder, and the rules that do not need it.
 
-Everything below the model — prefixes, caching, the rebuild rule — is tested
-with a fake, so the suite never downloads 200 MB. One test marked `model` loads
-the real thing; see `pytest.ini` for how it is skipped by default.
+Everything here runs on fakes, and `conftest` points `MODEL_DIR` at nothing for
+the whole suite, so the answers do not depend on whether this machine happens to
+have 200 MB of model on it. The real one is exercised where it belongs: the
+image build checks the files it baked in, and the fixture in the pull request
+was measured through `parse` with it.
+
+Three fakes, each for a different question. `FakeEmbedder` gives every text a
+deterministic vector — enough for the rebuild. `PointedEmbedder` puts one query
+on top of one passage, which tests the wiring. `RiggedEmbedder` sets the cosine
+itself, which is the only way to ask what happens at 0.3.
 """
 
 import pytest

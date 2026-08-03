@@ -59,7 +59,10 @@ async def rebuild(session: AsyncSession, *, embedder: Embedder | None = None) ->
     subjects = (
         await session.scalars(
             select(Subject)
-            .where(Subject.kind == "leaf")
+            # Active leaves only, which is what `find_subjects` searches: a
+            # subject withdrawn from the catalog must not stay reachable by
+            # meaning after every other way to it has been closed.
+            .where(Subject.kind == "leaf", Subject.is_active)
             .options(selectinload(Subject.names))
         )
     ).all()
