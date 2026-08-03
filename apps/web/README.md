@@ -119,7 +119,8 @@ close the app from the client's menu rather than just backing out of it.
 | `pnpm lint`           | Biome — lint, format check and import order           |
 | `pnpm lint:fix`       | The same, with the safe fixes applied                 |
 | `pnpm format`         | Format only                                           |
-| `pnpm typecheck`      | `tsc -b`, no emit                                     |
+| `pnpm typecheck`      | `tsc -b`, then the tests' own project, no emit         |
+| `pnpm test`           | `tests/` on node's own runner; fails if it finds none  |
 | `pnpm i18n:extract`   | Scan source for new messages, update the `.po` files  |
 | `pnpm i18n:compile`   | Compile catalogs by hand (the build does not need it) |
 | `pnpm api:generate`   | Regenerate API types — via `make contract`, see below  |

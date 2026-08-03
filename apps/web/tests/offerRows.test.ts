@@ -28,6 +28,7 @@ test('a second subject starts from what the service already says', () => {
   // publish one row promising three days and one promising nothing.
   assert.deepEqual(serviceAnswers([row()], 7), {
     price: '500',
+    unit: 'hour',
     option_ids: [3, 4],
     note: 'Разбираю задачи с прошлых экзаменов',
     turnaround_days: 3,
@@ -108,4 +109,25 @@ test('a cleared row is re-keyed from what it still holds', () => {
 
   const [bare] = dropRow([row()], row(), 'subject');
   assert.equal(bare?.key, '7:null:null');
+});
+
+test('a cleared row that duplicates another one goes instead', () => {
+  // Two rows of one service at the same school, the first already cleared of
+  // its subject. Clearing the second's would name the same pair, which
+  // `offers` is unique on: two rows for one offer, sharing a key and a price
+  // field, and a save the server refuses.
+  const shared = { institution_id: 4, institution_name: 'ČVUT' };
+  const cleared = row({
+    key: '7:null:4',
+    subject_id: null,
+    subject_name: null,
+    ...shared,
+  });
+  const second = row({
+    key: '7:13:4',
+    subject_id: 13,
+    subject_name: 'Физика',
+    ...shared,
+  });
+  assert.deepEqual(dropRow([cleared, second], second, 'subject'), [cleared]);
 });

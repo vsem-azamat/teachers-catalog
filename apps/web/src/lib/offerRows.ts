@@ -41,8 +41,8 @@ export interface Draft {
 export function serviceAnswers(rows: Draft[], serviceTypeId: number): Partial<Draft> {
   const sibling = rows.find((row) => row.service_type_id === serviceTypeId);
   if (!sibling) return {};
-  const { price, option_ids, note, turnaround_days } = sibling;
-  return { price, option_ids, note, turnaround_days };
+  const { price, unit, option_ids, note, turnaround_days } = sibling;
+  return { price, unit, option_ids, note, turnaround_days };
 }
 
 /** The two axes a row can carry. `offers` is unique on both of them. */
@@ -75,26 +75,28 @@ const without = (row: Draft, axis: Axis): Draft =>
 export function dropRow(rows: Draft[], row: Draft, axis: Axis): Draft[] {
   const left = without(row, axis);
   const others = rows.filter((other) => other.key !== row.key);
+  const siblings = others.filter(
+    (other) => other.service_type_id === row.service_type_id,
+  );
   const bare = left.subject_id === null && left.institution_id === null;
-  if (bare && others.some((other) => other.service_type_id === row.service_type_id)) {
-    return others;
-  }
-  // In place, so the row keeps its position among its neighbours, and re-keyed
-  // from what it now holds. Keeping the old key would leave a row named after
-  // an axis it no longer has, which `addAxis` could then mint a second time.
+  // Gone, in the two cases where keeping it would say nothing new: a row with
+  // no axis left beside a row that has one, and a row whose remaining axis
+  // another row of the service already names — that pair is one offer, and the
+  // server's unique index says so.
+  if (siblings.some((other) => bare || keyOf(other) === keyOf(left))) return others;
+  // Otherwise in place, so the row keeps its position among its neighbours, and
+  // re-keyed from what it now holds: a key naming an axis the row no longer has
+  // is one `addAxis` could mint a second time.
   return rows.map((other) =>
     other.key === row.key ? { ...left, key: keyOf(left) } : other,
   );
 }
 
 /**
- * A row's key, from its axes.
- *
- * Unique by construction: `offers` is unique on the same four columns, so two
- * rows of one service cannot hold the same pair. The other places that mint a
- * key — a row read from the server, a row a picker just added — name the same
- * pair, and a row with no axis left is the one blank row its service is
- * allowed.
+ * A row's key, from its axes — the same pair `offers` is unique on, so two rows
+ * of one service that agree on it are one offer. `dropRow` is what keeps that
+ * true: a clearing that would produce a key another row already has drops the
+ * row instead of minting a twin.
  */
 function keyOf(row: Draft): string {
   return `${row.service_type_id}:${row.subject_id}:${row.institution_id}`;
