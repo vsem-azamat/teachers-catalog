@@ -218,20 +218,29 @@ as well as the original, and doing the same for subjects looks obviously right:
 student in Prague types — answers «Поступление в технические вузы» at 0.67,
 while the same query transliterated answers the right subject at 1.00.
 
-Three ways of doing it were built and measured against the whole catalog — every
-active leaf subject's names and synonyms, alone and beside a school name — and
-each moved more strings onto wrong subjects than it rescued. The mechanism is
-the same every time, and it is not fuzziness: a latinised word lands *exactly*
-on another subject's synonym and scores 1.00, which the right subject also
-scores, and the tie goes to the lower id.
+Three ways of doing it were built and measured against the whole catalog: every
+active leaf subject's name and synonyms, 1,176 strings, each on its own and
+after each of four school names — 8,232 probes, compared with the answers the
+lookup gives without transliteration. **All three moved strings onto wrong
+subjects, and not one of them rescued a single string in the catalog.** The
+mechanism is the same every time, and it is not fuzziness: a latinised word
+lands *exactly* on another subject's synonym and scores 1.00, which the right
+subject also scores, and the tie goes to the lower id.
 
-- compared everywhere, including the trigram branches — 19 names wrong;
-- compared only for whole-word containment — 19 again, because the collisions
-  were exact all along: «квантовая механика» becomes "mechanika", which is a
-  synonym of «Теоретическая механика»;
-- compared only against multi-word synonyms — 21 wrong, because a phrase
-  collides too: «Финансовая математика VŠE» contains "matematika vse", which is
-  a synonym of «Математика для экономистов».
+- compared everywhere, including the trigram branches — 19 strings answered
+  wrong on their own, 26 once a school name follows;
+- compared only for whole-word containment — the same 26, probe for probe. The
+  fuzzy branches never changed an answer, because the collisions were exact all
+  along: «квантовая механика» transliterated contains "mechanika", which is a
+  synonym of «Теоретическая механика», so the quantum subject and the
+  theoretical-mechanics one both score 1.00 and the lower id wins;
+- compared only against synonyms of more than one word — nothing wrong on its
+  own, and 7 strings wrong beside «VŠE», because a phrase collides too:
+  «Финансовая математика VŠE» transliterated contains "matematika vse", a
+  synonym of «Математика для экономистов».
+
+The one string any of them rescues is the query at the top of this paragraph,
+which is why the third variant looked worth keeping until the sweep ran.
 
 Gating on "the query mixes alphabets" does not help either: «матан ČVUT» mixes
 alphabets, and so does most of what people type here.
