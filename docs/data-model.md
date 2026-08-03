@@ -270,16 +270,23 @@ the brands people actually say: an insurance policy is asked for as "VZP" or
 stems because `vzp` prefixes `vzpomínky`.
 
 Languages are the case where two kinds of help overlap: asking for a Czech tutor
-is `language_tutoring` and not plain `tutoring`. It is the one kind of help with
-no keywords of its own, because the words that would name it — "чешск",
-"anglict" — also describe *whose* bank, *whose* visa and *whose* dormitory, and
-anything high enough in the table to beat tutoring takes all of those with it.
-It is a refinement instead: a language beside a match that was already a lesson
-makes it a language lesson, and a course word beside a language names one when
-nothing else claimed the query. Both halves are matched on their own, which is
-what carries «ищу репетитора по чешскому» and «kurzy cestiny» — a multi-word
-keyword tolerates inflection only on its last word, and these inflect the
-first.
+is `language_tutoring` and not plain `tutoring`. It has no keywords in the table,
+because the words that would name it — "чешск", "anglict" — also say *whose*
+bank, *whose* visa and *whose* dormitory, and anything placed high enough to beat
+tutoring takes all of those with it.
+
+It is a refinement of a lesson instead, and **the subject decides it**: a
+tutoring match whose subject is one of the languages is a language lesson, while
+maths taught in Czech stays maths — read the other way it would carry a subject
+no language offer has, which is the same empty screen the asides rule exists to
+prevent. A course word does the same for a query that named no kind of help at
+all: "kurzy cestiny" is a lesson because of what it is about.
+
+The words are the fallback for the one case a subject cannot settle: "репетитор
+по чешскому" says which language and not which level, and a bare «чешский» names
+five subjects and belongs to none of them, so nothing resolves. There the
+language word is all there is — and it is consulted only when no subject was
+found, which is what keeps it away from the bank and the visa.
 
 Above all this sits the query parser, which turns free text into ids. Because it
 does, the database rarely has to do linguistic work at all — it looks up

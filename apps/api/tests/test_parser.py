@@ -497,6 +497,13 @@ async def test_an_insurer_name_is_the_insurance_it_names(session, text) -> None:
         ("потрібна чеська віза", "residence"),
         ("нужен репетитор по матану", "tutoring"),
         ("репетитора по физике", "tutoring"),
+        # A language can be the medium rather than the subject, and reading
+        # these as language lessons would carry a maths subject no language
+        # offer has — an empty screen for a query that worked.
+        ("нужен репетитор по матану на чешском", "tutoring"),
+        ("doucovani matematiky v cestine", "tutoring"),
+        ("потрібен репетитор з матану чеською", "tutoring"),
+        ("calculus tutor in czech", "tutoring"),
         ("нужен перевод диплома на чешский", "translation"),
     ],
 )
@@ -527,6 +534,10 @@ async def test_a_language_beside_an_errand_is_not_a_lesson(
         "на курсах чешского",
         "курси чеської",
         "czech language course",
+        # The weak-verb phrasings, which name no kind of help at all until the
+        # subject says what it is about.
+        "помогите с чешским языком",
+        "нужен чешский",
     ],
 )
 async def test_asking_for_a_language_tutor_finds_languages(session, text) -> None:

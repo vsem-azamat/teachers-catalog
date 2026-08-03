@@ -14,6 +14,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from students_cz.services.lookup import Match, find_institutions, find_subjects, normalise
@@ -286,20 +287,18 @@ ASIDES = SUBJECTLESS - {"translation"}
 # gives no other clue — see _match_service.
 WEAK_HELP: tuple[str, ...] = ("помо", "pomo", "help", "допомо", "нужен", "потрібн")
 
-# The languages people learn, in the four interface languages plus the
-# transliterations, and the words that make a course a course.
+# The languages people learn, for the one case the subject cannot settle: a
+# query that says which language but not which level — "репетитор по чешскому" —
+# resolves no subject at all, because a bare «чешский» names five of them and
+# belongs to none.
 #
-# Not entries in the table above, and that is the whole point: the words naming
-# a language also describe *whose* bank, *whose* visa and *whose* dormitory, so
-# a keyword high enough to beat plain tutoring took «нужна чешская виза» and
-# «zdravotní pojištění pro cizince» with it. Written as a refinement instead —
-# see `_match_service` — it can only narrow a match that was already a lesson,
-# or name a course that nothing else claimed.
+# Used only there. High in the keyword table these words took «нужна чешская
+# виза» and «zdravotní pojištění pro cizince» with them, because a language also
+# says whose bank and whose visa.
 LANGUAGE_WORDS: tuple[str, ...] = (
     "чешск",
     "чеськ",
     "cestin",
-    "cestiny",
     "английск",
     "англійськ",
     "anglict",
@@ -309,11 +308,6 @@ LANGUAGE_WORDS: tuple[str, ...] = (
     Word("czech"),
     Word("english"),
     Word("german"),
-    "язык",
-    "jazyk",
-    Word("мова"),
-    Word("мови"),
-    Word("мову"),
 )
 
 # A course, in any of the forms these decline into: both halves are matched
@@ -418,6 +412,32 @@ async def parse(
         else:
             subjects = []
 
+    # A language *as the subject* is a language lesson rather than plain
+    # tutoring. Decided here and not in `_match_service`, because it takes the
+    # subject to tell the two apart: "нужен репетитор по чешскому" is one, and
+    # "нужен репетитор по матану на чешском" is maths taught in Czech — read as
+    # a language lesson it would carry a maths subject no language offer has,
+    # which is an empty screen for a query that worked.
+    #
+    # A course word carries it the rest of the way: "kurzy cestiny" names no
+    # kind of help at all, and the subject is what says which course.
+    if result.service_type == "tutoring" or (
+        result.service_type is None and _mentions(norm, COURSE_WORDS)
+    ):
+        # Which subject it is about decides it. A language beside a lesson is a
+        # language lesson; maths taught in Czech is maths, and reading that as a
+        # language lesson would carry a subject no language offer has — an empty
+        # screen for a query that worked.
+        #
+        # With no subject resolved the words are all there is, and that is the
+        # commonest phrasing of all: "репетитор по чешскому" says which language
+        # and not which level, so no subject can match it.
+        if subjects:
+            if await _is_a_language(session, subjects[0].id):
+                result.service_type = "language_tutoring"
+        elif _mentions(norm, LANGUAGE_WORDS):
+            result.service_type = "language_tutoring"
+
     institutions = await find_institutions(session, text, lang, limit=3)
 
     if subjects:
@@ -434,6 +454,41 @@ async def parse(
 
     result.unmatched = not any((result.subject, result.institution, result.service_type))
     return result
+
+
+# The slug of the shelf every language sits on. A subject rather than a service
+# type: what makes a query a language lesson is which subject it is about.
+LANGUAGES_GROUP = "languages"
+
+
+async def _is_a_language(session: AsyncSession, subject_id: int) -> bool:
+    """Is this subject one of the languages?
+
+    Asked of the resolved subject rather than of the words, and asked only when
+    the answer can change anything — a tutoring match, or a course with no kind
+    of help named. The materialised path makes it one indexed comparison: every
+    descendant of the group carries its id at the head of `path`.
+    """
+    return bool(
+        await session.scalar(
+            text(
+                "SELECT EXISTS ("
+                "  SELECT 1 FROM subjects child, subjects grp"
+                "   WHERE child.id = :id AND grp.slug = :group"
+                "     AND child.path LIKE grp.id::text || '.%'"
+                ")"
+            ),
+            {"id": subject_id, "group": LANGUAGES_GROUP},
+        )
+    )
+
+
+def _mentions(norm: str, words: tuple[str, ...]) -> bool:
+    tokens = tokenise(norm)
+    return any(
+        (is_whole_word if isinstance(word, Word) else starts_a_word)(tokens, word)
+        for word in words
+    )
 
 
 def _match_service(
@@ -454,38 +509,13 @@ def _match_service(
     SUBJECTLESS at the call site.
     """
     tokens = tokenise(norm)
-
-    def present(words: tuple[str, ...]) -> str | None:
-        for word in words:
-            match = is_whole_word if isinstance(word, Word) else starts_a_word
-            if match(tokens, word):
-                return word
-        return None
-
     for code, keywords in SERVICE_KEYWORDS.items():
         if code in ignore:
             continue
         for keyword in keywords:
             match = is_whole_word if isinstance(keyword, Word) else starts_a_word
             if match(tokens, keyword):
-                # A language beside an ask for a teacher is a language lesson,
-                # and reading it as plain tutoring loses the one thing the query
-                # said. A refinement rather than a keyword of its own, because
-                # the words that name a language describe far more than lessons
-                # — see LANGUAGE_WORDS. It only ever narrows a lesson.
-                if code == "tutoring" and "language_tutoring" not in ignore:
-                    language = present(LANGUAGE_WORDS)
-                    if language:
-                        return "language_tutoring", language
                 return code, keyword
-
-    # Nothing named a kind of help, but a course in a language is one: "kurzy
-    # cestiny", "курсы чешского", "czech language course". Both halves are
-    # matched on their own, which is what carries every form of both.
-    if "language_tutoring" not in ignore and present(COURSE_WORDS):
-        language = present(LANGUAGE_WORDS)
-        if language:
-            return "language_tutoring", language
 
     if any(starts_a_word(tokens, verb) for verb in WEAK_HELP):
         if any(starts_a_word(tokens, word) for word in EXAM_MENTION):
