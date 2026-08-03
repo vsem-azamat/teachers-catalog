@@ -9,11 +9,10 @@
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE EXTENSION IF NOT EXISTS unaccent;
 CREATE EXTENSION IF NOT EXISTS btree_gist;
-
--- pgvector is present in the image but deliberately NOT enabled yet. Semantic
--- search is planned, not built; enabling an extension we do not query would
--- only make the schema look like it does something it does not.
--- When the time comes:  CREATE EXTENSION vector;  and see docs/data-model.md.
+--   vector      one embedding per passage of a subject, so a query can reach a
+--               subject by meaning when neither the synonyms nor the trigram
+--               can — see docs/data-model.md
+CREATE EXTENSION IF NOT EXISTS vector;
 
 -- unaccent() is STABLE, which bars it from expression indexes. This wrapper is
 -- the standard workaround: same behaviour, marked IMMUTABLE, and the dictionary

@@ -5,6 +5,7 @@ translated through dedicated ``*_i18n`` tables. User-written text is never
 translated — it only carries the language it happens to be written in.
 """
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     Boolean,
     ForeignKey,
@@ -27,6 +28,7 @@ from students_cz.db.models.enums import (
     UiLang,
     pg_enum,
 )
+from students_cz.services.embedding import DIMENSIONS as EMBEDDING_DIMENSIONS
 
 
 class Subject(IdMixin, TimestampMixin, Base):
@@ -87,6 +89,44 @@ class Subject(IdMixin, TimestampMixin, Base):
         ),
         Index("ix_subjects_synonyms", "synonyms", postgresql_using="gin"),
         Index("ix_subjects_active_sort", "is_active", "sort"),
+    )
+
+
+class SubjectEmbedding(IdMixin, Base):
+    """One vector per passage of a subject, per model.
+
+    Per *passage* and not per subject: a subject is known by its name in four
+    languages and by its synonyms, and averaging «Чешский язык B1» with
+    «čeština pro cizince» into one vector gives something that is neither. A
+    subject scores as the best of its own rows.
+
+    Derived data — `python -m students_cz.db.embed` fills it from the catalog
+    and the model, and nothing else writes it. `model` is in the key so a
+    rollback finds the vectors its own image made, and `text_sha` is what makes
+    the rebuild skip everything that has not changed.
+    """
+
+    __tablename__ = "subject_embeddings"
+
+    subject_id: Mapped[int] = mapped_column(
+        ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False
+    )
+    model: Mapped[str] = mapped_column(String(64), nullable=False)
+    # The text that was embedded, kept for the same reason `search_queries`
+    # keeps the raw query: without it a wrong neighbour is unexplainable.
+    source: Mapped[str] = mapped_column(Text, nullable=False)
+    text_sha: Mapped[str] = mapped_column(String(64), nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(Vector(EMBEDDING_DIMENSIONS))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "subject_id", "model", "text_sha", name="uq_subject_embeddings_source"
+        ),
+        # No ANN index on purpose. Eighty-eight subjects are about twelve
+        # hundred rows, an exact scan of those is faster than probing an index,
+        # and IVFFlat built on this little data returns worse neighbours than
+        # none at all. See docs/data-model.md.
+        Index("ix_subject_embeddings_model", "model"),
     )
 
 

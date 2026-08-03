@@ -427,7 +427,8 @@ answered, so response times are measured rather than self-reported.
 
 ## Required extensions
 
-`pg_trgm`, `unaccent`, `btree_gist`, plus the `immutable_unaccent()` wrapper.
+`pg_trgm`, `unaccent`, `btree_gist`, `vector`, plus the `immutable_unaccent()`
+wrapper.
 Created both by `infra/postgres/init/01-extensions.sql` on first boot and by the
 initial migration, so either path — a fresh container or `alembic upgrade head`
 against an empty managed database — produces a working schema.
@@ -435,27 +436,40 @@ against an empty managed database — produces a working schema.
 Note that `DROP SCHEMA public CASCADE` removes the extensions too. Re-run the
 init file after resetting a development database.
 
-## Planned: semantic search
+## Semantic search, for subjects only
 
-The image is `pgvector/pgvector:pg18`, so the `vector` extension is available.
-It is **not enabled** — semantic search is planned, not built, and turning on an
-extension nothing queries would misrepresent the schema.
+The parser turns free text into ids and trigram matching covers typos and
+missing diacritics. Neither handles meaning: "нужен кто-то объяснить пределы и
+производные" is about calculus and contains none of its names. A third
+mechanism does, and it is deliberately the last one asked.
 
-When it happens, the shape is already clear from how search works today. The
-parser turns free text into ids; trigram matching covers typos and missing
-diacritics. What neither handles is meaning: "нужен кто-то объяснить пределы и
-производные" should reach calculus without containing the word. Three places
-would carry embeddings:
+`subject_embeddings` holds one row per *passage* — a subject's name in each of
+the four languages, and each of its synonyms — rather than one row per subject,
+and a subject scores as the best of its passages. That is how the catalog knows
+a subject, and merging them into one vector averages «Чешский язык B1» with
+«čeština pro cizince» into something that is neither.
 
-- `subjects` — one vector per subject, so a query embeds once and finds the node
-  by proximity. Smallest table, biggest payoff, and it slots in behind the
-  existing lookup rather than replacing it.
-- `helper_profiles.about` — matching against how someone describes themselves,
-  not just the boxes they ticked.
-- `help_requests.raw_text` — notifying helpers about requests that fit them.
+**Derived data, not authored.** The table rebuilds from the catalog and the
+model and nothing else writes it, so it is a cache in the sense the counters
+below are: `python -m students_cz.db.embed` fills what is missing, keyed by the
+model name and a hash of the passage, and leaves other models' rows alone so a
+rollback finds its own. The deploy runs it after `alembic upgrade head`.
 
-Two things to decide then, not now: which embedding model (it fixes the vector
-dimension, and changing it means recomputing everything), and whether hybrid
-ranking blends the trigram and vector scores or falls back from one to the
-other. `search_queries` is already logging the raw text and result counts that
-would tell us which.
+**No ANN index.** Eighty-eight subjects are about twelve hundred rows; an exact
+scan of twelve hundred 768-dimensional vectors is faster than probing an index,
+and an IVFFlat built on this little data returns worse neighbours than no index
+at all. When the catalog grows by an order of magnitude, that changes.
+
+**The vector is asked only where the rules found nothing, and only when it is
+sure.** A synonym or an exact name scores 1.00 and is curated — the embedder
+loses to both on slang, answering «Математика для экономистов» to «матан». So it
+never overrides them. When nothing matched at all, the nearest subject is
+accepted if it scores at least **0.45** and leads the next *subject* by at least
+**0.04**. Both numbers are from a fixture measured on the real tree, where right
+answers scored 0.49–0.68 and the two the model was unsure of led by 0.00 and
+0.03 — it is honest about not knowing, which is what makes a threshold possible.
+
+They are set by eye because there was nothing to set them from: `search_queries`
+holds five rows. Every parse writes what the vector proposed into `parsed`,
+whether or not it was used, so in a month they can be set from data.
+

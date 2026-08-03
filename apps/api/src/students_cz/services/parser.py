@@ -17,7 +17,10 @@ from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from students_cz.services.lookup import (
+    VECTOR_FLOOR,
+    VECTOR_LEAD,
     Match,
+    find_by_meaning,
     find_institutions,
     find_subjects,
     normalise,
@@ -381,6 +384,11 @@ class ParsedQuery:
     budget_max: float | None = None
     unmatched: bool = False
     alternatives: dict[str, list[Match]] = field(default_factory=dict)
+    # What the embedder proposed and by how much it led the next subject —
+    # recorded whether or not it was believed, so the two thresholds it is
+    # judged by can be set from data instead of by eye. Logged into
+    # `search_queries.parsed`; see `api/v1/search`.
+    vector: tuple[Match, float] | None = None
 
 
 async def parse(
@@ -400,6 +408,25 @@ async def parse(
     # dropping them would lose a certainty to protect against a maybe.
     if keyword and not _without(norm, keyword):
         subjects = [match for match in subjects if _is_named(match)]
+
+    # The third mechanism, and the last asked. Only where the first two found
+    # nothing: a synonym or an exact name is curated and scores 1.00, and the
+    # embedder loses to both on slang — it answers «Математика для экономистов»
+    # to «матан». What it proposes is logged either way, because the two numbers
+    # it is judged by were set by eye and `search_queries` is where the ones to
+    # replace them will come from.
+    #
+    # Before the reconciliation below and not after, so its answer is subject to
+    # the same rules: it is a guess by construction, and «нужна чешская виза»
+    # proposed «Чешский язык B2» at 0.50 — a subject beside a kind of help that
+    # has none, which the rule below is exactly for.
+    if not subjects:
+        proposed, runner_up = await find_by_meaning(session, text, lang)
+        if proposed:
+            lead = proposed.score - (runner_up.score if runner_up else 0.0)
+            result.vector = (proposed, lead)
+            if proposed.score >= VECTOR_FLOOR and lead >= VECTOR_LEAD:
+                subjects = [proposed]
 
     # A kind of help that never carries a subject cannot be the answer to a
     # query that *names* one. `catalog.search` ANDs the two, and no offer in the
@@ -675,8 +702,12 @@ def _is_named(match: Match) -> bool:
     narrow: "Чешский язык B1, нужна виза" names the subject in full, scores 1.0,
     and reports `name` — so the subject the person typed out was thrown away as
     a guess.
+
+    A vector match is never named, whatever it scores: its number is a cosine
+    and not a claim that the query said the words. The two happen to share a
+    scale and mean nothing alike.
     """
-    return match.score >= 1.0
+    return match.matched_on != "vector" and match.score >= 1.0
 
 
 def _without(norm: str, keyword: str) -> str:

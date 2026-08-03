@@ -29,9 +29,14 @@ question.
 
 import unicodedata
 from dataclasses import dataclass
+from typing import Any
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from students_cz.db.models.enums import UiLang
+from students_cz.services.naming import translated
 
 # Below this, matches are noise. Tuned by hand against real-looking queries:
 # 0.5 lets "mat analiza" reach "Matematická analýza" while keeping "fyzika"
@@ -307,6 +312,77 @@ async def find_subjects(
         )
         for r in rows
     ]
+
+
+# By eye, from a fixture measured on the real tree with the real model: right
+# answers scored 0.49–0.68, and the two the model was unsure of led the
+# runner-up by 0.00 and 0.03. Both numbers are meant to be replaced by ones
+# taken from `search_queries`, which logs what the vector proposed on every
+# parse whether or not it was used.
+VECTOR_FLOOR = 0.45
+VECTOR_LEAD = 0.04
+
+
+async def find_by_meaning(
+    session: AsyncSession, query: str, lang: str, *, embedder: Any = None
+) -> tuple[Match | None, Match | None]:
+    """The nearest subject by meaning, and the runner-up that has to be beaten.
+
+    Both come back so the caller can log what was proposed even when it refuses
+    it — the numbers above were set by eye, and the only way to set them from
+    data is to have the data.
+
+    A subject scores as the best of its passages, and the runner-up is the best
+    *other subject*: two rows of the same subject beating each other says
+    nothing about confidence.
+    """
+    from students_cz.db.models import Subject, SubjectEmbedding
+    from students_cz.services.embedding import as_query, get_embedder
+
+    model = embedder or get_embedder()
+    if model is None:
+        return None, None
+    vector = model.encode([as_query(query)])[0]
+
+    # Distance rather than similarity, because that is the operator pgvector
+    # indexes; cosine similarity is one minus it.
+    distance = SubjectEmbedding.embedding.cosine_distance(vector)
+    rows = (
+        await session.execute(
+            select(SubjectEmbedding.subject_id, distance.label("distance"))
+            .where(SubjectEmbedding.model == model.name)
+            .order_by("distance")
+            .limit(40)
+        )
+    ).all()
+    if not rows:
+        return None, None
+
+    best: dict[int, float] = {}
+    for subject_id, dist in rows:
+        score = 1.0 - float(dist)
+        if score > best.get(subject_id, -1.0):
+            best[subject_id] = score
+    ranked = sorted(best.items(), key=lambda item: item[1], reverse=True)[:2]
+
+    labelled: list[Match] = []
+    for subject_id, score in ranked:
+        subject = await session.get(
+            Subject, subject_id, options=[selectinload(Subject.names)]
+        )
+        if subject is None:
+            continue
+        labelled.append(
+            Match(
+                id=subject.id,
+                label=translated(subject, UiLang(lang)) or subject.slug,
+                score=score,
+                matched_on="vector",
+            )
+        )
+    top = labelled[0] if labelled else None
+    second = labelled[1] if len(labelled) > 1 else None
+    return top, second
 
 
 async def find_institutions(

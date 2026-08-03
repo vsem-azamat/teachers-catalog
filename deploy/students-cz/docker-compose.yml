@@ -48,6 +48,20 @@ services:
       postgres: {condition: service_healthy}
     security_opt: [no-new-privileges:true]
 
+  # Derived data, so it runs on every deploy and costs nothing when the catalog
+  # and the model are unchanged. Same image as the API, which is where the model
+  # lives; see docs/data-model.md.
+  embed:
+    image: ghcr.io/${GHCR_OWNER}/students-cz-api:${IMAGE_TAG}
+    command: ["python", "-m", "students_cz.db.embed"]
+    restart: "no"
+    profiles: ["tools"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    depends_on:
+      postgres: {condition: service_healthy}
+    security_opt: [no-new-privileges:true]
+
   api:
     image: ghcr.io/${GHCR_OWNER}/students-cz-api:${IMAGE_TAG}
     restart: unless-stopped

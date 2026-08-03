@@ -310,6 +310,11 @@ jobs:
           # silently after the migration with nothing else started.
           docker compose run --rm -T migrate < /dev/null
 
+          # Derived from the catalog and the model, so it belongs beside the
+          # migration rather than in it: it writes nothing on a deploy that
+          # changed neither, and both are in the image it runs from.
+          docker compose run --rm -T embed < /dev/null
+
           docker compose up -d --remove-orphans --wait --wait-timeout 180
 
           # The application must not be reachable except through the edge.

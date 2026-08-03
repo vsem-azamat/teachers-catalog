@@ -605,3 +605,139 @@ async def test_nostrification_is_nameable_in_english(session) -> None:
     """
     parsed = await parse(session, "nostrification of a school certificate", "en")
     assert parsed.service_type == "nostrification"
+
+
+# ── the third mechanism: meaning ─────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_a_query_the_rules_cannot_read_reaches_a_subject(session) -> None:
+    """The case the data-model doc names: no name of the subject is in it.
+
+    A fake embedder stands in for the model, and it is rigged the only way that
+    proves the wiring: the query's vector is the passage's vector.
+    """
+    from students_cz.db.embed import rebuild
+    from students_cz.services import embedding
+
+    from .test_embedding import PointedEmbedder
+
+    # Measured against the seeded catalog: no synonym and no trigram reaches a
+    # subject from this, which is what makes it the case worth testing.
+    query = "не понимаю как считать вероятности"
+    pointed = PointedEmbedder({query: "Теория вероятностей и статистика"})
+    await rebuild(session, embedder=pointed)
+    embedding.set_embedder(pointed)
+    try:
+        parsed = await parse(session, query, "ru", today=TODAY)
+    finally:
+        embedding.set_embedder(None)
+
+    assert parsed.subject is not None, "the vector was not consulted"
+    assert parsed.subject.matched_on == "vector"
+    assert "вероятност" in parsed.subject.label.lower()
+
+
+@pytest.mark.asyncio
+async def test_an_unsure_vector_answers_nothing(session) -> None:
+    """Below the threshold it says nothing rather than something plausible.
+
+    A wrong subject is worse than no subject: `catalog.search` ANDs the subject
+    with everything else, so a guess turns a list into an empty screen.
+    """
+    from students_cz.db.embed import rebuild
+    from students_cz.services import embedding
+
+    from .test_embedding import FakeEmbedder
+
+    await rebuild(session, embedder=FakeEmbedder())
+    embedding.set_embedder(FakeEmbedder())
+    try:
+        parsed = await parse(session, "zzzz xxxx yyyy", "ru", today=TODAY)
+    finally:
+        embedding.set_embedder(None)
+
+    assert parsed.subject is None, f"answered {parsed.subject}"
+
+
+@pytest.mark.asyncio
+async def test_a_named_subject_is_never_overruled_by_the_vector(session) -> None:
+    """The synonym is curated and scores 1.00; the embedder loses to it on slang."""
+    from students_cz.db.embed import rebuild
+    from students_cz.services import embedding
+
+    from .test_embedding import PointedEmbedder
+
+    pointed = PointedEmbedder({"матан": "Чешский язык B1"})
+    await rebuild(session, embedder=pointed)
+    embedding.set_embedder(pointed)
+    try:
+        parsed = await parse(session, "матан", "ru", today=TODAY)
+    finally:
+        embedding.set_embedder(None)
+
+    assert parsed.subject is not None
+    assert parsed.subject.matched_on != "vector"
+    assert "анализ" in parsed.subject.label.lower()
+
+
+@pytest.mark.asyncio
+async def test_the_vector_is_a_guess_and_loses_to_a_subjectless_kind(session) -> None:
+    """«нужна чешская виза» proposed «Чешский язык B2» at 0.50, measured.
+
+    A kind of help that carries no subject cannot be answered with one — the
+    search ANDs them and the pair matches nobody. That rule already exists, and
+    the vector has to be asked before it rather than after, or its answer walks
+    straight past it.
+    """
+    from students_cz.db.embed import rebuild
+    from students_cz.services import embedding
+
+    from .test_embedding import PointedEmbedder
+
+    pointed = PointedEmbedder(
+        {"нужна чешская виза": "Чешский язык B2 (для вуза и нострификации)"}
+    )
+    await rebuild(session, embedder=pointed)
+    embedding.set_embedder(pointed)
+    try:
+        parsed = await parse(session, "нужна чешская виза", "ru", today=TODAY)
+    finally:
+        embedding.set_embedder(None)
+
+    assert parsed.service_type == "residence"
+    assert parsed.subject is None, f"answered {parsed.subject}"
+    assert parsed.vector is not None, "and it still says what it proposed"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("cosine", "answered"),
+    [
+        # Above the floor and clear of everything else: believed.
+        (0.60, True),
+        # The nearest thing in the catalog, and still not near: refused. A wrong
+        # subject is worse than none, because the search ANDs it with the rest.
+        (0.30, False),
+    ],
+)
+async def test_the_floor_is_what_stops_a_distant_nearest_neighbour(
+    session, cosine, answered
+) -> None:
+    from students_cz.db.embed import rebuild
+    from students_cz.services import embedding
+
+    from .test_embedding import RiggedEmbedder
+
+    rigged = RiggedEmbedder("Теория вероятностей и статистика", cosine)
+    await rebuild(session, embedder=rigged)
+    embedding.set_embedder(rigged)
+    try:
+        parsed = await parse(
+            session, "не понимаю как считать вероятности", "ru", today=TODAY
+        )
+    finally:
+        embedding.set_embedder(None)
+
+    assert parsed.vector is not None, "it always says what it proposed"
+    assert (parsed.subject is not None) is answered

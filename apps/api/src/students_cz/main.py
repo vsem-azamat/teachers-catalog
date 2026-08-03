@@ -22,6 +22,7 @@ from students_cz.bot import build_bot, build_dispatcher, configure
 from students_cz.core.config import get_settings
 from students_cz.db.session import dispose_engine
 from students_cz.services import errors
+from students_cz.services.embedding import get_embedder
 
 log = logging.getLogger("students_cz")
 
@@ -189,6 +190,11 @@ async def lifespan(app: FastAPI):
     # Telegram's to answer, and /healthz asks it — a status remembered here
     # would be the same fiction that let a deaf bot pass every health check.
     app.state.webhook_error = None
+
+    # Opened here rather than on the first search: half a second of loading a
+    # 200 MB file belongs to the deploy, not to whoever types first. `None` when
+    # the image carries no model, which is a supported way to run.
+    get_embedder()
 
     if settings.bot_token:
         bot = build_bot(settings)

@@ -277,6 +277,33 @@ number it subtracts, so a screen that reserves room for a tab bar it does not
 render will pass with a blank strip at its foot. Nothing runs it automatically;
 it wants a browser and a database, which CI here does not give it.
 
+## The embedding model ships inside the image
+
+`subject_embeddings` is filled by a model, and the model is a 197 MB file. It is
+downloaded at **build** time, from a pinned commit revision and verified against
+a checksum, and copied into the runtime image — not pulled when the container
+starts.
+
+The image is the unit of deploy and of rollback: `prod-<sha7>` is what CI pushes
+and what `rollback.yml` puts back. A model fetched at startup would make one tag
+behave differently on different days, and a rollback would restore the code
+without restoring the model. It would also need a writable cache in a container
+whose Dockerfile says the application writes nothing to disk, and it would make
+every restart depend on Hugging Face being up. This repository already has one
+piece of state that lives outside the image — the seed, which the deploy does
+not run — and the cost of that is documented in `docs/data-model.md`.
+
+Two dependencies carry it: `onnxruntime` and `tokenizers`. No torch and no
+transformers, which is the difference between 200 MB and two gigabytes.
+
+The weights are **EmbeddingGemma-300m**, quantised to q4, from the ungated ONNX
+mirror. They are licensed under the Gemma Terms of Use rather than Apache-2.0:
+commercial use is allowed, with use restrictions that have to be passed on
+downstream. That is a deliberate trade — it was the only model of the seven
+measured that answered the whole fixture, and its scores are the only ones that
+separate confident answers from guesses — and it is written here so the choice
+is visible if the licence ever matters.
+
 ## Where the code does not follow this yet
 
 Written down because an agent greps this tree and builds against what it
