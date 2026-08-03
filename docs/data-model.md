@@ -208,28 +208,36 @@ wrong language, misspelled. Three mechanisms handle it, cheapest first:
 3. `unaccent`, wrapped in an `IMMUTABLE` function so it can be used in
    expression indexes. This is what makes `prijimacky` match `Přijímačky`.
 
-The query is compared twice: as it was typed, and transliterated. A student in
-Prague writes «přijímačky на медицину» — Czech word, Russian object — and the
-name they need may be spelled in either alphabet, so one comparison always
-misses. The better of the two scores is the score: transliteration is an extra
-way in, never a replacement. «чешский b2» finds its subject as typed and nothing
-at all transliterated, and taking only the transliteration would have lost it.
-
-For institutions the transliteration is compared everywhere. For subjects it is
-compared **only against multi-word synonyms, and only for whole-word
-containment** — two restrictions each bought by measuring every name and synonym
-in the catalog. A transliteration is a guess at how a word looks in another
-alphabet, and feeding a guess to a trigram multiplies it: nineteen strings moved
-onto the wrong subject. A latinised generic noun collides even without a
-trigram: «квантовая механика» becomes "mechanika", which is a synonym of
-«Теоретическая механика», and beside a school name — the ordinary shape of a
-query here — it won outright. A phrase does not collide by accident. With both
-restrictions, every name and synonym in the catalog — alone and beside a school
-name, four and a half thousand probes — answers exactly as it did before, and
-the mixed query that started this answers correctly.
-
 Verified against a live database: `prijimacky` scores 1.00 against `Přijímačky`,
 `matematicka analyza` scores 1.00 against `Matematická analýza`.
+
+**The query is not transliterated for subjects, and that is a measured
+decision.** The institution lookup compares a transliterated copy of the query
+as well as the original, and doing the same for subjects looks obviously right:
+«přijímačky на медицину» — a Czech word beside a Russian object, which is what a
+student in Prague types — answers «Поступление в технические вузы» at 0.67,
+while the same query transliterated answers the right subject at 1.00.
+
+Three ways of doing it were built and measured against the whole catalog, and
+each moved more strings onto wrong subjects than it rescued:
+
+- compared everywhere, including the trigram branches — 19 names wrong, because
+  a transliteration is a guess and feeding a guess to a fuzzy scorer multiplies
+  it: "термех" lands near "termomechanika";
+- compared only for whole-word containment — the same, because a latinised
+  generic noun *is* another subject's synonym: «квантовая механика» becomes
+  "mechanika";
+- compared only against multi-word synonyms — 21 wrong, because a synonym's
+  second word is usually a school or a level: «Финансовая математика VŠE»
+  matched «matematika vse» and became «Математика для экономистов».
+
+Gating on "the query mixes alphabets" does not help either: «матан ČVUT» mixes
+alphabets, and so does most of what people type here. The shape of this catalog
+is against it — half of its synonyms end in a school abbreviation.
+
+What the failing query actually needs is the third mechanism below, which reads
+meaning rather than letters, and an arbitration between it and a weak trigram
+score. That is the open problem; transliteration is not the answer to it.
 
 Three rules keep the trigram half of that from answering confidently about
 something else:

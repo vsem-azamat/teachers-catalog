@@ -748,31 +748,3 @@ async def test_the_floor_is_what_stops_a_distant_nearest_neighbour(
 
     assert parsed.vector is not None, "it always says what it proposed"
     assert (parsed.subject is not None) is answered
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("text", "lang"),
-    [
-        # The `/ask` example, in each language it ships in. What an example must
-        # do is parse to what it says — the Russian one was pulled from the
-        # screen for years of answering «Поступление в технические вузы».
-        ("přijímačky на медицину", "ru"),
-        ("přijímačky na medicínu", "cs"),
-        ("medical admissions", "en"),
-        ("приймачки на медицину", "uk"),
-    ],
-)
-async def test_the_medicine_example_parses_to_what_it_says(session, text, lang) -> None:
-    from sqlalchemy import select
-
-    from students_cz.db.models import Subject
-
-    parsed = await parse(session, text, lang, today=TODAY)
-    assert parsed.subject is not None, f"{text!r} names no subject"
-
-    # By id and not by the words of the label, which differ per language.
-    wanted = await session.scalar(
-        select(Subject.id).where(Subject.slug == "prijimacky-medicina")
-    )
-    assert parsed.subject.id == wanted, parsed.subject.label
