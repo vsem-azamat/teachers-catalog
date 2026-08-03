@@ -399,6 +399,14 @@ async def parse(
 
     result.service_type, keyword = _match_service(norm)
 
+    institutions = await find_institutions(session, text, lang, limit=3)
+    if institutions:
+        result.institution = institutions[0]
+        result.alternatives["institution"] = institutions[1:]
+
+    result.deadline = _match_deadline(norm, today or date.today())
+    result.budget_max = _match_budget(norm)
+
     subjects = await find_subjects(session, text, lang, limit=4)
     # When the words naming the kind of help were the whole query, there is no
     # subject in it to find, and a trigram guess is the scorer answering a
@@ -421,14 +429,16 @@ async def parse(
     # proposed «Чешский язык B2» at 0.50 — a subject beside a kind of help that
     # has none, which the rule below is exactly for.
     #
-    # And only when the query says something the kind of help did not already
-    # account for. Silence has two meanings: "the rules could not read this" and
-    # "there is nothing here to read". A bare «přijímačky» is the second — the
-    # word is the whole query and it names a kind of help — and asking anyway
-    # answered «Поступление в экономические вузы» at 0.53, which is the very
-    # mistake the synonym was taken off that subject to stop. The same test the
-    # trigram filter above makes, for the same reason.
-    if not subjects and _left_over(norm, keyword or ""):
+    # And only when the query says something nothing else has accounted for.
+    # Silence has two meanings: "the rules could not read this" and "there is
+    # nothing here to read". A bare «přijímačky» is the second — the word is the
+    # whole query and it names a kind of help — and asking anyway answered
+    # «Поступление в экономические вузы» at 0.53, the very mistake the synonym
+    # was taken off that subject to stop. So is «репетитор ČVUT», where the
+    # school is already a field and what is left is a word for teaching: the
+    # embedder answered «Поступление в технические вузы» at 0.45 and narrowed a
+    # list of tutors to the people who prepare for entrance exams.
+    if not subjects and not _accounted_for(result, norm, keyword):
         proposed, runner_up = await find_by_meaning(session, text, lang)
         if proposed:
             lead = proposed.score - (runner_up.score if runner_up else 0.0)
@@ -458,19 +468,11 @@ async def parse(
         else:
             subjects = []
 
-    institutions = await find_institutions(session, text, lang, limit=3)
-
     if subjects:
         result.subject = subjects[0]
         # Keep the runners-up so the chip can offer "did you mean" instead of
         # silently committing to a 0.52-confidence guess.
         result.alternatives["subject"] = subjects[1:]
-    if institutions:
-        result.institution = institutions[0]
-        result.alternatives["institution"] = institutions[1:]
-
-    result.deadline = _match_deadline(norm, today or date.today())
-    result.budget_max = _match_budget(norm)
 
     # A language lesson is a lesson whose request is the language, and nothing
     # else. "репетитор по химии на чешском" names the medium of instruction,
@@ -497,20 +499,7 @@ async def parse(
         result.service_type is None and _mentions(norm, COURSE_WORDS)
     ):
         language = _first(norm, LANGUAGE_WORDS)
-        spoken_for = [keyword or "", language or ""]
-        if result.institution:
-            spoken_for.append(result.institution.label)
-        # The date and the price come out by the spans that produced them, not
-        # by their words: "мар" is March and the first three letters of
-        # "маркетингу", so discounting month words made a marketing query a
-        # language lesson, and a currency list beside the one `_BUDGET` already
-        # holds is a second list to keep in step.
-        spoken = norm
-        if result.deadline:
-            spoken = _DAY_MONTH_WORD.sub(" ", _DAY_MONTH_NUM.sub(" ", spoken))
-        if result.budget_max is not None:
-            spoken = _BUDGET.sub(" ", spoken)
-        if language and not _left_over(spoken, *spoken_for):
+        if language and _accounted_for(result, norm, keyword, language):
             result.service_type = "language_tutoring"
 
     result.unmatched = not any((result.subject, result.institution, result.service_type))
@@ -598,8 +587,29 @@ FILLER_WORDS: frozenset[str] = frozenset(
         "b2",
         "c1",
         "c2",
+        # How something is done rather than what it is about. The catalog
+        # stores this per offer and the query has nowhere to put it, so a word
+        # nobody reads is not a subject nobody named: "doucovani online"
+        # answered «Компьютерные сети» at 0.46.
+        "online",
+        "онлайн",
+        "оффлайн",
+        "офлайн",
+        "офлайн",
+        "очно",
+        "дистанционно",
+        "osobne",
+        "prezencne",
+        "remote",
+        "offline",
         # en
         "for",
+        "at",
+        "on",
+        "by",
+        "from",
+        "about",
+        "please",
         "a",
         "an",
         "the",
@@ -616,6 +626,30 @@ FILLER_WORDS: frozenset[str] = frozenset(
         "me",
     )
 )
+
+
+def _accounted_for(
+    result: "ParsedQuery", norm: str, keyword: str | None, *also: str
+) -> bool:
+    """Has everything in the query already been read by something else?
+
+    The question both derived rules ask, and they have to ask it the same way:
+    the kind of help's own words, the school, the date and the price are fields
+    by now, and what is left over is the part nobody has explained.
+
+    The date and the price come out by the spans that produced them and not by
+    words that look like them — "мар" is March and the first three letters of
+    "маркетингу".
+    """
+    spoken = norm
+    if result.deadline:
+        spoken = _DAY_MONTH_WORD.sub(" ", _DAY_MONTH_NUM.sub(" ", spoken))
+    if result.budget_max is not None:
+        spoken = _BUDGET.sub(" ", spoken)
+    accounted = [keyword or "", *also]
+    if result.institution:
+        accounted.append(result.institution.label)
+    return not _left_over(spoken, *accounted)
 
 
 def _left_over(norm: str, *accounted: str) -> str:

@@ -460,8 +460,22 @@ scan of twelve hundred 768-dimensional vectors is faster than probing an index,
 and an IVFFlat built on this little data returns worse neighbours than no index
 at all. When the catalog grows by an order of magnitude, that changes.
 
-**The vector is asked only where the rules found nothing, and only when it is
-sure.** A synonym or an exact name scores 1.00 and is curated — the embedder
+**The vector is asked only where the rules found nothing, only where there was a
+question, and only when it is sure.**
+
+Silence has two meanings. «не понимаю как считать вероятности» resolves no
+subject because nothing in the catalog is spelled that way — a question nobody
+answered. A bare «přijímačky» resolves none because the word *is* the kind of
+help and there is nothing else in the query — no question at all. So the vector
+is consulted only when something is left over once everything already read is
+taken out: the words that named the kind of help, the school, the date, the
+price, and the words that ask rather than name. Asked anyway, the model answered
+«Поступление в экономические вузы» to a bare «přijímačky» and «Поступление в
+технические вузы» to «репетитор ČVUT» — narrowing a list of tutors to the people
+who prepare for entrance exams.
+
+It is the same question the language refinement above asks, and the two ask it
+through the same function for the same reason. A synonym or an exact name scores 1.00 and is curated — the embedder
 loses to both on slang, answering «Математика для экономистов» to «матан». So it
 never overrides them. When nothing matched at all, the nearest subject is
 accepted if it scores at least **0.45** and leads the next *subject* by at least

@@ -39,9 +39,16 @@ MODEL_DIR = Path(os.environ.get("EMBEDDING_MODEL_DIR", "/app/model"))
 # own weight file by name from inside itself, so a tidier one breaks the pair.
 MODEL_FILE = "model_q4.onnx"
 
+# The revision the image is built from. Here as well as in the Dockerfile, and
+# `tests/test_embedding.py` fails when the two disagree: the name below is what
+# every row is written and read under, so a new model under an old name would
+# embed queries with new weights against vectors made by the old ones — and
+# nothing would fail, it would just answer worse.
+MODEL_REVISION = "5090578d9565bb06545b4552f76e6bc2c93e4a66"
+
 # Written into every row it produces, so a rollback finds its own vectors and a
 # change of model is a rebuild rather than a silent reinterpretation.
-MODEL_NAME = "embeddinggemma-300m-q4"
+MODEL_NAME = f"embeddinggemma-300m-q4@{MODEL_REVISION[:7]}"
 
 # The vector's width, fixed by the model. Changing the model changes this, and
 # changing this means recomputing every row — which is why the column type says

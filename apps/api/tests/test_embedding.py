@@ -259,3 +259,24 @@ async def test_what_the_vector_proposed_is_logged_even_when_refused(
     assert row is not None
     assert row.parsed["vector"] is not None, "the proposal was not logged"
     assert {"subject_id", "score", "lead", "used"} <= set(row.parsed["vector"])
+
+
+async def test_the_model_name_carries_the_revision_the_image_builds() -> None:
+    """Two files have to agree, and nothing else would notice if they did not.
+
+    The name is what every vector is written and read under. Bump the Dockerfile
+    to a new model and leave the name alone, and the rebuild finds nothing to do
+    — the catalog is unchanged — while the API embeds queries with the new
+    weights against vectors made by the old ones. No error anywhere; just worse
+    answers.
+    """
+    import re
+    from pathlib import Path
+
+    from students_cz.services.embedding import MODEL_NAME, MODEL_REVISION
+
+    dockerfile = (Path(__file__).resolve().parents[1] / "Dockerfile").read_text()
+    match = re.search(r"ARG EMBEDDING_REVISION=([0-9a-f]{40})", dockerfile)
+    assert match, "the Dockerfile no longer pins a revision"
+    assert match.group(1) == MODEL_REVISION
+    assert MODEL_REVISION[:7] in MODEL_NAME

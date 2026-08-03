@@ -29,7 +29,6 @@ question.
 
 import unicodedata
 from dataclasses import dataclass
-from typing import Any
 
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -324,7 +323,7 @@ VECTOR_LEAD = 0.04
 
 
 async def find_by_meaning(
-    session: AsyncSession, query: str, lang: str, *, embedder: Any = None
+    session: AsyncSession, query: str, lang: str
 ) -> tuple[Match | None, Match | None]:
     """The nearest subject by meaning, and the runner-up that has to be beaten.
 
@@ -339,7 +338,7 @@ async def find_by_meaning(
     from students_cz.db.models import Subject, SubjectEmbedding
     from students_cz.services.embedding import as_query, get_embedder
 
-    model = embedder or get_embedder()
+    model = get_embedder()
     if model is None:
         return None, None
     vector = model.encode([as_query(query)])[0]
