@@ -43,6 +43,7 @@ from students_cz.services import requests as requests_service
 from students_cz.services.catalog import avatar_for
 from students_cz.services.naming import rows_by_id, short_form, translated
 from students_cz.services.notify import Recipient, quote
+from students_cz.services.people import full_name
 
 router = APIRouter()
 
@@ -363,7 +364,7 @@ async def _responses_out(
                 id=response.id,
                 request_id=response.request_id,
                 helper_id=response.helper_id,
-                name=" ".join(filter(None, (person.first_name, person.last_name))),
+                name=full_name(person),
                 avatar=avatar_for(person),
                 username=person.tg_username,
                 affiliation=profile.headline,

@@ -16,7 +16,6 @@ from students_cz.db.models import (
     Offer,
     ServiceType,
     Subject,
-    User,
 )
 from students_cz.schemas import (
     HelperUpsert,
@@ -27,6 +26,7 @@ from students_cz.schemas import (
 from students_cz.services import helpers
 from students_cz.services.naming import names_by_id
 from students_cz.services.notify import quote
+from students_cz.services.people import full_name
 
 router = APIRouter()
 
@@ -121,12 +121,8 @@ async def upsert_helper(
         background.add_task(
             notifier.tell_owner,
             OWNER_NEW_HELPER.format(
-                name=quote(_display_name(user), 64),
+                name=quote(full_name(user), 64),
                 services=quote(", ".join(saved.services) or OWNER_NO_SERVICES, 200),
             ),
         )
     return await read_me(user, session, lang)
-
-
-def _display_name(user: User) -> str:
-    return " ".join(filter(None, (user.first_name, user.last_name))) or str(user.id)

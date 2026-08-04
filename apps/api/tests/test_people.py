@@ -233,3 +233,14 @@ async def test_a_field_the_payload_does_not_mention_is_left_alone(session):
     assert user.ui_lang is UiLang.CS
     assert user.city == "Praha"
     assert user.spoken_langs == ["ru", "cs"]
+
+
+async def test_a_full_name_is_both_parts_and_falls_back_to_the_id():
+    """Not the catalog's rule — a card shows a first name and an initial."""
+    from students_cz.services.people import full_name
+
+    assert (
+        full_name(User(tg_id=1, first_name="Нина", last_name="К", ui_lang=UiLang.RU))
+        == "Нина К"
+    )
+    assert full_name(User(tg_id=2, first_name="Нина", ui_lang=UiLang.RU)) == "Нина"
