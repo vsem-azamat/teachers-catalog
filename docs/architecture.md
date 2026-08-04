@@ -15,6 +15,14 @@ bot handler and an endpoint both have to get right belongs in `services/`, and
 `services/people.remember` is the pattern: both doors call it, so a person who
 writes to the bot and a person who opens the app are recorded the same way.
 
+**What the chat offers is part of what we say.** Telegram remembers a bot's
+command list and a chat's reply keyboard until somebody replaces them, and this
+token belonged to a command-driven bot before it belonged to this one — so a
+list nobody sets is the old one, still offering `/language` to a bot that has
+no such command. `bot.configure` sets the two that exist, and any message the
+bot answers clears whatever keyboard is left over from before. Both are the
+same rule as the copy above: what a person is offered has to exist.
+
 **What we say is part of what we do.** A sentence telling somebody how to undo
 something, or who can see their request, or how fast an answer comes, is a
 claim about the code — and it is the kind that rots quietly, because nobody

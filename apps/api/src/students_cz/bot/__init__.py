@@ -11,10 +11,12 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandStart
 from aiogram.types import (
+    BotCommand,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     MenuButtonWebApp,
     Message,
+    ReplyKeyboardRemove,
     WebAppInfo,
 )
 
@@ -90,12 +92,32 @@ async def on_start(message: Message, settings: Settings) -> None:
     )
 
 
-async def configure(bot: Bot, settings: Settings) -> None:
-    """Point the persistent menu button at the mini app.
+# The two that exist. Telegram keeps whatever list it was last given, and this
+# token answered to a command-driven bot before this one — so a bot that sets
+# none is still offering `/language`, which nothing here handles. Two of them,
+# and both are ways out rather than ways around the app.
+COMMANDS = [
+    BotCommand(command="start", description="Открыть каталог"),
+    BotCommand(command="stop", description="Не писать мне"),
+]
 
-    This is what makes the app reachable without anyone typing a command —
-    the whole point of moving off a command-driven interface.
+# What a message gets when it is not one of those. Short on purpose: the reply
+# exists to carry `ReplyKeyboardRemove`, and the menu button beside the field
+# is where the app actually is.
+NOT_A_CONVERSATION = (
+    "Всё происходит в приложении — открой его кнопкой рядом с полем ввода."
+)
+
+
+async def configure(bot: Bot, settings: Settings) -> None:
+    """Say what this bot offers, in the two places Telegram remembers it.
+
+    The menu button is what makes the app reachable without anyone typing a
+    command — the whole point of moving off a command-driven interface. The
+    command list is the other half, and it is set here rather than left alone
+    because "left alone" means the previous bot's list.
     """
+    await bot.set_my_commands(COMMANDS)
     if not settings.public_base_url:
         return
     await bot.set_chat_menu_button(
@@ -122,3 +144,15 @@ async def on_stop(message: Message) -> None:
             await session.commit()
 
     await message.answer(UNSUBSCRIBED)
+
+
+@router.message()
+async def on_anything_else(message: Message) -> None:
+    """Anything that is not one of the two commands.
+
+    Which, for anybody who used the bot this token belonged to, is most often
+    a tap on a button still sitting in their chat: Telegram keeps a reply
+    keyboard until a message removes it, and those send their own label as
+    ordinary text. The reply is one line and its job is the removal.
+    """
+    await message.answer(NOT_A_CONVERSATION, reply_markup=ReplyKeyboardRemove())

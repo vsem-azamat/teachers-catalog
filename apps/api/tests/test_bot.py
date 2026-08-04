@@ -165,9 +165,11 @@ class _Message:
     def __init__(self, tg_id: int | None) -> None:
         self.from_user = SimpleNamespace(id=tg_id) if tg_id is not None else None
         self.answers: list[str] = []
+        self.markups: list[object] = []
 
-    async def answer(self, text: str, **_: object) -> None:
+    async def answer(self, text: str, reply_markup: object = None, **_: object) -> None:
         self.answers.append(text)
+        self.markups.append(reply_markup)
 
 
 def _lend(session: AsyncSession):
@@ -212,3 +214,81 @@ async def test_an_update_without_a_sender_is_ignored(
     await students_cz_bot.on_stop(message)
 
     assert message.answers == []
+
+
+class _Bot:
+    """Records what the bot would have told Telegram about itself."""
+
+    def __init__(self) -> None:
+        self.commands: list[dict] = []
+        self.menu_buttons: list[object] = []
+
+    async def set_my_commands(self, commands, **kwargs) -> None:
+        self.commands.append({"commands": commands, **kwargs})
+
+    async def set_chat_menu_button(self, **kwargs) -> None:
+        self.menu_buttons.append(kwargs)
+
+
+async def test_the_command_list_is_the_commands_that_exist() -> None:
+    """This token belonged to a command-driven bot first.
+
+    Telegram keeps the list until somebody replaces it, so a bot that sets none
+    is still offering the old one — `/language`, which nothing here handles.
+    """
+    from students_cz.core.config import Settings
+
+    bot = _Bot()
+    await students_cz_bot.configure(
+        bot, Settings(_env_file=None, public_base_url="https://tests.example")
+    )
+
+    assert bot.commands, "nothing replaced the list the previous bot left"
+    offered = {command.command for call in bot.commands for command in call["commands"]}
+    assert offered == {"start", "stop"}
+
+
+async def test_the_menu_is_still_pointed_at_the_app() -> None:
+    from students_cz.core.config import Settings
+
+    bot = _Bot()
+    await students_cz_bot.configure(
+        bot, Settings(_env_file=None, public_base_url="https://tests.example")
+    )
+
+    assert bot.menu_buttons
+
+
+async def test_answering_anything_else_clears_the_old_keyboard(
+    session: AsyncSession,
+) -> None:
+    """The buttons of the previous bot are still in every chat it ever had.
+
+    Nothing but a reply carrying `ReplyKeyboardRemove` takes them away, and
+    tapping one is exactly what somebody with a stale keyboard does.
+    """
+    from aiogram.types import ReplyKeyboardRemove
+
+    message = _Message(91004)
+
+    await students_cz_bot.on_anything_else(message)
+
+    assert message.answers
+    assert isinstance(message.markups[-1], ReplyKeyboardRemove)
+
+
+async def test_the_catch_all_answers_last_and_only_then() -> None:
+    """Order is the whole safety of a handler with no filter.
+
+    Registered before `/start`, it would answer "everything happens in the
+    app" to somebody opening the bot for the first time — and the greeting,
+    which is the one thing this bot exists to say, would never be sent.
+    """
+    handlers = students_cz_bot.router.message.handlers
+
+    assert handlers[-1].callback is students_cz_bot.on_anything_else
+    assert not handlers[-1].filters, "a catch-all with a filter is not a catch-all"
+    assert [handler.callback for handler in handlers[:-1]] == [
+        students_cz_bot.on_start,
+        students_cz_bot.on_stop,
+    ]
