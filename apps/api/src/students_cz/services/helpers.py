@@ -36,14 +36,15 @@ from students_cz.services.refs import require_row
 
 @dataclass(frozen=True)
 class Saved:
-    """The profile, and whether this save is the one that published it.
+    """What a save leaves behind that the row cannot answer afterwards.
 
-    The second half is not readable from the row afterwards — a profile that
-    was already published looks exactly like one that just was — and it is
-    what the owner ping is about. Answered where the transition happens.
+    A profile that was already published looks exactly like one that just went
+    out, so whether this save is the one that published it has to be said
+    where the transition happens. That is what the owner ping is about, and
+    the whole of what anything asks of this return value — the profile itself
+    is the caller's own `user`'s, and readable from the session.
     """
 
-    profile: HelperProfile
     published_now: bool
     # Only when it published just now, and only then worth a query: the codes
     # of what this person offers, for the line the owner is pinged with.
@@ -89,7 +90,6 @@ async def save_profile(
     if "offers" in spec.model_fields_set:
         await _apply_offers(session, user=user, helper=helper, spec=spec)
     return Saved(
-        profile=helper,
         published_now=published_now,
         services=await _service_codes(session, helper) if published_now else (),
     )

@@ -235,7 +235,7 @@ async def test_a_field_the_payload_does_not_mention_is_left_alone(session):
     assert user.spoken_langs == ["ru", "cs"]
 
 
-async def test_a_full_name_is_both_parts_and_falls_back_to_the_id():
+async def test_a_full_name_is_both_parts_and_falls_back_to_the_id(session):
     """Not the catalog's rule — a card shows a first name and an initial."""
     from students_cz.services.people import full_name
 
@@ -244,3 +244,8 @@ async def test_a_full_name_is_both_parts_and_falls_back_to_the_id():
         == "Нина К"
     )
     assert full_name(User(tg_id=2, first_name="Нина", ui_lang=UiLang.RU)) == "Нина"
+    # Telegram does not allow this; a fixture can.
+    nameless = User(tg_id=3, first_name="", ui_lang=UiLang.RU)
+    session.add(nameless)
+    await session.flush()
+    assert full_name(nameless) == str(nameless.id)
