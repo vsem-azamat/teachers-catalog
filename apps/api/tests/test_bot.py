@@ -258,12 +258,13 @@ async def test_the_menu_is_still_pointed_at_the_app() -> None:
         cast(Bot, bot), Settings(_env_file=None, public_base_url="https://tests.example")
     )
 
-    assert bot.menu_buttons
+    [call] = bot.menu_buttons
+    button = call["menu_button"]
+    assert button.web_app.url == "https://tests.example"
+    assert button.text
 
 
-async def test_answering_anything_else_clears_the_old_keyboard(
-    session: AsyncSession,
-) -> None:
+async def test_answering_anything_else_clears_the_old_keyboard() -> None:
     """The buttons of the previous bot are still in every chat it ever had.
 
     Nothing but a reply carrying `ReplyKeyboardRemove` takes them away, and
@@ -276,6 +277,29 @@ async def test_answering_anything_else_clears_the_old_keyboard(
     await students_cz_bot.on_anything_else(message)
 
     assert message.answers
+    assert isinstance(message.markups[-1], ReplyKeyboardRemove)
+
+
+async def test_a_channel_post_is_not_answered() -> None:
+    """No sender, nobody to have asked — the rule `on_stop` already follows."""
+    message = _Message(None)
+
+    await students_cz_bot.on_anything_else(message)
+
+    assert message.answers == []
+
+
+async def test_the_opt_out_reply_clears_the_old_keyboard_too(
+    session: AsyncSession, monkeypatch
+) -> None:
+    from aiogram.types import ReplyKeyboardRemove
+
+    monkeypatch.setattr(students_cz_bot, "get_sessionmaker", lambda: _lend(session))
+    user = await _person(session, tg_id=91005)
+    message = _Message(user.tg_id)
+
+    await students_cz_bot.on_stop(message)
+
     assert isinstance(message.markups[-1], ReplyKeyboardRemove)
 
 

@@ -216,3 +216,31 @@ async def test_the_watch_reports_a_missing_webhook_in_the_endpoint_s_words(
         "", expected=settings.webhook_url, registration_error="Bad Request: bad webhook"
     )
     assert "Bad Request: bad webhook" in app.state.webhook_observed
+
+
+class Fussy(Telegram):
+    """A Telegram that registers webhooks and refuses command lists.
+
+    A 429 on `setMyCommands` is the realistic version, and it used to be
+    indistinguishable from a webhook that would not register.
+    """
+
+    async def set_my_commands(self, *_: object, **__: object) -> None:
+        raise RuntimeError("Too Many Requests: retry after 30")
+
+
+async def test_a_refused_command_list_does_not_re_register_the_webhook(
+    settings,
+) -> None:
+    from students_cz.main import keep_webhook_registered
+
+    bot = Fussy()
+    app = _app()
+
+    await _run_briefly(
+        keep_webhook_registered(app, bot, _dispatcher(), settings, recheck_seconds=0.05)
+    )
+
+    assert bot.sets == 1, "a cosmetic call must not retry the registration"
+    assert bot.reads > 0, "the watch never started"
+    assert app.state.webhook_error is None

@@ -98,7 +98,11 @@ async def on_start(message: Message, settings: Settings) -> None:
 # and both are ways out rather than ways around the app.
 COMMANDS = [
     BotCommand(command="start", description="Открыть каталог"),
-    BotCommand(command="stop", description="Не писать мне"),
+    # Not "не писать мне", which is the promise `UNSUBSCRIBED` below exists to
+    # take back: answers to your own requests keep arriving, because you asked
+    # for them. The line before the command has to say the same as the line
+    # after it.
+    BotCommand(command="stop", description="Не присылать рассылки"),
 ]
 
 # What a message gets when it is not one of those. Short on purpose: the reply
@@ -117,6 +121,9 @@ async def configure(bot: Bot, settings: Settings) -> None:
     command list is the other half, and it is set here rather than left alone
     because "left alone" means the previous bot's list.
     """
+    # The default scope, which is where the previous bot's list is: measured on
+    # 2026-08-04 against production, every narrower scope and every language
+    # variant is empty, and Telegram falls back to this one.
     await bot.set_my_commands(COMMANDS)
     if not settings.public_base_url:
         return
@@ -143,7 +150,9 @@ async def on_stop(message: Message) -> None:
         if await unsubscribe(session, message.from_user.id):
             await session.commit()
 
-    await message.answer(UNSUBSCRIBED)
+    # Carries the removal too: somebody typing /stop is as likely to have the
+    # old keyboard in front of them as anybody else.
+    await message.answer(UNSUBSCRIBED, reply_markup=ReplyKeyboardRemove())
 
 
 @router.message()
@@ -154,5 +163,10 @@ async def on_anything_else(message: Message) -> None:
     a tap on a button still sitting in their chat: Telegram keeps a reply
     keyboard until a message removes it, and those send their own label as
     ordinary text. The reply is one line and its job is the removal.
+
+    Nothing is said to an update with no sender — a channel post — for the
+    same reason `on_stop` returns: there is nobody there to have asked.
     """
+    if message.from_user is None:
+        return
     await message.answer(NOT_A_CONVERSATION, reply_markup=ReplyKeyboardRemove())

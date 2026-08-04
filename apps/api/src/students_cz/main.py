@@ -164,7 +164,6 @@ async def _set_webhook(
                 allowed_updates=dispatcher.resolve_used_update_types(),
                 drop_pending_updates=drop_pending,
             )
-            await configure(bot, settings)
         except asyncio.CancelledError:
             raise
         except Exception as exc:
@@ -176,7 +175,26 @@ async def _set_webhook(
         else:
             app.state.webhook_error = None
             log.info("webhook set to %s", url)
+            await _describe_bot(bot, settings)
             return
+
+
+async def _describe_bot(bot, settings) -> None:
+    """The menu button and the command list — never at the webhook's cost.
+
+    Beside registration these are cosmetic: if Telegram refuses them, updates
+    still arrive. Inside the retry above they were not cosmetic at all — one
+    429 on a command list re-registered the webhook in a tight loop, with
+    `drop_pending_updates` on the boot path throwing away everything that
+    queued between attempts, and the watch that heals a cleared webhook never
+    started.
+    """
+    try:
+        await configure(bot, settings)
+    except asyncio.CancelledError:
+        raise
+    except Exception as exc:
+        log.warning("could not set the bot's menu or command list: %s", exc)
 
 
 @asynccontextmanager

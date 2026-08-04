@@ -19,9 +19,18 @@ writes to the bot and a person who opens the app are recorded the same way.
 command list and a chat's reply keyboard until somebody replaces them, and this
 token belonged to a command-driven bot before it belonged to this one — so a
 list nobody sets is the old one, still offering `/language` to a bot that has
-no such command. `bot.configure` sets the two that exist, and any message the
-bot answers clears whatever keyboard is left over from before. Both are the
-same rule as the copy above: what a person is offered has to exist.
+no such command. `bot.configure` sets the two that exist. The old keyboard goes
+the same way: a reply is the only thing that removes one, so `/stop` and every
+message that is neither command carry `ReplyKeyboardRemove` — which is what a
+person with a stale keyboard triggers, because tapping one of its buttons sends
+its label as ordinary text. The greeting is the exception and cannot carry it:
+`reply_markup` holds one thing, and there it is the button that opens the app.
+
+Both are the same rule as the copy above: what a person is offered has to
+exist. And neither is worth a failed registration — `main._describe_bot` sets
+them after the webhook is registered and swallows what Telegram says, because
+a command list that will not set is cosmetic while a webhook that will not set
+is a deaf bot.
 
 **What we say is part of what we do.** A sentence telling somebody how to undo
 something, or who can see their request, or how fast an answer comes, is a
