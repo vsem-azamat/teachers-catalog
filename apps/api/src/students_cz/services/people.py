@@ -197,3 +197,19 @@ async def update_profile(session: AsyncSession, user: User, spec: MeUpdate) -> N
             session, Institution, spec.institution_id or None, "institution_id"
         )
         user.institution_id = spec.institution_id or None
+
+
+def full_name(user: User) -> str:
+    """Someone's name as they gave it to Telegram.
+
+    Three screens want this and each had written it out: your own account, the
+    name beside an answer to your request, and the owner ping. Not the same
+    rule as a catalog card, which shows a first name and an initial — full
+    surnames are neither needed to choose somebody nor ours to publish. This
+    one is used where the reader is either the person themselves or somebody
+    already talking to them.
+
+    The id is the fallback for a row with no first name, which Telegram does
+    not allow and a seeded fixture might.
+    """
+    return " ".join(filter(None, (user.first_name, user.last_name))) or str(user.id)

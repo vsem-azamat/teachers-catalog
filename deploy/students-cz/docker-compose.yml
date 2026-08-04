@@ -72,6 +72,9 @@ services:
       PUBLIC_BASE_URL: ${PUBLIC_HOST}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       INIT_DATA_MAX_AGE_SECONDS: ${INIT_DATA_MAX_AGE_SECONDS:-86400}
+      # Empty means nobody is told when a profile or a request appears, which
+      # is a working configuration and the default everywhere else.
+      OWNER_TG_ID: ${OWNER_TG_ID:-}
       # Never true here. It would let anyone claim to be anyone.
       ALLOW_UNSIGNED_INIT_DATA: "false"
       CORS_ORIGINS: '["${PUBLIC_HOST}"]'

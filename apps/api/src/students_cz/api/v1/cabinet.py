@@ -4,11 +4,12 @@ The counterpart to `browse`: the same offers, seen from the side of the person
 who owns them.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, BackgroundTasks
 from sqlalchemy import select
 
-from students_cz.api.deps import LangDep, SessionDep, UserDep
+from students_cz.api.deps import LangDep, NotifierDep, SessionDep, UserDep
 from students_cz.api.v1.me import read_me
+from students_cz.bot.texts import OWNER_NEW_HELPER, OWNER_NO_SERVICES
 from students_cz.db.models import (
     HelperProfile,
     Institution,
@@ -24,6 +25,8 @@ from students_cz.schemas import (
 )
 from students_cz.services import helpers
 from students_cz.services.naming import names_by_id
+from students_cz.services.notify import quote
+from students_cz.services.people import full_name
 
 router = APIRouter()
 
@@ -103,8 +106,23 @@ async def my_helper(session: SessionDep, lang: LangDep, user: UserDep) -> MyHelp
 
 @router.put("/helper", response_model=MeOut, tags=["helper"])
 async def upsert_helper(
-    payload: HelperUpsert, session: SessionDep, lang: LangDep, user: UserDep
+    payload: HelperUpsert,
+    background: BackgroundTasks,
+    notifier: NotifierDep,
+    session: SessionDep,
+    lang: LangDep,
+    user: UserDep,
 ) -> MeOut:
     """Create or replace the caller's helper profile and its offers."""
-    await helpers.save_profile(session, user=user, spec=payload, lang=lang)
+    saved = await helpers.save_profile(session, user=user, spec=payload, lang=lang)
+    if saved.published_now:
+        # After the response, like every other message here: Telegram is a
+        # third party in the middle of a request somebody is waiting on.
+        background.add_task(
+            notifier.tell_owner,
+            OWNER_NEW_HELPER.format(
+                name=quote(full_name(user), 64),
+                services=quote(", ".join(saved.services) or OWNER_NO_SERVICES, 200),
+            ),
+        )
     return await read_me(user, session, lang)

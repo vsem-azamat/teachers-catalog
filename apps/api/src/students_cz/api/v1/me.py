@@ -15,7 +15,7 @@ from students_cz.schemas import (
     MeUpdate,
 )
 from students_cz.services.catalog import avatar_for
-from students_cz.services.people import update_profile
+from students_cz.services.people import full_name, update_profile
 
 router = APIRouter()
 
@@ -36,7 +36,7 @@ async def read_me(user: UserDep, session: SessionDep, lang: LangDep) -> MeOut:
     return MeOut(
         id=user.id,
         tg_id=user.tg_id,
-        name=" ".join(filter(None, (user.first_name, user.last_name))),
+        name=full_name(user),
         username=user.tg_username,
         avatar=avatar_for(user),
         ui_lang=user.ui_lang,

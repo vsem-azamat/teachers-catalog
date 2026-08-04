@@ -11,6 +11,8 @@ from students_cz.api.deps import LangDep, NotifierDep, SessionDep, UserDep
 from students_cz.bot.texts import (
     FOR_PRICE,
     NEW_RESPONSE,
+    OWNER_NEW_REQUEST,
+    OWNER_NOTHING_PARSED,
     RESPONSE_ACCEPTED,
     WAIT_FOR_MESSAGE,
     WRITE_TO,
@@ -41,6 +43,7 @@ from students_cz.services import requests as requests_service
 from students_cz.services.catalog import avatar_for
 from students_cz.services.naming import rows_by_id, short_form, translated
 from students_cz.services.notify import Recipient, quote
+from students_cz.services.people import full_name
 
 router = APIRouter()
 
@@ -52,7 +55,12 @@ router = APIRouter()
     tags=["requests"],
 )
 async def create_request(
-    payload: RequestCreate, session: SessionDep, lang: LangDep, user: UserDep
+    payload: RequestCreate,
+    background: BackgroundTasks,
+    notifier: NotifierDep,
+    session: SessionDep,
+    lang: LangDep,
+    user: UserDep,
 ) -> RequestOut:
     """Post "I need help with X" and let helpers answer."""
     request = await requests_service.create(
@@ -70,7 +78,17 @@ async def create_request(
         # as an explicit `null`, which means "any" and not "work it out".
         given=frozenset(payload.model_fields_set),
     )
-    return await _request_out(session, request, lang)
+    rendered = await _request_out(session, request, lang)
+    # Nobody else is told yet — see "Where the code does not follow this yet"
+    # in docs/architecture.md. This is what makes the first ones noticed.
+    background.add_task(
+        notifier.tell_owner,
+        OWNER_NEW_REQUEST.format(
+            topic=quote(await _axes_line(session, request), 120),
+            text=quote(request.raw_text),
+        ),
+    )
+    return rendered
 
 
 @router.get("/requests", response_model=list[RequestOut], tags=["requests"])
@@ -274,6 +292,41 @@ def _topic_of(*, rendered_request: HelpRequest) -> str:
     return rendered_request.raw_text
 
 
+async def _axes_line(session, request: HelpRequest) -> str:
+    """What the parse made of a request, for the one person watching the first
+    of them.
+
+    Slugs and codes rather than translated names, like the profile ping and for
+    the same reason: this message is framed in one language whoever posted the
+    request wrote in, and a Czech subject name inside a Russian sentence reads
+    as a bug. Says so plainly when the parse understood nothing, which is
+    itself the interesting case.
+    """
+    subject = (
+        await session.get(Subject, request.subject_id) if request.subject_id else None
+    )
+    institution = (
+        await session.get(Institution, request.institution_id)
+        if request.institution_id
+        else None
+    )
+    service = (
+        await session.get(ServiceType, request.service_type_id)
+        if request.service_type_id
+        else None
+    )
+    named = [
+        part
+        for part in (
+            subject.slug if subject else None,
+            institution.code if institution else None,
+            service.code if service else None,
+        )
+        if part
+    ]
+    return " · ".join(named) if named else OWNER_NOTHING_PARSED
+
+
 def _price_line(price: Price | None) -> str:
     if price is None or price.amount is None:
         return ""
@@ -311,7 +364,7 @@ async def _responses_out(
                 id=response.id,
                 request_id=response.request_id,
                 helper_id=response.helper_id,
-                name=" ".join(filter(None, (person.first_name, person.last_name))),
+                name=full_name(person),
                 avatar=avatar_for(person),
                 username=person.tg_username,
                 affiliation=profile.headline,
