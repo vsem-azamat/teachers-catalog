@@ -105,7 +105,9 @@ async def current_notifier(http: Request, settings: SettingsDep) -> Notifier:
     other places that reach for `app.state` are named in docs/architecture.md.
     """
     return Notifier(
-        getattr(http.app.state, "bot", None), settings.public_base_url or None
+        getattr(http.app.state, "bot", None),
+        settings.public_base_url or None,
+        owner_tg_id=settings.owner_tg_id,
     )
 
 

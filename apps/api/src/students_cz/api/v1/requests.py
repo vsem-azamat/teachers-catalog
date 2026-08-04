@@ -11,6 +11,7 @@ from students_cz.api.deps import LangDep, NotifierDep, SessionDep, UserDep
 from students_cz.bot.texts import (
     FOR_PRICE,
     NEW_RESPONSE,
+    OWNER_NEW_REQUEST,
     RESPONSE_ACCEPTED,
     WAIT_FOR_MESSAGE,
     WRITE_TO,
@@ -52,7 +53,12 @@ router = APIRouter()
     tags=["requests"],
 )
 async def create_request(
-    payload: RequestCreate, session: SessionDep, lang: LangDep, user: UserDep
+    payload: RequestCreate,
+    background: BackgroundTasks,
+    notifier: NotifierDep,
+    session: SessionDep,
+    lang: LangDep,
+    user: UserDep,
 ) -> RequestOut:
     """Post "I need help with X" and let helpers answer."""
     request = await requests_service.create(
@@ -70,7 +76,17 @@ async def create_request(
         # as an explicit `null`, which means "any" and not "work it out".
         given=frozenset(payload.model_fields_set),
     )
-    return await _request_out(session, request, lang)
+    rendered = await _request_out(session, request, lang)
+    # Nobody else is told yet — see "Where the code does not follow this yet"
+    # in docs/architecture.md. This is what makes the first ones noticed.
+    background.add_task(
+        notifier.tell_owner,
+        OWNER_NEW_REQUEST.format(
+            topic=quote(_axes_line(rendered), 120),
+            text=quote(request.raw_text),
+        ),
+    )
+    return rendered
 
 
 @router.get("/requests", response_model=list[RequestOut], tags=["requests"])
@@ -272,6 +288,17 @@ def _topic_of(*, rendered_request: HelpRequest) -> str:
     words, and "Mathematical Analysis I · ČVUT" is our vocabulary, not theirs.
     """
     return rendered_request.raw_text
+
+
+def _axes_line(rendered: RequestOut) -> str:
+    """What the parse made of a request, for the one person watching the first
+    of them. Empty when it understood nothing, which is itself worth seeing."""
+    named = [
+        part
+        for part in (rendered.subject, rendered.institution, rendered.service_type)
+        if part
+    ]
+    return " · ".join(named) if named else "ничего не разобрали"
 
 
 def _price_line(price: Price | None) -> str:

@@ -112,9 +112,16 @@ class Notifier:
     caller remembers separately.
     """
 
-    def __init__(self, bot: Bot | None, app_url: str | None = None) -> None:
+    def __init__(
+        self,
+        bot: Bot | None,
+        app_url: str | None = None,
+        *,
+        owner_tg_id: int | None = None,
+    ) -> None:
         self._bot = bot
         self._app_url = app_url
+        self._owner_tg_id = owner_tg_id
 
     async def tell(self, recipient: Recipient, text: str) -> bool:
         """Send, if this person can be sent to. Returns whether it arrived.
@@ -131,6 +138,30 @@ class Notifier:
             text=text,
             lang=recipient.lang,
             app_url=self._app_url,
+        )
+
+    async def tell_owner(self, text: str) -> bool:
+        """Say that something happened, to whoever runs this. Once.
+
+        A different kind of message from the two above and kept apart from
+        them: those answer something the recipient set in motion, this one
+        reports on the catalog to one address that no screen chose. There is
+        nobody to consult about language, nothing to opt out of, and no button
+        — see docs/architecture.md.
+
+        Off unless `OWNER_TG_ID` names somebody, which is how it runs
+        everywhere but production. Like every notification here it cannot fail
+        the action it follows: the send is already guarded, and no owner is
+        `False` rather than a raise.
+        """
+        if self._owner_tg_id is None:
+            return False
+        return await tell(
+            self._bot,
+            tg_id=self._owner_tg_id,
+            text=text,
+            lang=UiLang.RU,
+            app_url=None,
         )
 
 

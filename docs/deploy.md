@@ -144,6 +144,7 @@ ssh-keyscan -t ed25519 <host>          # for DEPLOY_KNOWN_HOSTS
 | `INIT_DATA_MAX_AGE_SECONDS` | Optional; defaults to 86400. |
 | `LOG_LEVEL` | Optional; defaults to `INFO`. One of DEBUG, INFO, WARNING, ERROR, CRITICAL. |
 | `BACKUP_HOUR_UTC`, `BACKUP_RETENTION_DAYS` | Optional; default 3 and 14. |
+| `OWNER_TG_ID` | Optional. Telegram id of whoever runs this, to be told when a profile or a request appears. Unset means no ping. A numeric id, not a handle — the bot needs a chat it can open, and it can only open one with somebody who has started it. |
 
 ### 5. In @BotFather
 

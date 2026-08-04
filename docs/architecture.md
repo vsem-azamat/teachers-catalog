@@ -132,6 +132,17 @@ route in `main.py`, which is defined inside `create_app` and hands the update
 to the dispatcher the lifespan put there — it is the seam between the two
 runtimes rather than a handler.
 
+**Two notifications and one ping.** `services/notify.py` writes to people
+about something they set in motion — an answer to their request, an acceptance
+of their answer. `Notifier.tell_owner` is the other kind and is kept apart from
+it: one message to one address, `OWNER_TG_ID`, about a profile or a request
+appearing. It is not product copy — nobody reading it chose a language, and it
+is addressed to whoever runs this — so it lives in `bot/texts.py` as a plain
+string rather than a table per language, and it is off unless that setting
+names somebody. A ping that cannot be sent, like a notification that cannot,
+costs the action nothing: both are queued after the response and neither may
+raise.
+
 **State the process keeps is a service, not an attribute.** `Notifier` is one:
 a bot and an address, decided once. `telegram.BotHandle` is the other, and it
 was the harder case — it holds the bot's own handle and the cooldown that
@@ -340,11 +351,13 @@ finds, and a rule with silent exceptions is worse than no rule.
   on status, authorship, expiry and whether you already answered, and uses the
   subject only for *ranking*, so every helper profile sees every open request —
   which the screens now say, rather than promising the subject narrows it. What
-  is still missing is the push: the two notifications that exist are about a
+  is still missing is the push: the notifications that exist are about a
   response and an acceptance, so a request waits to be found rather than
   arriving. The product decision it waits on is whether to narrow the feed
   first, since notifying every helper about every request is how a feed becomes
-  something people mute.
+  something people mute — and that decision cannot be made from data yet: the
+  catalog holds no profiles and no requests. The owner ping below exists so
+  that the first ones are noticed without anybody reading the database.
 
 Each of these is a separate change with its own tests. None of them is a
 reason to write new code the old way.

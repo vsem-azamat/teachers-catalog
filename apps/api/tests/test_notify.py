@@ -186,3 +186,33 @@ async def test_a_reachable_person_is_written_to() -> None:
     assert await Notifier(cast(Bot, bot)).tell(Recipient.of(_person()), "привет") is True
     assert bot.sent[0]["chat_id"] == 42
     assert bot.sent[0]["text"] == "привет"
+
+
+@pytest.mark.asyncio
+async def test_the_owner_is_told_when_somebody_is_watching() -> None:
+    bot = _Bot()
+    notifier = Notifier(cast(Bot, bot), None, owner_tg_id=777)
+
+    assert await notifier.tell_owner("новая анкета") is True
+    assert bot.sent[0]["chat_id"] == 777
+    assert bot.sent[0]["text"] == "новая анкета"
+
+
+@pytest.mark.asyncio
+async def test_no_owner_means_no_ping_rather_than_an_error() -> None:
+    """How it runs until somebody sets `OWNER_TG_ID`, which is most of the time."""
+    bot = _Bot()
+
+    assert await Notifier(cast(Bot, bot), None).tell_owner("новая анкета") is False
+    assert bot.sent == []
+
+
+@pytest.mark.asyncio
+async def test_the_owner_ping_carries_no_button() -> None:
+    """It is a line in a log, not an invitation to open a screen."""
+    bot = _Bot()
+    notifier = Notifier(cast(Bot, bot), "https://tests.example", owner_tg_id=777)
+
+    await notifier.tell_owner("новая заявка")
+
+    assert bot.sent[0]["reply_markup"] is None

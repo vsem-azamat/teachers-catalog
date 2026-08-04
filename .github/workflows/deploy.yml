@@ -169,6 +169,8 @@ jobs:
           PUBLIC_PORT: ${{ vars.PUBLIC_PORT }}
           INIT_DATA_MAX_AGE_SECONDS: ${{ vars.INIT_DATA_MAX_AGE_SECONDS || '86400' }}
           LOG_LEVEL: ${{ vars.LOG_LEVEL || 'INFO' }}
+          # Optional, and empty is a working value: no ping.
+          OWNER_TG_ID: ${{ vars.OWNER_TG_ID }}
           BACKUP_HOUR_UTC: ${{ vars.BACKUP_HOUR_UTC || '3' }}
           BACKUP_RETENTION_DAYS: ${{ vars.BACKUP_RETENTION_DAYS || '14' }}
         run: |
@@ -187,6 +189,7 @@ jobs:
             echo "PUBLIC_PORT=$PUBLIC_PORT"
             echo "INIT_DATA_MAX_AGE_SECONDS=$INIT_DATA_MAX_AGE_SECONDS"
             echo "LOG_LEVEL=$LOG_LEVEL"
+            echo "OWNER_TG_ID=$OWNER_TG_ID"
             echo "BACKUP_HOUR_UTC=$BACKUP_HOUR_UTC"
             echo "BACKUP_RETENTION_DAYS=$BACKUP_RETENTION_DAYS"
           } > "$env_file"

@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, computed_field
+from pydantic import Field, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -89,6 +89,23 @@ class Settings(BaseSettings):
     # webhook call; anything else is not Telegram.
     webhook_secret: str = ""
     webhook_path: str = "/tg/webhook"
+    # Told when a profile or a request appears, and nothing else. Unset — which
+    # is how it runs everywhere but production — means no ping. A numeric
+    # Telegram id and not a handle: the bot needs a chat it can open, and it
+    # can only open one with somebody who has started it.
+    owner_tg_id: int | None = None
+
+    @field_validator("owner_tg_id", mode="before")
+    @classmethod
+    def _blank_is_nobody(cls, value: object) -> object:
+        """An unset variable reaches us as an empty string, not as absent.
+
+        Compose writes `OWNER_TG_ID=` whether or not anybody set it, and an
+        empty string is not an integer — so without this the API refuses to
+        start in exactly the configuration that means "no ping".
+        """
+        return None if value == "" else value
+
     # Public HTTPS origin. Since 20 July 2026 Telegram only allows Mini App API
     # calls from the app's own origin, so a preview deployment on a different
     # domain will not work.

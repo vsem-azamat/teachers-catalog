@@ -6,6 +6,7 @@ about HTTP, so the bot could offer the same thing tomorrow without any of it
 being reimplemented.
 """
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from sqlalchemy import delete, select
@@ -33,9 +34,25 @@ from students_cz.services.people import log_event
 from students_cz.services.refs import require_row
 
 
+@dataclass(frozen=True)
+class Saved:
+    """The profile, and whether this save is the one that published it.
+
+    The second half is not readable from the row afterwards — a profile that
+    was already published looks exactly like one that just was — and it is
+    what the owner ping is about. Answered where the transition happens.
+    """
+
+    profile: HelperProfile
+    published_now: bool
+    # Only when it published just now, and only then worth a query: the codes
+    # of what this person offers, for the line the owner is pinged with.
+    services: tuple[str, ...] = ()
+
+
 async def save_profile(
     session: AsyncSession, *, user: User, spec: HelperUpsert, lang: UiLang
-) -> HelperProfile:
+) -> Saved:
     """Create or replace the caller's helper profile and its offers.
 
     The set of offers is authoritative — whatever the caller did not send is
@@ -63,7 +80,7 @@ async def save_profile(
         raise Forbidden("this profile is blocked")
 
     _apply_text(helper, spec, lang)
-    await _apply_status(session, helper, user, publish=spec.publish)
+    published_now = await _apply_status(session, helper, user, publish=spec.publish)
     await session.flush()
     # Same rule as the text fields, and for the same reason. `offers` defaults
     # to an empty list, so an unconditional call here deletes everything the
@@ -71,7 +88,30 @@ async def save_profile(
     # is the promise the docstring above already makes.
     if "offers" in spec.model_fields_set:
         await _apply_offers(session, user=user, helper=helper, spec=spec)
-    return helper
+    return Saved(
+        profile=helper,
+        published_now=published_now,
+        services=await _service_codes(session, helper) if published_now else (),
+    )
+
+
+async def _service_codes(session: AsyncSession, helper: HelperProfile) -> tuple[str, ...]:
+    """What this profile offers, by code.
+
+    Read here rather than off `helper.offers` in the caller: the relationship
+    is not loaded, and a lazy load after the response is a `MissingGreenlet`
+    rather than a query. Codes and not translated names — the one person who
+    reads this knows them, and resolving names in three tables to report a
+    profile is a query nobody is waiting for.
+    """
+    rows = await session.scalars(
+        select(ServiceType.code)
+        .join(Offer, Offer.service_type_id == ServiceType.id)
+        .where(Offer.helper_id == helper.user_id)
+        .distinct()
+        .order_by(ServiceType.code)
+    )
+    return tuple(rows)
 
 
 def _apply_text(helper: HelperProfile, spec: HelperUpsert, lang: UiLang) -> None:
@@ -103,19 +143,21 @@ def _apply_text(helper: HelperProfile, spec: HelperUpsert, lang: UiLang) -> None
 
 async def _apply_status(
     session: AsyncSession, helper: HelperProfile, user: User, *, publish: bool
-) -> None:
+) -> bool:
+    """Apply the publish flag. Returns whether this is the moment it went out."""
     if publish:
         was_published = helper.status == PublishStatus.PUBLISHED
         helper.status = PublishStatus.PUBLISHED
         helper.published_at = helper.published_at or datetime.now(UTC)
         if not was_published:
             await log_event(session, user.id, UserEventKind.PROFILE_PUBLISHED)
-        return
+        return not was_published
 
     # HIDDEN, not DRAFT, once it has been out: "hide me" has to actually take
     # the profile out of the catalog, and the distinction preserves whether
     # anyone has ever seen it.
     helper.status = PublishStatus.HIDDEN if helper.published_at else PublishStatus.DRAFT
+    return False
 
 
 async def _apply_offers(
