@@ -107,7 +107,7 @@ async def _service_codes(session: AsyncSession, helper: HelperProfile) -> tuple[
     rows = await session.scalars(
         select(ServiceType.code)
         .join(Offer, Offer.service_type_id == ServiceType.id)
-        .where(Offer.helper_id == helper.user_id)
+        .where(Offer.helper_id == helper.user_id, Offer.is_active.is_(True))
         .distinct()
         .order_by(ServiceType.code)
     )

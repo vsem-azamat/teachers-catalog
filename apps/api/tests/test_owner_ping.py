@@ -58,7 +58,12 @@ async def test_a_posted_request_is_reported(session: AsyncSession) -> None:
 
     assert response.status_code == 201
     assert len(watcher.pings) == 1
-    assert "матан" in watcher.pings[0]
+    # The person's own words, and what the parse made of them — by slug and
+    # code, which no language owns. A translated name here would land inside a
+    # sentence written in another language.
+    assert "нужен матан" in watcher.pings[0]
+    assert "matematicka-analyza" in watcher.pings[0]
+    assert "cvut" in watcher.pings[0].lower()
 
 
 async def test_a_published_profile_is_reported_once(session: AsyncSession) -> None:
@@ -157,3 +162,74 @@ async def test_hiding_and_listing_again_is_not_a_new_profile(
         )
 
     assert len(watcher.pings) == 1
+
+
+async def test_a_request_nobody_could_parse_says_so(session: AsyncSession) -> None:
+    """The interesting case: the catalog has no word for what somebody wants."""
+    watcher = Watching()
+
+    async with await _client(session, watcher) as http:
+        await http.post(
+            "/api/v1/requests",
+            json={"text": "ыфва цукен"},
+            headers=auth_header(94106),
+        )
+
+    assert "ничего не разобрали" in watcher.pings[0]
+
+
+async def test_the_profile_ping_names_what_the_person_offers(
+    session: AsyncSession,
+) -> None:
+    watcher = Watching()
+
+    async with await _client(session, watcher) as http:
+        await http.put(
+            "/api/v1/helper",
+            json={"raw_intro": "веду матан", "publish": True},
+            headers=auth_header(94107),
+        )
+        with_offer = await http.put(
+            "/api/v1/helper",
+            json={"publish": True, "offers": [{"service_type_id": 1}]},
+            headers=auth_header(94108),
+        )
+
+    assert with_offer.status_code == 200
+    assert "без услуг" in watcher.pings[0]
+    assert "без услуг" not in watcher.pings[1]
+
+
+async def test_a_withdrawn_offer_is_not_named(session: AsyncSession) -> None:
+    """`is_active` is what every other query on this table respects.
+
+    Nothing deactivates an offer today — the cabinet deletes what it drops —
+    but the column exists and the ping has no business being the one query
+    that ignores it.
+    """
+    from sqlalchemy import select
+
+    from students_cz.db.models import Offer, User
+
+    watcher = Watching()
+
+    async with await _client(session, watcher) as http:
+        await http.put(
+            "/api/v1/helper",
+            json={"publish": False, "offers": [{"service_type_id": 1}]},
+            headers=auth_header(94109),
+        )
+        # This person's own row: the database is seeded, and somebody else's
+        # tutoring offer would be the one found by service type alone.
+        mine = await session.scalar(select(User).where(User.tg_id == 94109))
+        assert mine is not None
+        offer = await session.scalar(select(Offer).where(Offer.helper_id == mine.id))
+        assert offer is not None
+        offer.is_active = False
+        await session.flush()
+
+        await http.put(
+            "/api/v1/helper", json={"publish": True}, headers=auth_header(94109)
+        )
+
+    assert "без услуг" in watcher.pings[0]
