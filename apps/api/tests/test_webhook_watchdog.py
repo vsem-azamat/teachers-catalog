@@ -25,6 +25,7 @@ class Telegram:
         self.reads = 0
         self.clear_after = clear_after
         self.dropped: list[bool] = []
+        self.command_lists: list[object] = []
 
     async def set_webhook(self, url: str, **kwargs: object) -> None:
         self.sets += 1
@@ -33,6 +34,10 @@ class Telegram:
 
     async def set_chat_menu_button(self, **_: object) -> None:
         """Called right after registration, to point the menu at the app."""
+
+    async def set_my_commands(self, commands, **_: object) -> None:
+        """And the command list beside it — see `bot.configure`."""
+        self.command_lists.append(commands)
 
     async def get_webhook_info(self):
         self.reads += 1
@@ -73,6 +78,27 @@ async def test_a_webhook_cleared_by_someone_else_is_set_again(settings) -> None:
 
     assert bot.sets > 1, "the webhook was set once and never restored"
     assert bot.url == settings.webhook_url
+
+
+async def test_the_bot_says_what_it_offers_once_it_can_be_reached(
+    settings,
+) -> None:
+    """Or production keeps serving the previous bot's command list.
+
+    Once, and after the webhook: the list does not change when a webhook is
+    healed, and a call on that path would delay the healing.
+    """
+    from students_cz.main import keep_webhook_registered
+
+    bot = Telegram(clear_after=1)
+    app = _app()
+
+    await _run_briefly(
+        keep_webhook_registered(app, bot, _dispatcher(), settings, recheck_seconds=0.05)
+    )
+
+    assert len(bot.command_lists) == 1
+    assert bot.sets > 1, "the fixture is meant to lose its webhook and heal"
 
 
 async def test_a_webhook_that_stays_put_is_not_set_again(settings) -> None:
@@ -213,3 +239,31 @@ async def test_the_watch_reports_a_missing_webhook_in_the_endpoint_s_words(
         "", expected=settings.webhook_url, registration_error="Bad Request: bad webhook"
     )
     assert "Bad Request: bad webhook" in app.state.webhook_observed
+
+
+class Fussy(Telegram):
+    """A Telegram that registers webhooks and refuses command lists.
+
+    A 429 on `setMyCommands` is the realistic version, and it used to be
+    indistinguishable from a webhook that would not register.
+    """
+
+    async def set_my_commands(self, *_: object, **__: object) -> None:
+        raise RuntimeError("Too Many Requests: retry after 30")
+
+
+async def test_a_refused_command_list_does_not_re_register_the_webhook(
+    settings,
+) -> None:
+    from students_cz.main import keep_webhook_registered
+
+    bot = Fussy()
+    app = _app()
+
+    await _run_briefly(
+        keep_webhook_registered(app, bot, _dispatcher(), settings, recheck_seconds=0.05)
+    )
+
+    assert bot.sets == 1, "a cosmetic call must not retry the registration"
+    assert bot.reads > 0, "the watch never started"
+    assert app.state.webhook_error is None

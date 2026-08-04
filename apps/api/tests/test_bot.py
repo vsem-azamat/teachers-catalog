@@ -9,13 +9,17 @@ import re
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
+from aiogram import Bot
+from aiogram.types import ReplyKeyboardRemove
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from students_cz import bot as students_cz_bot
-from students_cz.bot import GREETING, UNSUBSCRIBED
+from students_cz.bot import COMMANDS, GREETING, NOT_A_CONVERSATION, UNSUBSCRIBED
+from students_cz.core.config import Settings
 from students_cz.db.models import HelperProfile, HelpRequest, RequestResponse, User
 from students_cz.db.models.enums import UiLang
 from students_cz.services.people import unsubscribe
@@ -165,9 +169,11 @@ class _Message:
     def __init__(self, tg_id: int | None) -> None:
         self.from_user = SimpleNamespace(id=tg_id) if tg_id is not None else None
         self.answers: list[str] = []
+        self.markups: list[object] = []
 
-    async def answer(self, text: str, **_: object) -> None:
+    async def answer(self, text: str, reply_markup: object = None, **_: object) -> None:
         self.answers.append(text)
+        self.markups.append(reply_markup)
 
 
 def _lend(session: AsyncSession):
@@ -212,3 +218,116 @@ async def test_an_update_without_a_sender_is_ignored(
     await students_cz_bot.on_stop(message)
 
     assert message.answers == []
+
+
+class _Bot:
+    """Records what the bot would have told Telegram about itself."""
+
+    def __init__(self) -> None:
+        self.commands: list[dict] = []
+        self.menu_buttons: list[dict] = []
+
+    async def set_my_commands(self, commands, **kwargs) -> None:
+        self.commands.append({"commands": commands, **kwargs})
+
+    async def set_chat_menu_button(self, **kwargs) -> None:
+        self.menu_buttons.append(kwargs)
+
+
+async def test_the_command_list_is_the_commands_that_exist() -> None:
+    """This token belonged to a command-driven bot first.
+
+    Telegram keeps the list until somebody replaces it, so a bot that sets none
+    is still offering the old one — `/language`, which nothing here handles.
+    """
+    bot = _Bot()
+    await students_cz_bot.configure(
+        cast(Bot, bot), Settings(_env_file=None, public_base_url="https://tests.example")
+    )
+
+    assert bot.commands, "nothing replaced the list the previous bot left"
+    offered = {command.command for call in bot.commands for command in call["commands"]}
+    assert offered == {"start", "stop"}
+
+
+async def test_the_opt_out_command_promises_what_the_reply_delivers() -> None:
+    """«Не писать мне» is the sentence `UNSUBSCRIBED` exists to take back.
+
+    Answers to your own requests keep arriving — `notify.Recipient.of` ignores
+    `unsubscribed_at` on purpose — so the description a person reads before
+    tapping has to say the same as the line they read after.
+    """
+    [described] = [c.description for c in COMMANDS if c.command == "stop"]
+
+    assert "не писать" not in described.lower()
+    assert "рассылк" in described.lower()
+
+
+async def test_the_line_that_carries_the_removal_says_where_the_app_is() -> None:
+    """It is the only thing a stale-keyboard tap gets back."""
+    assert "приложении" in NOT_A_CONVERSATION
+    assert COMMAND.search(NOT_A_CONVERSATION) is None
+
+
+async def test_the_menu_is_still_pointed_at_the_app() -> None:
+    bot = _Bot()
+    await students_cz_bot.configure(
+        cast(Bot, bot), Settings(_env_file=None, public_base_url="https://tests.example")
+    )
+
+    [call] = bot.menu_buttons
+    button = call["menu_button"]
+    assert button.web_app.url == "https://tests.example"
+    assert button.text
+
+
+async def test_answering_anything_else_clears_the_old_keyboard() -> None:
+    """The buttons of the previous bot are still in every chat it ever had.
+
+    Nothing but a reply carrying `ReplyKeyboardRemove` takes them away, and
+    tapping one is exactly what somebody with a stale keyboard does.
+    """
+    message = _Message(91004)
+
+    await students_cz_bot.on_anything_else(message)
+
+    assert message.answers
+    assert isinstance(message.markups[-1], ReplyKeyboardRemove)
+
+
+async def test_a_channel_post_is_not_answered() -> None:
+    """No sender, nobody to have asked — the rule `on_stop` already follows."""
+    message = _Message(None)
+
+    await students_cz_bot.on_anything_else(message)
+
+    assert message.answers == []
+
+
+async def test_the_opt_out_reply_clears_the_old_keyboard_too(
+    session: AsyncSession, monkeypatch
+) -> None:
+    monkeypatch.setattr(students_cz_bot, "get_sessionmaker", lambda: _lend(session))
+    user = await _person(session, tg_id=91005)
+    message = _Message(user.tg_id)
+
+    await students_cz_bot.on_stop(message)
+
+    assert isinstance(message.markups[-1], ReplyKeyboardRemove)
+
+
+async def test_the_catch_all_answers_last_and_only_then() -> None:
+    """Order is the whole safety of a handler with no filter.
+
+    Registered before `/start`, it would answer "everything happens in the
+    app" to somebody opening the bot for the first time — and the greeting,
+    which is the one thing this bot exists to say, would never be sent.
+    """
+    handlers = students_cz_bot.router.message.handlers
+
+    assert handlers[-1].callback is students_cz_bot.on_anything_else
+    assert not handlers[-1].filters, "a catch-all with a filter is not a catch-all"
+    assert [handler.callback for handler in handlers[:-1]] == [
+        students_cz_bot.on_start,
+        students_cz_bot.on_stop,
+    ]

@@ -88,6 +88,9 @@ async def keep_webhook_registered(
     # Dropping what queued before the process existed is right at boot, and
     # wrong on a heal — see below.
     await _set_webhook(app, bot, dispatcher, settings, drop_pending=True)
+    # Once, here: what the bot offers does not change when a webhook is healed,
+    # and a call made on that path would delay the healing it follows.
+    await _describe_bot(bot, settings)
 
     while True:
         await asyncio.sleep(recheck_seconds)
@@ -164,7 +167,6 @@ async def _set_webhook(
                 allowed_updates=dispatcher.resolve_used_update_types(),
                 drop_pending_updates=drop_pending,
             )
-            await configure(bot, settings)
         except asyncio.CancelledError:
             raise
         except Exception as exc:
@@ -177,6 +179,32 @@ async def _set_webhook(
             app.state.webhook_error = None
             log.info("webhook set to %s", url)
             return
+
+
+async def _describe_bot(
+    bot, settings, *, timeout: float = WEBHOOK_RECHECK_TIMEOUT
+) -> None:
+    """The menu button and the command list — never at the webhook's cost.
+
+    Beside registration these are cosmetic: if Telegram refuses them, updates
+    still arrive. Inside the retry they were not cosmetic at all — one 429 on a
+    command list re-registered the webhook in a tight loop, throwing away
+    everything that queued between attempts, and the watch that heals a cleared
+    webhook never started.
+
+    Bounded, because refusing is not the only way a call fails: aiogram waits a
+    minute by default, and a minute spent here is a minute before the watch
+    starts. The same guard, and the same number, as the recheck above.
+    """
+    try:
+        await asyncio.wait_for(configure(bot, settings), timeout=timeout)
+    except asyncio.CancelledError:
+        raise
+    except Exception as exc:
+        log.warning(
+            "could not set the bot's menu or command list: %s",
+            str(exc) or type(exc).__name__,
+        )
 
 
 @asynccontextmanager
