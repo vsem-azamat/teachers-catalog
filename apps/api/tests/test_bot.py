@@ -9,8 +9,10 @@ import re
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
+from aiogram import Bot
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -240,7 +242,7 @@ async def test_the_command_list_is_the_commands_that_exist() -> None:
 
     bot = _Bot()
     await students_cz_bot.configure(
-        bot, Settings(_env_file=None, public_base_url="https://tests.example")
+        cast(Bot, bot), Settings(_env_file=None, public_base_url="https://tests.example")
     )
 
     assert bot.commands, "nothing replaced the list the previous bot left"
@@ -253,7 +255,7 @@ async def test_the_menu_is_still_pointed_at_the_app() -> None:
 
     bot = _Bot()
     await students_cz_bot.configure(
-        bot, Settings(_env_file=None, public_base_url="https://tests.example")
+        cast(Bot, bot), Settings(_env_file=None, public_base_url="https://tests.example")
     )
 
     assert bot.menu_buttons
