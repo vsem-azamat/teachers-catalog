@@ -12,6 +12,7 @@ from students_cz.bot.texts import (
     FOR_PRICE,
     NEW_RESPONSE,
     OWNER_NEW_REQUEST,
+    OWNER_NOTHING_PARSED,
     RESPONSE_ACCEPTED,
     WAIT_FOR_MESSAGE,
     WRITE_TO,
@@ -82,7 +83,7 @@ async def create_request(
     background.add_task(
         notifier.tell_owner,
         OWNER_NEW_REQUEST.format(
-            topic=quote(_axes_line(rendered), 120),
+            topic=quote(await _axes_line(session, request), 120),
             text=quote(request.raw_text),
         ),
     )
@@ -290,15 +291,39 @@ def _topic_of(*, rendered_request: HelpRequest) -> str:
     return rendered_request.raw_text
 
 
-def _axes_line(rendered: RequestOut) -> str:
+async def _axes_line(session, request: HelpRequest) -> str:
     """What the parse made of a request, for the one person watching the first
-    of them. Empty when it understood nothing, which is itself worth seeing."""
+    of them.
+
+    Slugs and codes rather than translated names, like the profile ping and for
+    the same reason: this message is framed in one language whoever posted the
+    request wrote in, and a Czech subject name inside a Russian sentence reads
+    as a bug. Says so plainly when the parse understood nothing, which is
+    itself the interesting case.
+    """
+    subject = (
+        await session.get(Subject, request.subject_id) if request.subject_id else None
+    )
+    institution = (
+        await session.get(Institution, request.institution_id)
+        if request.institution_id
+        else None
+    )
+    service = (
+        await session.get(ServiceType, request.service_type_id)
+        if request.service_type_id
+        else None
+    )
     named = [
         part
-        for part in (rendered.subject, rendered.institution, rendered.service_type)
+        for part in (
+            subject.slug if subject else None,
+            institution.code if institution else None,
+            service.code if service else None,
+        )
         if part
     ]
-    return " · ".join(named) if named else "ничего не разобрали"
+    return " · ".join(named) if named else OWNER_NOTHING_PARSED
 
 
 def _price_line(price: Price | None) -> str:

@@ -356,8 +356,9 @@ finds, and a rule with silent exceptions is worse than no rule.
   arriving. The product decision it waits on is whether to narrow the feed
   first, since notifying every helper about every request is how a feed becomes
   something people mute — and that decision cannot be made from data yet: the
-  catalog holds no profiles and no requests. The owner ping below exists so
-  that the first ones are noticed without anybody reading the database.
+  catalog holds no profiles and no requests. `Notifier.tell_owner`, described
+  under "What belongs where", exists so that the first ones are noticed without
+  anybody reading the database.
 
 Each of these is a separate change with its own tests. None of them is a
 reason to write new code the old way.

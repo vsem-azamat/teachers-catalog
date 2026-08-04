@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 from students_cz.api.deps import LangDep, NotifierDep, SessionDep, UserDep
 from students_cz.api.v1.me import read_me
-from students_cz.bot.texts import OWNER_NEW_HELPER
+from students_cz.bot.texts import OWNER_NEW_HELPER, OWNER_NO_SERVICES
 from students_cz.db.models import (
     HelperProfile,
     Institution,
@@ -122,7 +122,7 @@ async def upsert_helper(
             notifier.tell_owner,
             OWNER_NEW_HELPER.format(
                 name=quote(_display_name(user), 64),
-                services=quote(", ".join(saved.services) or "без услуг", 200),
+                services=quote(", ".join(saved.services) or OWNER_NO_SERVICES, 200),
             ),
         )
     return await read_me(user, session, lang)

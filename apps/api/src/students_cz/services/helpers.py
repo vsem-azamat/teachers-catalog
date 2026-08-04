@@ -144,14 +144,18 @@ def _apply_text(helper: HelperProfile, spec: HelperUpsert, lang: UiLang) -> None
 async def _apply_status(
     session: AsyncSession, helper: HelperProfile, user: User, *, publish: bool
 ) -> bool:
-    """Apply the publish flag. Returns whether this is the moment it went out."""
+    """Apply the publish flag. Returns whether it went out for the first time."""
     if publish:
         was_published = helper.status == PublishStatus.PUBLISHED
+        # Ever, not since the last save: hiding a profile and listing it again
+        # is the same profile coming back, and the owner has already been told
+        # about it once.
+        first_time = helper.published_at is None
         helper.status = PublishStatus.PUBLISHED
         helper.published_at = helper.published_at or datetime.now(UTC)
         if not was_published:
             await log_event(session, user.id, UserEventKind.PROFILE_PUBLISHED)
-        return not was_published
+        return first_time
 
     # HIDDEN, not DRAFT, once it has been out: "hide me" has to actually take
     # the profile out of the catalog, and the distinction preserves whether

@@ -135,3 +135,25 @@ async def test_an_empty_owner_id_is_nobody_rather_than_a_crash(
 
     monkeypatch.setenv("OWNER_TG_ID", "777")
     assert Settings(_env_file=None).owner_tg_id == 777
+
+
+async def test_hiding_and_listing_again_is_not_a_new_profile(
+    session: AsyncSession,
+) -> None:
+    """The same profile coming back, and the owner was told about it once."""
+    watcher = Watching()
+
+    async with await _client(session, watcher) as http:
+        await http.put(
+            "/api/v1/helper",
+            json={"raw_intro": "веду матан", "publish": True},
+            headers=auth_header(94105),
+        )
+        await http.put(
+            "/api/v1/helper", json={"publish": False}, headers=auth_header(94105)
+        )
+        await http.put(
+            "/api/v1/helper", json={"publish": True}, headers=auth_header(94105)
+        )
+
+    assert len(watcher.pings) == 1

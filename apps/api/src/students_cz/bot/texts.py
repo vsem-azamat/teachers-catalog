@@ -101,6 +101,8 @@ WAIT_FOR_MESSAGE: dict[UiLang, str] = {
 # a person who is using it. See docs/architecture.md.
 OWNER_NEW_HELPER = "<b>Новая анкета</b>\n{name}\n{services}"
 OWNER_NEW_REQUEST = "<b>Новая заявка</b>\n{topic}\n«{text}»"
+OWNER_NO_SERVICES = "без услуг"
+OWNER_NOTHING_PARSED = "ничего не разобрали"
 
 
 def pick(table: dict[UiLang, str], lang: UiLang) -> str:
