@@ -34,6 +34,9 @@ class Telegram:
     async def set_chat_menu_button(self, **_: object) -> None:
         """Called right after registration, to point the menu at the app."""
 
+    async def set_my_commands(self, *_: object, **__: object) -> None:
+        """And the command list beside it — see `bot.configure`."""
+
     async def get_webhook_info(self):
         self.reads += 1
         if self.clear_after is not None and self.reads >= self.clear_after:
