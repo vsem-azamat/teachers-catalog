@@ -13,11 +13,13 @@ from typing import cast
 
 import pytest
 from aiogram import Bot
+from aiogram.types import ReplyKeyboardRemove
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from students_cz import bot as students_cz_bot
-from students_cz.bot import GREETING, UNSUBSCRIBED
+from students_cz.bot import COMMANDS, GREETING, NOT_A_CONVERSATION, UNSUBSCRIBED
+from students_cz.core.config import Settings
 from students_cz.db.models import HelperProfile, HelpRequest, RequestResponse, User
 from students_cz.db.models.enums import UiLang
 from students_cz.services.people import unsubscribe
@@ -238,8 +240,6 @@ async def test_the_command_list_is_the_commands_that_exist() -> None:
     Telegram keeps the list until somebody replaces it, so a bot that sets none
     is still offering the old one — `/language`, which nothing here handles.
     """
-    from students_cz.core.config import Settings
-
     bot = _Bot()
     await students_cz_bot.configure(
         cast(Bot, bot), Settings(_env_file=None, public_base_url="https://tests.example")
@@ -250,9 +250,26 @@ async def test_the_command_list_is_the_commands_that_exist() -> None:
     assert offered == {"start", "stop"}
 
 
-async def test_the_menu_is_still_pointed_at_the_app() -> None:
-    from students_cz.core.config import Settings
+async def test_the_opt_out_command_promises_what_the_reply_delivers() -> None:
+    """«Не писать мне» is the sentence `UNSUBSCRIBED` exists to take back.
 
+    Answers to your own requests keep arriving — `notify.Recipient.of` ignores
+    `unsubscribed_at` on purpose — so the description a person reads before
+    tapping has to say the same as the line they read after.
+    """
+    [described] = [c.description for c in COMMANDS if c.command == "stop"]
+
+    assert "не писать" not in described.lower()
+    assert "рассылк" in described.lower()
+
+
+async def test_the_line_that_carries_the_removal_says_where_the_app_is() -> None:
+    """It is the only thing a stale-keyboard tap gets back."""
+    assert "приложении" in NOT_A_CONVERSATION
+    assert COMMAND.search(NOT_A_CONVERSATION) is None
+
+
+async def test_the_menu_is_still_pointed_at_the_app() -> None:
     bot = _Bot()
     await students_cz_bot.configure(
         cast(Bot, bot), Settings(_env_file=None, public_base_url="https://tests.example")
@@ -270,8 +287,6 @@ async def test_answering_anything_else_clears_the_old_keyboard() -> None:
     Nothing but a reply carrying `ReplyKeyboardRemove` takes them away, and
     tapping one is exactly what somebody with a stale keyboard does.
     """
-    from aiogram.types import ReplyKeyboardRemove
-
     message = _Message(91004)
 
     await students_cz_bot.on_anything_else(message)
@@ -292,8 +307,6 @@ async def test_a_channel_post_is_not_answered() -> None:
 async def test_the_opt_out_reply_clears_the_old_keyboard_too(
     session: AsyncSession, monkeypatch
 ) -> None:
-    from aiogram.types import ReplyKeyboardRemove
-
     monkeypatch.setattr(students_cz_bot, "get_sessionmaker", lambda: _lend(session))
     user = await _person(session, tg_id=91005)
     message = _Message(user.tg_id)
