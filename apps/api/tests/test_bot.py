@@ -223,7 +223,7 @@ class _Bot:
 
     def __init__(self) -> None:
         self.commands: list[dict] = []
-        self.menu_buttons: list[object] = []
+        self.menu_buttons: list[dict] = []
 
     async def set_my_commands(self, commands, **kwargs) -> None:
         self.commands.append({"commands": commands, **kwargs})
