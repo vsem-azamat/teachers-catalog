@@ -44,14 +44,7 @@
 
 import { chromium } from 'playwright';
 
-const BASE = process.env.BASE || 'https://localhost:5173';
-
-/** Real phones. The short ones are where the last few pixels appear. */
-const VIEWPORTS = [
-  { width: 390, height: 664 },
-  { width: 360, height: 640 },
-  { width: 390, height: 568 },
-];
+import { BASE, phoneContext, preflight, VIEWPORTS } from './lib/stack.mjs';
 
 /**
  * The detail screens are behind an id this script cannot know, so they are
@@ -112,51 +105,6 @@ const failures = [];
 /** Screens that never came up — a broken check, not a thin database. */
 const unreachable = [];
 const skipped = new Set();
-
-/** Stop before measuring anything if the thing being measured is not there. */
-async function preflight() {
-  const context = await browser.newContext({
-    viewport: { width: 390, height: 664 },
-    ignoreHTTPSErrors: true,
-  });
-  const page = await context.newPage();
-  const fail = async (why, hint) => {
-    console.error(`Cannot measure against ${BASE}: ${why}`);
-    console.error(hint);
-    await browser.close();
-    process.exit(2);
-  };
-
-  try {
-    const health = await page.goto(`${BASE}/healthz`, { timeout: 15000 });
-    if (!health?.ok()) throw new Error(`/healthz answered ${health?.status()}`);
-    const body = await page.evaluate(() => document.body.innerText);
-    if (!body.includes('"database":"ok"')) {
-      throw new Error(`/healthz says ${body.trim().slice(0, 120)}`);
-    }
-  } catch (error) {
-    await fail(
-      error.message,
-      'Start the dev server (make web) and the API (make api) first.',
-    );
-  }
-
-  // The home screen's category grid only exists once an authenticated request
-  // has come back. Without it every data screen renders an error state, which
-  // has a height of its own and would be measured as if it were the screen.
-  await page.goto(BASE, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(1200);
-  const gotData = await page.evaluate(() =>
-    Boolean(document.querySelector('[class*="grid"]')),
-  );
-  if (!gotData) {
-    await fail(
-      'the home screen came up without its categories',
-      'The API is rejecting this init data. Put a signed VITE_MOCK_INIT_DATA in apps/web/.env.local.',
-    );
-  }
-  await context.close();
-}
 
 /**
  * How much emptiness the screen has under its lowest visible thing.
@@ -289,19 +237,11 @@ async function measure(page, name, label) {
   if (pointless) failures.push(`${name} at ${label}: ${dead}px of nothing`);
 }
 
-await preflight();
+await preflight(browser);
 
 for (const viewport of VIEWPORTS) {
   const label = `${viewport.width}x${viewport.height}`;
-  // mkcert's certificate is not in this process's trust store, and a TLS error
-  // here would otherwise look exactly like a screen that fits.
-  const context = await browser.newContext({
-    viewport,
-    deviceScaleFactor: 2,
-    isMobile: true,
-    hasTouch: true,
-    ignoreHTTPSErrors: true,
-  });
+  const context = await phoneContext(browser, viewport);
 
   console.log(`\n${label}`);
   for (const route of ROUTES) {

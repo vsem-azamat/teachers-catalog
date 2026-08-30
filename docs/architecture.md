@@ -292,7 +292,7 @@ with nothing able to scroll to them. Zero is not an answer and is skipped: the
 signal reads `0` until the client replies, and a CSS variable set to `0px` is
 defined, so the fallback would not fire.
 
-Three rules follow, and they are what to check before changing layout:
+Four rules follow, and they are what to check before changing layout:
 
 - **A scroll must end on content.** Not "a screen that fits must not scroll" —
   for any layout there is a band of viewport heights where the content is a
@@ -305,6 +305,14 @@ Three rules follow, and they are what to check before changing layout:
   the scrim. They are descendants of `#root` but are laid out against the
   viewport: a scroll container is not a containing block for fixed elements.
   That is what lets the tab bar stay put while the screen behind it moves.
+- **A fixed bar is opaque behind its own controls.** Whatever a bar is pinned
+  over is moving; the controls on it are not, and a person reading them must
+  not also be reading a card sliding underneath. The tab bar's background was a
+  gradient that reached full opacity only over the lower part of its height,
+  while its contents were centred over the whole of it — so the top of every
+  icon and the whole of the round button were painted onto passing text. A fade
+  is the right idea and the wrong place for it: it belongs *above* the bar,
+  where content is meant to disappear, not across the part that holds controls.
 - **Telegram's vertical swipe is off** (`swipeBehavior`, Mini Apps 7.7). The
   gesture drags the whole app towards dismissal, and on a screen with nothing
   to scroll a drag and a scroll are the same movement, so the app appears to
@@ -331,6 +339,15 @@ What it takes on trust is the screen's own `padding-bottom` — that is the
 number it subtracts, so a screen that reserves room for a tab bar it does not
 render will pass with a blank strip at its foot. Nothing runs it automatically;
 it wants a browser and a database, which CI here does not give it.
+
+`pnpm check:tabbar` is the third rule, executable, and needs the same running
+stack. It photographs the tab bar with a list scrolled to the top and again
+with that list moved under it, and requires the two pictures to be the same
+pixels: a bar that is opaque behind its controls cannot be changed by what
+passes beneath it, and one that is not changes wherever it is see-through.
+Measured on the two screens that have a list long enough to move, at the same
+three phone sizes. It says nothing about how the bar looks — only that what is
+under it stays under it.
 
 ## The embedding model ships inside the image
 
