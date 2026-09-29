@@ -3,10 +3,11 @@
 Reads the Caddyfile as Caddy itself understands it (`caddy adapt` output on
 stdin) and checks one rule from docs/architecture.md, «Two backends, one
 origin»: `/api/public/*` belongs to supervisor-telegram and is proxied to
-SUPERVISOR_ORIGIN over TLS. Checked by behaviour: walk the routes as Caddy
-does and see which one a sample path lands on, so no matcher shape or order
-elsewhere can hide a misroute. A request the router sends to the wrong backend comes back 404,
-and nothing else in CI would notice.
+SUPERVISOR_ORIGIN over TLS, and `/api/v1/*` stays with this project's API.
+Checked by behaviour: walk the routes as Caddy does and see where a sample
+path of each lands, so no matcher shape or order can hide a misroute. A
+request the router sends to the wrong backend comes back 404, and nothing else
+in CI would notice.
 
 Usage: caddy adapt ... | python3 check-routes.py <expected supervisor host>
 """
@@ -54,6 +55,10 @@ def proxies(route: dict) -> list[dict]:
 
 
 SAMPLE = "/api/public/catalog"
+# And one that must stay here, so widening the supervisor matcher to /api/*
+# cannot pass.
+OWN = "/api/v1/me"
+OWN_DIAL = "api:8000"
 
 
 def matches(route: dict, path: str) -> bool:
@@ -77,13 +82,24 @@ def main() -> int:
     found = proxies(chosen)
     dials = [u.get("dial") for proxy in found for u in proxy.get("upstreams", [])]
     if dials != [f"{expected_host}:443"]:
-        print(f"{SAMPLE} goes to {dials or 'no proxy'}, not {expected_host}:443", file=sys.stderr)
+        print(
+            f"{SAMPLE} goes to {dials or 'no proxy'}, not {expected_host}:443",
+            file=sys.stderr,
+        )
         return 1
     if not all("tls" in proxy.get("transport", {}) for proxy in found):
         print(f"{SAMPLE} is proxied without TLS", file=sys.stderr)
         return 1
 
-    print(f"{SAMPLE} → {expected_host} over TLS")
+    mine = next((r for r in terminal if matches(r, OWN)), None)
+    own_dials = [
+        u.get("dial") for proxy in proxies(mine or {}) for u in proxy.get("upstreams", [])
+    ]
+    if own_dials != [OWN_DIAL]:
+        print(f"{OWN} goes to {own_dials or 'nothing'}, not {OWN_DIAL}", file=sys.stderr)
+        return 1
+
+    print(f"{SAMPLE} → {expected_host} over TLS, {OWN} → {OWN_DIAL}")
     return 0
 
 
