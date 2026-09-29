@@ -1,10 +1,8 @@
 """Remembering who showed up, and whether we may write to them.
 
-One place for it, used by both halves of the process. The bot sees people the
-mini app never does — someone presses start, reads the description and closes
-Telegram — and those are precisely the people an announcement is for. If the
-two halves recorded users differently, the audience would depend on which door
-someone came through.
+One place for it. The mini app is the only door this process has: `/start`
+belongs to the moderator bot, so whether we may write to somebody comes from
+the `allows_write_to_pm` flag in their initData. See docs/architecture.md.
 """
 
 from datetime import UTC, datetime
@@ -74,7 +72,7 @@ async def remember(
     # Name, username and avatar belong to Telegram and change outside our
     # reach; a stale username breaks the "write to them" link. Everything the
     # person chose here — language, city, whether they unsubscribed — is left
-    # alone, and bot_started_at only ever gets set, never cleared.
+    # alone, and bot_started_at only ever gets set here, never cleared.
     on_update: dict[str, Any] = {
         "first_name": values["first_name"],
         "last_name": values["last_name"],

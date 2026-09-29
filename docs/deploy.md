@@ -152,29 +152,43 @@ belong to the moderator bot, and `supervisor-telegram` sets them.
 
 ## Moving onto the moderator's token, once
 
-Until September 2026 the catalog had its own bot, `@student_cz_bot`. The order
-below matters, because each step assumes the one before it.
+The catalog's own bot is `@student_cz_bot`, and its token is in `BOT_TOKEN`
+until step 3. Each step assumes the one before it. Steps 2 to 4 run back to
+back, because between them neither bot opens the catalog.
 
 1. Deploy the release that stops receiving updates, still on the old token.
 2. Run **Retire the old bot** (Actions → workflow dispatch). It reads the old
    token from `BOT_TOKEN`, checks with `getMe` that it really is
    `@student_cz_bot`, and refuses to touch any other bot. Then it deletes the
    old bot's webhook, resets its menu button, clears its command list and
-   says in its description that the catalog moved to `@konnekt_moder_bot`.
-3. In @BotFather, remove `@student_cz_bot`'s Main Mini App URL. The Bot API
-   cannot do this one.
-4. Replace the `BOT_TOKEN` secret with the moderator bot's token, the same
+   says in its description how to reach the catalog through
+   `@konnekt_moder_bot`. After step 3 the guard makes it refuse.
+3. Replace the `BOT_TOKEN` secret with the moderator bot's token, the same
    value as `MODERATOR_BOT_TOKEN` in `supervisor-telegram`, and re-run the
    deploy.
-5. Set `WEBAPI_HELP_URL` to `PUBLIC_HOST` in `supervisor-telegram` and deploy
-   it. Its `/start` then offers the catalog.
-6. Open the app from `@konnekt_moder_bot` and check that your row in `users`
-   now has `bot_started_at` set. That is the proof that Telegram sends
-   `allows_write_to_pm` on this launch.
+4. Set `WEBAPI_HELP_URL` to `PUBLIC_HOST` in `supervisor-telegram` (its #124
+   added the setting) and re-run its deploy. Its `/start` then offers
+   «🎓 Помощь с учёбой».
+5. In @BotFather, remove `@student_cz_bot`'s Main Mini App URL. The Bot API
+   cannot do this one.
+6. Check that Telegram sends `allows_write_to_pm` on this launch. Set your
+   own row's `bot_can_message` to false in `users`, open the catalog from
+   `@konnekt_moder_bot` with «🎓 Помощь с учёбой», and read the row again. It
+   has to be true. If it stays false, nobody new can be notified: stop and
+   look at the `initData` the app sends before going further.
 
 Old `web_app` buttons already sitting in people's chats with `@student_cz_bot`
-open the app with initData signed by the old token. After step 4 the API
+open the app with initData signed by the old token. After step 3 the API
 refuses it, and nothing can repair a message that was already sent.
+
+**Rolling back across step 3 is not possible, on purpose.** Releases before
+this one register a webhook and refuse to start without `WEBHOOK_SECRET`.
+Compose still passes `WEBHOOK_SECRET` for one release, so a failed step-1
+deploy can restore the previous `.env` and come back up. `rollback.yml`
+keeps the new `.env`, which has no `WEBHOOK_SECRET`, so an old image crashes
+at start. Keep it that way once `BOT_TOKEN` is the moderator's: an old image
+on that token would set a webhook every minute and break the moderator bot's
+polling. Never put `WEBHOOK_SECRET` back.
 
 ## Two ways to break production
 
@@ -185,7 +199,7 @@ one consumer. A `setWebhook` from anywhere stops that polling, and a second
 never does either. The legacy bot in `bot/` polls, so never run it with this
 token. See [legacy-bot.md](legacy-bot.md).
 
-**More than one Uvicorn worker.** The API no longer holds bot state, so a second
+**More than one Uvicorn worker.** The API holds no bot state, so a second
 worker would not break Telegram. It would still double the database budget:
 the connection pool is per process, and the `--workers 1` pin in the
 Dockerfile is what makes `db_pool_size` and `db_max_overflow` the whole budget

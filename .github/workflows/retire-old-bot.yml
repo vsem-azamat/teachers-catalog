@@ -30,10 +30,12 @@ jobs:
           [ "$CONFIRM" = "$OLD" ] || { echo "confirmation does not match" >&2; exit 1; }
 
           call() {
+            local body=${2:-'{}'}
             # The token never reaches the log: curl reads the URL from stdin.
+            # --fail-with-body keeps Telegram's own reason when it refuses.
             printf 'url = "https://api.telegram.org/bot%s/%s"\n' "$BOT_TOKEN" "$1" \
-              | curl --fail --silent --show-error --max-time 20 --config - \
-                  -H 'Content-Type: application/json' --data "${2:-{\}}"
+              | curl --fail-with-body --silent --show-error --max-time 20 --config - \
+                  -H 'Content-Type: application/json' --data "$body"
             echo
           }
 
@@ -46,6 +48,6 @@ jobs:
           call deleteWebhook '{"drop_pending_updates": true}'
           call setChatMenuButton '{"menu_button": {"type": "default"}}'
           call deleteMyCommands
-          text="Каталог переехал в @$NEW — откройте его там."
+          text="Каталог переехал в @$NEW: нажмите там /start, затем «Помощь с учёбой»."
           call setMyShortDescription "{\"short_description\": \"$text\"}"
           call setMyDescription "{\"description\": \"$text\"}"

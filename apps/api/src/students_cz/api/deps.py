@@ -100,8 +100,8 @@ async def current_notifier(http: Request, settings: SettingsDep) -> Notifier:
     decide it once, rather than in each route that happens to send a message.
 
     Per request, and cheap: two attribute reads and a cached `Settings`. It
-    reads state fixed at startup but is not itself a singleton, and the only
-    other places that reach for `app.state` are named in docs/architecture.md.
+    reads state fixed at startup but is not itself a singleton, and it is one
+    of the few places that reach for `app.state`: see docs/architecture.md.
     """
     return Notifier(
         getattr(http.app.state, "bot", None),
