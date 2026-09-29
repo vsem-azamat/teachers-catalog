@@ -29,8 +29,8 @@ def configure_logging(level: str) -> None:
     Uvicorn configures its own loggers and nothing else, so without this the
     `students_cz` logger has no handler and falls back to Python's last-resort
     one — which only emits WARNING and above. Every `log.info` in the process
-    went nowhere, including the warning that the process is running without a
-    bot, which is precisely the line wanted when notifications stop.
+    went nowhere, including the one that says semantic search is off because
+    the image carries no model.
 
     Records still propagate. Uvicorn does not configure the root logger, so
     there is nothing to duplicate against, and cutting propagation would also

@@ -37,7 +37,9 @@ Telegram would refuse with a 403.
 A `bot_started_at` recorded under `@student_cz_bot` does not say which bot it
 was. Such a person counts as reachable until the first send through the
 moderator bot comes back as a 403. `mark_unreachable` then records it as
-`BOT_BLOCKED`, although they never blocked anything, and their next visit
+`BOT_BLOCKED`, although they never blocked anything (the event keeps
+Telegram's reason, "bot can't initiate conversation", which tells it apart
+from a real block), and their next visit
 through the moderator bot makes them reachable again. That notification is
 lost either way, because they have not started the moderator bot. The only
 cost is one misleading event per person.

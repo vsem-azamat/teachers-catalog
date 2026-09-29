@@ -154,7 +154,8 @@ belong to the moderator bot, and `supervisor-telegram` sets them.
 
 The catalog's own bot is `@student_cz_bot`, and its token is in `BOT_TOKEN`
 until step 3. Each step assumes the one before it. Steps 2 to 4 run back to
-back, because between them neither bot opens the catalog.
+back: in between, the old bot has no menu and the moderator bot has no door
+to the catalog yet.
 
 1. Deploy the release that stops receiving updates, still on the old token.
 2. Run **Retire the old bot** (Actions → workflow dispatch). It reads the old
@@ -181,7 +182,7 @@ Old `web_app` buttons already sitting in people's chats with `@student_cz_bot`
 open the app with initData signed by the old token. After step 3 the API
 refuses it, and nothing can repair a message that was already sent.
 
-**Rolling back across step 3 is not possible, on purpose.** Releases before
+**`rollback.yml` cannot return to a release before this one, on purpose.** Releases before
 this one register a webhook and refuse to start without `WEBHOOK_SECRET`.
 Compose still passes `WEBHOOK_SECRET` for one release, so a failed step-1
 deploy can restore the previous `.env` and come back up. `rollback.yml`

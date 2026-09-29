@@ -45,7 +45,7 @@ async def test_the_application_logger_actually_writes_somewhere() -> None:
     Uvicorn configures its own loggers and nothing else, so without this the
     `students_cz` logger falls back to Python's last-resort handler, which emits
     WARNING and above. Every `log.info` went nowhere — including the line that
-    says the process is running without a bot.
+    says semantic search is off.
     """
     import logging
 

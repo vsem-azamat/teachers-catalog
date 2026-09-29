@@ -137,9 +137,9 @@ async def mark_unreachable(session: AsyncSession, tg_id: int, reason: str) -> No
 def reachable(*, langs: list[str] | None = None, source: str | None = None):
     """Everyone an announcement may legitimately go to.
 
-    Three conditions, and all three matter: they started the bot (so Telegram
-    permits it), Telegram has not since told us otherwise, and they have not
-    asked us to stop.
+    Three conditions, and all three matter: their initData said the bot may
+    write to them (so Telegram permits it), Telegram has not since told us
+    otherwise, and they have not asked us to stop.
     """
     stmt = select(User).where(
         User.bot_started_at.is_not(None),

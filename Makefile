@@ -66,7 +66,7 @@ demo-clear:  ## Remove demo content, keep reference data
 # ── running ─────────────────────────────────────────────────────────────
 
 .PHONY: api
-api:  ## Run the API and bot with reload
+api:  ## Run the API with reload
 	cd $(API) && uv run uvicorn students_cz.main:app --reload --port $(API_PORT)
 
 .PHONY: web
