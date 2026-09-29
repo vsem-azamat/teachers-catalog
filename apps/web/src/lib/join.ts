@@ -28,7 +28,7 @@ export type JoinEvent =
   | { type: 'unreachable' };
 
 /** How a check can already have ended in this session. */
-export type Settled = 'passed' | 'failed';
+export type Settled = 'passed' | 'failed' | 'failed-after-retry';
 
 export function joinStart(
   initData: string | undefined,
@@ -39,6 +39,7 @@ export function joinStart(
   // the button again for a spent check can only end in a false refusal.
   if (settled === 'passed') return { phase: 'passed' };
   if (settled === 'failed') return { phase: 'failed', afterRetry: false };
+  if (settled === 'failed-after-retry') return { phase: 'failed', afterRetry: true };
   if (!initData || !queryId) return { phase: 'unavailable' };
   return { phase: 'ready', initData, queryId, retried: false };
 }
@@ -58,6 +59,13 @@ export function joinStep(state: JoinState, event: JoinEvent): JoinState {
   if (event.type === 'approved') return { phase: 'passed' };
   if (event.type === 'refused') return { phase: 'failed', afterRetry: state.retried };
   return { ...state, phase: 'ready', retried: true };
+}
+
+/** What to keep of a state, or nothing while it is not settled. */
+export function settledOf(state: JoinState): Settled | null {
+  if (state.phase === 'passed') return 'passed';
+  if (state.phase === 'failed') return state.afterRetry ? 'failed-after-retry' : 'failed';
+  return null;
 }
 
 /** What a failed request means. Only supervisor's 403 is a refusal. */

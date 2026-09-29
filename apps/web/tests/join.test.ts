@@ -56,6 +56,10 @@ test('an answer that arrives without a press is ignored', () => {
 test('a check settled earlier in this session opens settled', () => {
   assert.deepEqual(joinStart('x', 'q', 'passed'), { phase: 'passed' });
   assert.deepEqual(joinStart('x', 'q', 'failed'), { phase: 'failed', afterRetry: false });
+  assert.deepEqual(joinStart('x', 'q', 'failed-after-retry'), {
+    phase: 'failed',
+    afterRetry: true,
+  });
 });
 
 test('only a 403 is a refusal; everything else may be tried again', () => {
@@ -84,4 +88,12 @@ test('only status "approved" counts as passing', () => {
   assert.equal(isApproval({ status: 'queued' }), false);
   assert.equal(isApproval('<html>ok</html>'), false);
   assert.equal(isApproval(null), false);
+});
+
+test('what is kept of a settled check says which way it ended', async () => {
+  const { settledOf } = await import('../src/lib/join.ts');
+  assert.equal(settledOf({ phase: 'passed' }), 'passed');
+  assert.equal(settledOf({ phase: 'failed', afterRetry: false }), 'failed');
+  assert.equal(settledOf({ phase: 'failed', afterRetry: true }), 'failed-after-retry');
+  assert.equal(settledOf({ phase: 'unavailable' }), null);
 });

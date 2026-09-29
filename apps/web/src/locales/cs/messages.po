@@ -875,6 +875,10 @@ msgstr "Škola, se kterou pracuješ"
 msgid "помощь на экзамене по матану"
 msgstr "pomoc u zkoušky z matanu"
 
+#: src/pages/Join.tsx
+msgid "Возможно, первая попытка всё-таки прошла. Проверь чат в Telegram, прежде чем подавать заявку заново."
+msgstr "Možná první pokus nakonec prošel. Než pošleš žádost znovu, podívej se do chatu v Telegramu."
+
 #: src/pages/Offer.tsx
 msgid "Выбери, чем можешь помочь"
 msgstr "Vyber, s čím můžeš pomoct"

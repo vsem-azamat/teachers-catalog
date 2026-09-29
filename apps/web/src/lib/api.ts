@@ -185,7 +185,10 @@ function detailOf(payload: unknown): string | undefined {
  * call that carries it, in the body as supervisor's contract says, never in
  * the address. See docs/architecture.md, «Two backends, one origin».
  */
-async function publicRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function publicRequest<T>(
+  path: string,
+  init: Pick<RequestInit, 'method' | 'body' | 'signal'> = {},
+): Promise<T> {
   const response = await fetch(`${BASE_URL}/api/public${path}`, {
     ...init,
     headers: {

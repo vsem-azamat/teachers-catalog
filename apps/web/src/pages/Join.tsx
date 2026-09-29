@@ -1,5 +1,5 @@
 import { Trans } from '@lingui/react/macro';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -20,11 +20,13 @@ import {
 import { hapticSelection } from '@/hooks/useTelegram';
 import { api, rawInitData } from '@/lib/api';
 import {
+  type JoinEvent,
   type JoinState,
   joinEventFor,
   joinStart,
   joinStep,
   type Settled,
+  settledOf,
 } from '@/lib/join';
 
 /** Where a settled outcome is kept for this tab's session, per query id. */
@@ -34,7 +36,9 @@ function readSettled(queryId: string | null): Settled | null {
   if (!queryId) return null;
   try {
     const value = sessionStorage.getItem(settledKey(queryId));
-    return value === 'passed' || value === 'failed' ? value : null;
+    return value === 'passed' || value === 'failed' || value === 'failed-after-retry'
+      ? value
+      : null;
   } catch {
     // Storage can be refused (a private window, cleared site data). Then the
     // check opens as new, which is what it was before this existed.
@@ -64,14 +68,6 @@ export default function JoinPage() {
     joinStart(rawInitData(), queryId, readSettled(queryId)),
   );
 
-  // Keep a settled outcome, so coming back by any route (the back button,
-  // the avatar) shows it rather than a button for a spent check.
-  useEffect(() => {
-    if (!queryId) return;
-    if (state.phase === 'passed' || state.phase === 'failed')
-      writeSettled(queryId, state.phase);
-  }, [queryId, state.phase]);
-
   const press = () => {
     const next = joinStep(state, { type: 'press' });
     // The step decides whether anything is sent: the same state back means a
@@ -79,9 +75,17 @@ export default function JoinPage() {
     if (next === state || next.phase !== 'sending') return;
     hapticSelection();
     setState(next);
+    // Kept the moment the answer arrives, not after a render: the page may
+    // already be gone (the avatar stays tappable), and coming back must show
+    // the outcome rather than a button for a spent check.
+    const settle = (event: JoinEvent) => {
+      const kept = settledOf(joinStep(next, event));
+      if (kept) writeSettled(next.queryId, kept);
+      setState((current) => joinStep(current, event));
+    };
     api.passJoinCheck(next.initData, next.queryId).then(
-      () => setState((current) => joinStep(current, { type: 'approved' })),
-      (error: unknown) => setState((current) => joinStep(current, joinEventFor(error))),
+      () => settle({ type: 'approved' }),
+      (error: unknown) => settle(joinEventFor(error)),
     );
   };
 
@@ -120,9 +124,16 @@ export default function JoinPage() {
               <Trans>Проверка не прошла</Trans>
             </Title>
             <Sub>
-              <Trans>
-                Заявка устарела или открыта не тем аккаунтом. Подай её заново.
-              </Trans>
+              {state.afterRetry ? (
+                <Trans>
+                  Возможно, первая попытка всё-таки прошла. Проверь чат в Telegram, прежде
+                  чем подавать заявку заново.
+                </Trans>
+              ) : (
+                <Trans>
+                  Заявка устарела или открыта не тем аккаунтом. Подай её заново.
+                </Trans>
+              )}
             </Sub>
             <WayOn />
           </>
