@@ -174,6 +174,36 @@ The page is reached from the profile and from the note under «Документ�
 warning private people about fees: private people offer those services for
 free.
 
+**The join check answers one question and then shows the way on.** `/join`
+is where a person lands from a join request to a moderated chat: supervisor
+sends them a Mini App button with `?q=<query id>`. The page sends the signed
+`initData` and that id to supervisor's `POST /api/public/join-check`, which
+approves the request. It needs both. Opened without them, it says to open it
+from the join request instead of offering a button that cannot work. After
+it passes, it does not close itself: it offers the chat directory and the help
+catalog, because for many people this is the first screen of the app they
+see. The dead ends (opened without a request, or refused) offer the same two
+ways on. Supervisor answers with a status only, so the page does not name the
+chat, and only an `approved` status counts.
+
+Only a 403 means refused: the request expired or belongs to another account.
+Any other failure (the network, the proxy, supervisor or Telegram) keeps the
+button, says it did not get through, and lets the person try again, because
+telling somebody to reapply over our own outage sends them away for nothing.
+Supervisor marks a check spent before it asks Telegram, so a 403 after a retry
+may mean the first attempt went through. The page says so and points to the
+chat instead of telling the person to reapply.
+
+The outcome is kept for the tab's session under its query id. Coming back to
+`/join` by any route (the back button, the avatar) shows the settled answer,
+not a button for a check that is already spent. History is not rewritten:
+`/join` is often the first entry, and replacing it would leave Telegram's back
+button with nowhere to go.
+
+Opening the app registers the person like any other visit, so everyone who
+passes a join check becomes a catalog user with no `source`. That is
+intended: it is their first screen of the app.
+
 ## `api/v1`, one module per domain
 
 Each module owns a slice of the URL space and nothing else. The prefix is

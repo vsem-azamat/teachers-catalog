@@ -7,6 +7,7 @@ import ChatSectionPage from '@/pages/ChatSection';
 import ChatsPage from '@/pages/Chats';
 import HelperPage from '@/pages/Helper';
 import HomePage from '@/pages/Home';
+import JoinPage from '@/pages/Join';
 import LifePage from '@/pages/Life';
 import MinePage from '@/pages/Mine';
 import MyHelperPage from '@/pages/MyHelper';
@@ -39,6 +40,7 @@ export const router = createBrowserRouter([
       { path: 'chats/:group', element: <ChatSectionPage /> },
       { path: 'results', element: <ResultsPage /> },
       { path: 'helper/:id', element: <HelperPage /> },
+      { path: 'join', element: <JoinPage /> },
       { path: 'mine', element: <MinePage /> },
       { path: 'request/:id', element: <RequestPage /> },
       { path: 'offer', element: <OfferPage /> },
