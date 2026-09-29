@@ -29,6 +29,10 @@ msgstr "Заведи в Telegram публичный @username — иначе т�
 msgid "Пара слов о себе — что делаешь и как быстро"
 msgstr "Пара слов о себе — что делаешь и как быстро"
 
+#: src/pages/Chats.tsx
+msgid "Нашлось"
+msgstr "Нашлось"
+
 #: src/components/Phrase.tsx
 msgid "оценка"
 msgstr "оценка"
@@ -79,13 +83,21 @@ msgstr "Добавь предмет — по одному сроку искат�
 msgid "Přijímačky"
 msgstr "Přijímačky"
 
+#: src/components/TabBar.tsx
+msgid "Помощь"
+msgstr "Помощь"
+
 #: src/pages/MyHelper.tsx
 msgid "Видимость"
 msgstr "Видимость"
 
+#: src/pages/ChatSection.tsx
+msgid "Вернись к списку чатов."
+msgstr "Вернись к списку чатов."
+
 #: src/components/TabBar.tsx
-msgid "Поиск"
-msgstr "Поиск"
+#~ msgid "Поиск"
+#~ msgstr "Поиск"
 
 #: src/pages/MyHelper.tsx
 #~ msgid "Предметы и цены"
@@ -94,6 +106,10 @@ msgstr "Поиск"
 #: src/components/Incoming.tsx
 msgid "Не сейчас"
 msgstr "Не сейчас"
+
+#: src/components/ChatRow.tsx
+msgid "активный"
+msgstr "активный"
 
 #: src/pages/MyHelper.tsx
 msgid "Kč"
@@ -122,6 +138,10 @@ msgstr "Ничего не нашли. Попробуй сокращение — 
 #: src/pages/Helper.tsx
 msgid "Как проходит"
 msgstr "Как проходит"
+
+#: src/components/ChatRow.tsx
+msgid "оживлённый"
+msgstr "оживлённый"
 
 #: src/components/Phrase.tsx
 #: src/pages/MyHelper.tsx
@@ -180,6 +200,10 @@ msgstr "первый год"
 #: src/pages/Results.tsx
 msgid "Оставь заявку — ответят сами"
 msgstr "Оставь заявку — ответят сами"
+
+#: src/pages/Chats.tsx
+msgid "Другие чаты"
+msgstr "Другие чаты"
 
 #: src/components/AppHeader.tsx
 msgid "Оформление: как в системе. Нажми, чтобы сменить"
@@ -278,6 +302,10 @@ msgstr "Мои заявки"
 msgid "Их видно на твоей странице."
 msgstr "Их видно на твоей странице."
 
+#: src/pages/Chats.tsx
+msgid "Вузы"
+msgstr "Вузы"
+
 #: src/components/Phrase.tsx
 msgid "Не понял запрос. Попробуй назвать предмет — «матан», «čeština B2», «сопромат»."
 msgstr "Не понял запрос. Попробуй назвать предмет — «матан», «čeština B2», «сопромат»."
@@ -311,6 +339,10 @@ msgstr "Входящие"
 msgid "Заявки видят те, кто может на них ответить."
 msgstr "Заявки видят те, кто может на них ответить."
 
+#: src/pages/Chats.tsx
+msgid "Факультеты, общежития, общие. Модерируются, спам вычищается."
+msgstr "Факультеты, общежития, общие. Модерируются, спам вычищается."
+
 #: src/pages/Helper.tsx
 msgid "Сколько стоит"
 msgstr "Сколько стоит"
@@ -334,9 +366,8 @@ msgid "Заявку видят все, кто предлагает помощь.
 msgstr "Заявку видят все, кто предлагает помощь. Отклики приходят сюда."
 
 #: src/components/TabBar.tsx
-#: src/pages/Chats.tsx
-#~ msgid "Чаты"
-#~ msgstr "Чаты"
+msgid "Чаты"
+msgstr "Чаты"
 
 #: src/pages/MyHelper.tsx
 #~ msgid "Без предмета"
@@ -540,6 +571,14 @@ msgstr "Кто найдётся"
 msgid "Ведёт предмет, но не привязан к этому вузу"
 msgstr "Ведёт предмет, но не привязан к этому вузу"
 
+#: src/pages/Chats.tsx
+msgid "Такого чата нет"
+msgstr "Такого чата нет"
+
+#: src/pages/Chats.tsx
+msgid "ČVUT, FIT, Strahov…"
+msgstr "ČVUT, FIT, Strahov…"
+
 #: src/pages/Profile.tsx
 msgid "B1, B2, нострификация"
 msgstr "B1, B2, нострификация"
@@ -691,6 +730,10 @@ msgstr "Что нужно"
 msgid "Отметь всё, что умеешь. Цены спросим на следующем экране."
 msgstr "Отметь всё, что умеешь. Цены спросим на следующем экране."
 
+#: src/components/ChatRow.tsx
+msgid "тихий"
+msgstr "тихий"
+
 #: src/pages/Results.tsx
 msgid "Дешевле"
 msgstr "Дешевле"
@@ -699,6 +742,7 @@ msgstr "Дешевле"
 msgid "Такая заявка уже открыта — она в разделе «Заявки»"
 msgstr "Такая заявка уже открыта — она в разделе «Заявки»"
 
+#: src/pages/Chats.tsx
 #: src/pages/Life.tsx
 msgid "Загружаем"
 msgstr "Загружаем"
@@ -824,6 +868,10 @@ msgstr "Сколько берёшь?"
 msgid "Хожу вместе"
 msgstr "Хожу вместе"
 
+#: src/pages/ChatSection.tsx
+msgid "Такой группы больше нет"
+msgstr "Такой группы больше нет"
+
 #: src/pages/MyHelper.tsx
 msgid "Район или где удобно встречаться"
 msgstr "Район или где удобно встречаться"
@@ -896,6 +944,10 @@ msgstr "На эту заявку ты уже отвечал"
 msgid "У этого человека нет открытого username в Telegram, написать не получится."
 msgstr "У этого человека нет открытого username в Telegram, написать не получится."
 
+#: src/pages/Chats.tsx
+msgid "Поиск чата"
+msgstr "Поиск чата"
+
 #: src/pages/Ask.tsx
 msgid "По этому запросу пока никого"
 msgstr "По этому запросу пока никого"
@@ -938,6 +990,8 @@ msgstr "Помощь в день экзамена"
 msgid "Профиль недоступен"
 msgstr "Профиль недоступен"
 
+#: src/pages/Chats.tsx
+#: src/pages/ChatSection.tsx
 #: src/pages/Home.tsx
 msgid "Нажми, чтобы попробовать ещё раз"
 msgstr "Нажми, чтобы попробовать ещё раз"
@@ -945,6 +999,10 @@ msgstr "Нажми, чтобы попробовать ещё раз"
 #: src/components/Incoming.tsx
 msgid "Чем можешь помочь и когда"
 msgstr "Чем можешь помочь и когда"
+
+#: src/pages/Chats.tsx
+msgid "Чатов пока нет"
+msgstr "Чатов пока нет"
 
 #: src/pages/Mine.tsx
 msgid "Заявок пока нет"
@@ -1002,6 +1060,11 @@ msgstr "{0, plural, one {Отвечает примерно за # минуту} 
 #: src/pages/Request.tsx
 msgid "Ты отказался"
 msgstr "Ты отказался"
+
+#. placeholder {0}: chats.length
+#: src/pages/ChatSection.tsx
+msgid "{0, plural, one {# чат} few {# чата} many {# чатов} other {# чата}}"
+msgstr "{0, plural, one {# чат} few {# чата} many {# чатов} other {# чата}}"
 
 #: src/pages/Ask.tsx
 msgid "čeština B2"
@@ -1065,6 +1128,10 @@ msgstr "3 дня"
 msgid "Помощь нужна до экзамена или на нём?"
 msgstr "Помощь нужна до экзамена или на нём?"
 
+#: src/pages/Chats.tsx
+msgid "Найди свой чат"
+msgstr "Найди свой чат"
+
 #: src/components/RequestSheet.tsx
 msgid "Опубликовать заявку"
 msgstr "Опубликовать заявку"
@@ -1113,6 +1180,11 @@ msgstr "Никто не подошёл?"
 msgid "Предлагаю услугу"
 msgstr "Предлагаю услугу"
 
+#: src/pages/Chats.tsx
+#: src/pages/ChatSection.tsx
+msgid "Не удалось загрузить чаты"
+msgstr "Не удалось загрузить чаты"
+
 #: src/pages/Landing.tsx
 msgid "Репетиторы"
 msgstr "Репетиторы"
@@ -1146,6 +1218,10 @@ msgstr "Учёба"
 #: src/components/Incoming.tsx
 msgid "Сначала заполни профиль"
 msgstr "Сначала заполни профиль"
+
+#: src/pages/Chats.tsx
+msgid "Попробуй название вуза или факультета латиницей."
+msgstr "Попробуй название вуза или факультета латиницей."
 
 #: src/components/Phrase.tsx
 msgid "Разобраться заранее"

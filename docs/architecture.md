@@ -119,6 +119,23 @@ the user's. Nothing there limits per client today. A per-IP rate limit, or a
 Cloudflare rate rule in front of supervisor, would throttle every Mini App user
 as one client.
 
+**The chat directory reads the order it is given.** `/chats` is one of three
+tabs: Помощь, Чаты and Заявки. The directory keeps supervisor's order and
+builds its entries in `lib/chats.ts`:
+
+- chats that share a `group` form a section, which opens its own screen;
+- a group with one chat is not a section, and its chat stands as a row of its
+  own, because a screen with one line behind it is a tap for nothing;
+- chats without a group come last, under «Другие чаты»;
+- a search is flat: the chats whose title or group contains the words, with
+  case and diacritics ignored, so `cvut` finds `ČVUT`;
+- activity is a chip for `busy`, `active` and `quiet`, and nothing for
+  `unknown`, because supervisor says `unknown` when it has not measured enough
+  to say anything.
+
+A tap on a chat opens its Telegram link. The directory shows no member counts:
+supervisor does not publish them per chat.
+
 ## `api/v1`, one module per domain
 
 Each module owns a slice of the URL space and nothing else. The prefix is

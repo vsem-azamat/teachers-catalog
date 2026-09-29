@@ -1,5 +1,7 @@
 import { createBrowserRouter } from 'react-router';
 import AskPage from '@/pages/Ask';
+import ChatSectionPage from '@/pages/ChatSection';
+import ChatsPage from '@/pages/Chats';
 import HelperPage from '@/pages/Helper';
 import HomePage from '@/pages/Home';
 import LifePage from '@/pages/Life';
@@ -27,6 +29,8 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: 'ask', element: <AskPage /> },
+      { path: 'chats', element: <ChatsPage /> },
+      { path: 'chats/:group', element: <ChatSectionPage /> },
       { path: 'results', element: <ResultsPage /> },
       { path: 'helper/:id', element: <HelperPage /> },
       { path: 'mine', element: <MinePage /> },

@@ -201,6 +201,26 @@
   color: var(--muted);
 }
 
+/* ── activity ───────────────────────────────────────────────────────── */
+
+/* How much a chat talks, as supervisor measures it. Green only for "busy":
+   green is reserved for what is live and available. */
+.activity {
+  display: inline-block;
+  padding: 0 7px;
+  border-radius: var(--r-pill);
+  background: var(--surface-pressed);
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.activityBusy {
+  background: var(--good-soft);
+  color: var(--good);
+}
+
 /* ── rows ───────────────────────────────────────────────────────────── */
 
 .rows {
