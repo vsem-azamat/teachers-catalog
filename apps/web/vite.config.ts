@@ -63,7 +63,13 @@ export default defineConfig({
       // supervisor-telegram's public API, same origin as in production. The
       // more specific prefix first: Vite takes the first match.
       ...(SUPERVISOR_TARGET
-        ? { '/api/public': { target: SUPERVISOR_TARGET, changeOrigin: true, secure: true } }
+        ? {
+            '/api/public': {
+              target: SUPERVISOR_TARGET,
+              changeOrigin: true,
+              secure: true,
+            },
+          }
         : {}),
       '/api': { target: API_TARGET, changeOrigin: true },
       '/healthz': { target: API_TARGET, changeOrigin: true },
