@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { AppHeader } from '@/components/AppHeader';
-import { ChatRow, Letters } from '@/components/ChatRow';
+import { ChatRow } from '@/components/ChatRow';
 import { SearchIcon } from '@/components/icons';
 import { TabBar } from '@/components/TabBar';
 import {
@@ -12,6 +12,7 @@ import {
   Count,
   Empty,
   Label,
+  Letters,
   Row,
   Rows,
   Screen,

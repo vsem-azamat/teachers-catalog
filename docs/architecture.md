@@ -394,8 +394,10 @@ stack. It photographs the tab bar with a list scrolled to the top and again
 with that list moved under it, and requires the two pictures to be the same
 pixels: a bar that is opaque behind its controls cannot be changed by what
 passes beneath it, and one that is not changes wherever it is see-through.
-Measured on the two screens that have a list long enough to move, at the same
-three phone sizes. It says nothing about how the bar looks — only that what is
+Measured on the three screens that have a list long enough to move (`/`,
+`/results`, `/chats`), at the same three phone sizes. `/chats` needs
+`SUPERVISOR_ORIGIN` set for the dev server; without it the screen shows its
+error row and the check reports it unmeasured. It says nothing about how the bar looks — only that what is
 under it stays under it.
 
 ## The embedding model ships inside the image

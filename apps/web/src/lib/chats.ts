@@ -32,8 +32,7 @@ const TELEGRAM_LINK = /^https:\/\/(t\.me|telegram\.me|telegram\.dog)\//;
  * later. An item that cannot be drawn or opened is dropped; an activity this
  * app does not know is `unknown`, which draws nothing.
  */
-export function sanitize(payload: unknown): PublicChat[] {
-  if (!Array.isArray(payload)) return [];
+export function sanitize(payload: unknown[]): PublicChat[] {
   const chats: PublicChat[] = [];
   for (const item of payload) {
     if (!item || typeof item !== 'object') continue;

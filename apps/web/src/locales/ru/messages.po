@@ -201,10 +201,6 @@ msgstr "первый год"
 msgid "Оставь заявку — ответят сами"
 msgstr "Оставь заявку — ответят сами"
 
-#: src/pages/Chats.tsx
-#~ msgid "Другие чаты"
-#~ msgstr "Другие чаты"
-
 #: src/components/AppHeader.tsx
 msgid "Оформление: как в системе. Нажми, чтобы сменить"
 msgstr "Оформление: как в системе. Нажми, чтобы сменить"
@@ -301,10 +297,6 @@ msgstr "Мои заявки"
 #: src/pages/Profile.tsx
 msgid "Их видно на твоей странице."
 msgstr "Их видно на твоей странице."
-
-#: src/pages/Chats.tsx
-#~ msgid "Вузы"
-#~ msgstr "Вузы"
 
 #: src/components/Phrase.tsx
 msgid "Не понял запрос. Попробуй назвать предмет — «матан», «čeština B2», «сопромат»."

@@ -3,20 +3,8 @@ import { openTelegramLink } from '@tma.js/sdk-react';
 
 import { type Activity, chipFor, initials, type PublicChat } from '@/lib/chats';
 
-import { Chevron, Row, Tile } from './Ui';
+import { Chevron, Letters, Row, Tile } from './Ui';
 import css from './ui.module.css';
-
-/**
- * A tile's letters, sized to fit: a faculty's «FSv» or a university's «VŠCHT»
- * is its name, and a fixed size would push it over the tile's edge.
- */
-export function Letters({ text }: { text: string }) {
-  return (
-    <span className={css.letters} data-length={Math.min(text.length, 5)}>
-      {text}
-    </span>
-  );
-}
 
 /** Supervisor's word for how much a chat talks, and nothing for `unknown`. */
 export function ActivityChip({ activity }: { activity: Activity }) {

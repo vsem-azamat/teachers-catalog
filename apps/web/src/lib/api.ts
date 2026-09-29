@@ -195,8 +195,14 @@ async function publicGet<T>(path: string, signal?: AbortSignal): Promise<T> {
 
 export const api = {
   /** The chat directory, supervisor's. Four fields per chat, in its order. */
-  getChats: async (signal?: AbortSignal): Promise<PublicChat[]> =>
-    sanitize(await publicGet<unknown>('/catalog', signal)),
+  getChats: async (signal?: AbortSignal): Promise<PublicChat[]> => {
+    const payload = await publicGet<unknown>('/catalog', signal);
+    // Not a list at all is a failure, not an empty directory: it shows the
+    // error row, which offers a retry, instead of «Чатов пока нет».
+    if (!Array.isArray(payload))
+      throw new ApiError(502, payload, 'chat directory is not a list');
+    return sanitize(payload);
+  },
 
   /** The whole home screen in one response. */
   getHome: (signal?: AbortSignal) => request<Home>('/home', { signal }),

@@ -166,5 +166,4 @@ test('what arrives from the other backend is checked, not trusted', () => {
       ['Invite', 'unknown'],
     ],
   );
-  assert.deepEqual(sanitize({ detail: 'Cloudflare says hi' }), []);
 });
