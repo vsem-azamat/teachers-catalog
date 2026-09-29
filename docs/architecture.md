@@ -111,8 +111,11 @@ The catalog API never calls `/api/public/*`, and the app reads only what those
 endpoints publish: a chat's title, link, group and activity, and reach summed
 per group. Member counts per chat are not public, and no screen may need them.
 The fields are supervisor's contract. `group` is the parent chat's title
-and changes whenever supervisor changes how it groups chats, so the app never
-matches on a group's name.
+and changes whenever supervisor changes how it groups chats. No group name is
+written in the app. A section's address carries its name, and a name that no
+longer exists shows as gone. The app checks what arrives: an item without a
+title or a `t.me` link is dropped, and an activity it does not know counts as
+`unknown`.
 
 Every `/api/public/*` request reaches supervisor from this host's address, not
 the user's. Nothing there limits per client today. A per-IP rate limit, or a
@@ -126,7 +129,10 @@ builds its entries in `lib/chats.ts`:
 - chats that share a `group` form a section, which opens its own screen;
 - a group with one chat is not a section, and its chat stands as a row of its
   own, because a screen with one line behind it is a tap for nothing;
-- chats without a group come last, under «Другие чаты»;
+- chats without a group come last, under «Остальные», supervisor's own word
+  for them;
+- the entries above them have no heading: supervisor's groups are parent
+  chats, not a category the app could name;
 - a search is flat: the chats whose title or group contains the words, with
   case and diacritics ignored, so `cvut` finds `ČVUT`;
 - activity is a chip for `busy`, `active` and `quiet`, and nothing for

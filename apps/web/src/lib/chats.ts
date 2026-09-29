@@ -14,9 +14,42 @@ export type Activity = 'unknown' | 'quiet' | 'active' | 'busy';
 export interface PublicChat {
   title: string;
   link: string;
-  /** The parent chat's title. Supervisor's grouping; never matched on by name. */
+  /** The parent chat's title: supervisor's grouping. No name is written in the app. */
   group: string | null;
   activity: Activity;
+}
+
+const ACTIVITIES: readonly Activity[] = ['unknown', 'quiet', 'active', 'busy'];
+
+/** Where a chat may lead: Telegram's own hosts, which openTelegramLink accepts. */
+const TELEGRAM_LINK = /^https:\/\/(t\.me|telegram\.me|telegram\.dog)\//;
+
+/**
+ * The directory as it arrived, checked rather than trusted.
+ *
+ * It comes from another service through a proxy, so anything can: a
+ * Cloudflare page instead of JSON, an item without a title, an activity added
+ * later. An item that cannot be drawn or opened is dropped; an activity this
+ * app does not know is `unknown`, which draws nothing.
+ */
+export function sanitize(payload: unknown): PublicChat[] {
+  if (!Array.isArray(payload)) return [];
+  const chats: PublicChat[] = [];
+  for (const item of payload) {
+    if (!item || typeof item !== 'object') continue;
+    const { title, link, group, activity } = item as Record<string, unknown>;
+    if (typeof title !== 'string' || !title.trim()) continue;
+    if (typeof link !== 'string' || !TELEGRAM_LINK.test(link)) continue;
+    chats.push({
+      title,
+      link,
+      group: typeof group === 'string' && group ? group : null,
+      activity: ACTIVITIES.includes(activity as Activity)
+        ? (activity as Activity)
+        : 'unknown',
+    });
+  }
+  return chats;
 }
 
 /** A line of the directory: a group with its own screen, or a chat. */
@@ -62,6 +95,24 @@ export function directory(chats: PublicChat[]): Directory {
   return { entries, rest };
 }
 
+/** How many chat names a section's row lists under its own. */
+const HINT_CHATS = 3;
+
+/**
+ * A few of a section's chats, for the row that opens it.
+ *
+ * The section's own general chat, named like the section, is skipped: the
+ * row's title already says it. Found by name rather than by position, because
+ * where supervisor puts it has changed before.
+ */
+export function sectionHint(section: Extract<Entry, { kind: 'section' }>): string {
+  return section.chats
+    .filter((chat) => chat.title !== section.name)
+    .slice(0, HINT_CHATS)
+    .map((chat) => chat.title)
+    .join(', ');
+}
+
 /** Lower case, without diacritics: «ČVUT» and «cvut» are the same word here. */
 export function fold(text: string): string {
   return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
@@ -104,6 +155,9 @@ export function initials(title: string): string {
   const last = words.at(-1) ?? '';
   const isAbbreviation = (word: string) =>
     word.length <= 5 && (word.match(/\p{Lu}/gu)?.length ?? 0) >= 2;
+  // «VŠE», «VŠCHT»: an abbreviation is the name, and cutting it to two
+  // letters makes neighbours identical.
+  if (words.length === 1 && isAbbreviation(first)) return first.toUpperCase();
   if (
     words.length > 1 &&
     isAbbreviation(first) &&

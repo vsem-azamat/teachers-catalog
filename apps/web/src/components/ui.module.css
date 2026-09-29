@@ -201,6 +201,26 @@
   color: var(--muted);
 }
 
+/* Letters on a tile, smaller as there are more of them. */
+.letters {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.letters[data-length='3'] {
+  font-size: 12px;
+}
+
+.letters[data-length='4'] {
+  font-size: 10px;
+}
+
+.letters[data-length='5'] {
+  font-size: 8.5px;
+}
+
 /* ── activity ───────────────────────────────────────────────────────── */
 
 /* How much a chat talks, as supervisor measures it. Green only for "busy":

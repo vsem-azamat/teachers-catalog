@@ -1,6 +1,6 @@
 import { retrieveRawInitData } from '@tma.js/sdk-react';
 
-import type { PublicChat } from './chats';
+import { type PublicChat, sanitize } from './chats';
 import type {
   ContactStart,
   FeedRequest,
@@ -195,7 +195,8 @@ async function publicGet<T>(path: string, signal?: AbortSignal): Promise<T> {
 
 export const api = {
   /** The chat directory, supervisor's. Four fields per chat, in its order. */
-  getChats: (signal?: AbortSignal) => publicGet<PublicChat[]>('/catalog', signal),
+  getChats: async (signal?: AbortSignal): Promise<PublicChat[]> =>
+    sanitize(await publicGet<unknown>('/catalog', signal)),
 
   /** The whole home screen in one response. */
   getHome: (signal?: AbortSignal) => request<Home>('/home', { signal }),
@@ -289,3 +290,14 @@ export const api = {
 };
 
 export type Api = typeof api;
+
+/**
+ * The chat directory's query, shared by the directory and a section's screen
+ * so that opening a section costs no request. The directory changes when a
+ * moderator publishes a chat, not while somebody is looking at it.
+ */
+export const chatsQuery = {
+  queryKey: ['chats'] as const,
+  queryFn: ({ signal }: { signal: AbortSignal }) => api.getChats(signal),
+  staleTime: 5 * 60_000,
+};

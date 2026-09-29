@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { AppHeader } from '@/components/AppHeader';
-import { ChatRow } from '@/components/ChatRow';
+import { ChatRow, Letters } from '@/components/ChatRow';
 import { SearchIcon } from '@/components/icons';
 import { TabBar } from '@/components/TabBar';
 import {
@@ -21,11 +21,8 @@ import {
   Title,
   ui,
 } from '@/components/Ui';
-import { api } from '@/lib/api';
-import { directory, initials, search } from '@/lib/chats';
-
-/** Six tile tones, handed out by position: a group's name is never read. */
-const TONES = 6;
+import { chatsQuery } from '@/lib/api';
+import { directory, initials, search, sectionHint } from '@/lib/chats';
 
 /**
  * The chat directory: supervisor-telegram's chats, read as places to go.
@@ -38,13 +35,7 @@ export default function ChatsPage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
 
-  const { data, isPending, isError, refetch } = useQuery({
-    queryKey: ['chats'],
-    queryFn: ({ signal }) => api.getChats(signal),
-    // The directory changes when a moderator publishes a chat, not while
-    // somebody is looking at it.
-    staleTime: 5 * 60_000,
-  });
+  const { data, isPending, isError, refetch } = useQuery(chatsQuery);
 
   const found = useMemo(() => (data ? search(data, query) : []), [data, query]);
   const { entries, rest } = useMemo(() => directory(data ?? []), [data]);
@@ -103,7 +94,7 @@ export default function ChatsPage() {
               </Label>
               <Rows>
                 {found.map((chat, index) => (
-                  <ChatRow key={chat.link} chat={chat} tone={index % TONES} />
+                  <ChatRow key={chat.link} chat={chat} tone={index} />
                 ))}
               </Rows>
             </>
@@ -113,21 +104,21 @@ export default function ChatsPage() {
         ) : (
           <>
             {entries.length > 0 ? (
-              <>
-                <Label>
-                  <Trans>Вузы</Trans>
-                </Label>
+              // No heading: supervisor's groups are parent chats, not a
+              // category this screen could name. See docs/architecture.md.
+              <div style={{ marginTop: 18 }}>
                 <Rows>
                   {entries.map((entry, index) =>
                     entry.kind === 'section' ? (
                       <Row
                         key={`section:${entry.name}`}
-                        leading={<Tile tone={index % TONES}>{initials(entry.name)}</Tile>}
+                        leading={
+                          <Tile tone={index}>
+                            <Letters text={initials(entry.name)} />
+                          </Tile>
+                        }
                         title={entry.name}
-                        hint={entry.chats
-                          .slice(1, 4)
-                          .map((chat) => chat.title)
-                          .join(', ')}
+                        hint={sectionHint(entry)}
                         trailing={
                           <>
                             <Count>{entry.chats.length}</Count>
@@ -139,28 +130,20 @@ export default function ChatsPage() {
                         }
                       />
                     ) : (
-                      <ChatRow
-                        key={entry.chat.link}
-                        chat={entry.chat}
-                        tone={index % TONES}
-                      />
+                      <ChatRow key={entry.chat.link} chat={entry.chat} tone={index} />
                     ),
                   )}
                 </Rows>
-              </>
+              </div>
             ) : null}
             {rest.length > 0 ? (
               <>
                 <Label>
-                  <Trans>Другие чаты</Trans>
+                  <Trans>Остальные</Trans>
                 </Label>
                 <Rows>
                   {rest.map((chat, index) => (
-                    <ChatRow
-                      key={chat.link}
-                      chat={chat}
-                      tone={(entries.length + index) % TONES}
-                    />
+                    <ChatRow key={chat.link} chat={chat} tone={entries.length + index} />
                   ))}
                 </Rows>
               </>

@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { chipFor, directory, type PublicChat, search } from '../src/lib/chats.ts';
+import {
+  chipFor,
+  directory,
+  initials,
+  type PublicChat,
+  sanitize,
+  search,
+  sectionHint,
+} from '../src/lib/chats.ts';
 
 function chat(
   title: string,
@@ -19,8 +27,9 @@ function chat(
 
 const CVUT = 'ČVUT | ЧВУТ';
 
-// The shape production serves: one university with its faculties, one with a
-// single chat, and chats that belong to nothing.
+// The shape supervisor serves once a university's own chat heads its section
+// (supervisor #122): one university with its faculties, one with a single
+// chat, and chats that belong to nothing.
 const SAMPLE: PublicChat[] = [
   chat('ČVUT | ЧВУТ', CVUT),
   chat('ČVUT FIT', CVUT),
@@ -100,16 +109,62 @@ test('activity is a chip only when supervisor measured it', () => {
 });
 
 test('a tile takes its letters from the first of two names', async () => {
-  const { initials } = await import('../src/lib/chats.ts');
-  assert.equal(initials('ČVUT | ЧВУТ'), 'ČV');
+  assert.equal(initials('ČVUT | ЧВУТ'), 'ČVUT');
   assert.equal(initials('Fyzika v ČR'), 'FV');
   assert.equal(initials('Strahov'), 'ST');
 });
 
 test('a faculty shows its own abbreviation, not its university one', async () => {
-  const { initials } = await import('../src/lib/chats.ts');
   assert.equal(initials('ČVUT FIT'), 'FIT');
   assert.equal(initials('ČVUT FSv'), 'FSV');
   assert.equal(initials('Kolej Hvězda'), 'KH');
   assert.equal(initials('IT Чехия | Опыт, работа, новости'), 'IЧ');
+});
+
+// The shape production serves today: the university's own chat has no group
+// and its faculties do.
+const TODAY: PublicChat[] = [
+  chat('ČVUT FA', CVUT),
+  chat('ČVUT FIT', CVUT),
+  chat('ČVUT FEL', CVUT),
+  chat('ČVUT FS', CVUT),
+  chat('ČVUT | ЧВУТ', null),
+];
+
+test('a section hint names its chats, skipping only the one named like it', () => {
+  const [today] = directory(TODAY).entries;
+  assert.equal(
+    today?.kind === 'section' && sectionHint(today),
+    'ČVUT FA, ČVUT FIT, ČVUT FEL',
+  );
+  const [tomorrow] = directory(SAMPLE).entries;
+  assert.equal(
+    tomorrow?.kind === 'section' && sectionHint(tomorrow),
+    'ČVUT FIT, ČVUT FEL',
+  );
+});
+
+test('a one-word abbreviation stays whole, so VŠE and VŠCHT differ', () => {
+  assert.equal(initials('VŠE'), 'VŠE');
+  assert.equal(initials('VŠCHT'), 'VŠCHT');
+  assert.equal(initials('VUT'), 'VUT');
+  assert.equal(initials('Masarykova univerzita'), 'MU');
+});
+
+test('what arrives from the other backend is checked, not trusted', () => {
+  const clean = sanitize([
+    { title: 'ČVUT FIT', link: 'https://t.me/cvut_fit', group: CVUT, activity: 'busy' },
+    { title: 'Invite', link: 'https://t.me/+AbCdEf', group: null, activity: 'loud' },
+    { title: 'Elsewhere', link: 'https://example.com/x', group: null, activity: 'busy' },
+    { link: 'https://t.me/no_title', group: null, activity: 'busy' },
+    'not a chat',
+  ]);
+  assert.deepEqual(
+    clean.map((c) => [c.title, c.activity]),
+    [
+      ['ČVUT FIT', 'busy'],
+      ['Invite', 'unknown'],
+    ],
+  );
+  assert.deepEqual(sanitize({ detail: 'Cloudflare says hi' }), []);
 });

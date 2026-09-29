@@ -202,8 +202,8 @@ msgid "Оставь заявку — ответят сами"
 msgstr "Post a request — they answer you"
 
 #: src/pages/Chats.tsx
-msgid "Другие чаты"
-msgstr "Other chats"
+#~ msgid "Другие чаты"
+#~ msgstr "Other chats"
 
 #: src/components/AppHeader.tsx
 msgid "Оформление: как в системе. Нажми, чтобы сменить"
@@ -303,8 +303,8 @@ msgid "Их видно на твоей странице."
 msgstr "They show on your page."
 
 #: src/pages/Chats.tsx
-msgid "Вузы"
-msgstr "Universities"
+#~ msgid "Вузы"
+#~ msgstr "Universities"
 
 #: src/components/Phrase.tsx
 msgid "Не понял запрос. Попробуй назвать предмет — «матан», «čeština B2», «сопромат»."
@@ -529,6 +529,10 @@ msgstr "negotiable"
 #: src/pages/OfferPrices.tsx
 msgid "за семестр"
 msgstr "per semester"
+
+#: src/pages/Chats.tsx
+msgid "Остальные"
+msgstr "Other chats"
 
 #: src/pages/Profile.tsx
 msgid "Помогать другим"

@@ -3,9 +3,20 @@ import { openTelegramLink } from '@tma.js/sdk-react';
 
 import { type Activity, chipFor, initials, type PublicChat } from '@/lib/chats';
 
-import { ChevronIcon } from './icons';
-import { Row, Tile } from './Ui';
+import { Chevron, Row, Tile } from './Ui';
 import css from './ui.module.css';
+
+/**
+ * A tile's letters, sized to fit: a faculty's «FSv» or a university's «VŠCHT»
+ * is its name, and a fixed size would push it over the tile's edge.
+ */
+export function Letters({ text }: { text: string }) {
+  return (
+    <span className={css.letters} data-length={Math.min(text.length, 5)}>
+      {text}
+    </span>
+  );
+}
 
 /** Supervisor's word for how much a chat talks, and nothing for `unknown`. */
 export function ActivityChip({ activity }: { activity: Activity }) {
@@ -33,10 +44,16 @@ export function ActivityChip({ activity }: { activity: Activity }) {
 export function ChatRow({ chat, tone }: { chat: PublicChat; tone: number }) {
   return (
     <Row
-      leading={<Tile tone={tone}>{initials(chat.title)}</Tile>}
+      leading={
+        <Tile tone={tone}>
+          <Letters text={initials(chat.title)} />
+        </Tile>
+      }
       title={chat.title}
-      hint={<ActivityChip activity={chat.activity} />}
-      trailing={<ChevronIcon size={17} className={css.chevron} />}
+      hint={
+        chipFor(chat.activity) ? <ActivityChip activity={chat.activity} /> : undefined
+      }
+      trailing={<Chevron />}
       onClick={() => openTelegramLink(chat.link)}
     />
   );

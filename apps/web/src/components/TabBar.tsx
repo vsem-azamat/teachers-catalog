@@ -16,7 +16,7 @@ import css from './ui.module.css';
  * label than the word. "Чаты" is the directory of moderated student chats
  * (supervisor-telegram's), a real list behind the tab. "Помощь" is the catalog.
  *
- * The round button is not a third tab: it posts something, which is the
+ * The round button is not a fourth tab: it posts something, which is the
  * opposite direction from browsing, and keeping it visually apart is what says
  * so.
  */
