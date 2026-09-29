@@ -32,7 +32,7 @@ pnpm dev
 ```
 
 The API is expected at `http://127.0.0.1:8010` — see the note in
-`vite.config.ts` about what holds 8000 — and `/api`, `/healthz` and `/tg` are
+`vite.config.ts` about what holds 8000 — and `/api` and `/healthz` are
 proxied there, so calls from the browser stay same-origin. Start it separately,
 or with `make api` from the repository root:
 

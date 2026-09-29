@@ -54,7 +54,8 @@ make web                  # https://localhost:5173
 
 `make help` lists the rest.
 
-The API runs without a bot token — it logs a warning and skips the webhook. To
+The API runs without a bot token — it logs a warning, and nothing is sent to
+Telegram. To
 exercise it from a browser instead of from Telegram, set
 `ALLOW_UNSIGNED_INIT_DATA=true`, which turns off signature checking. Local
 development only: it lets anyone claim to be anyone.
@@ -68,8 +69,10 @@ origin other than the registered one. A quick tunnel:
 make tunnel               # prints an https://….trycloudflare.com URL
 ```
 
-Put that URL in `PUBLIC_BASE_URL`, restart the API so it re-registers the
-webhook, and set the same URL as the mini app in @BotFather.
+Put that URL in `PUBLIC_BASE_URL` and restart the API. The app has to be
+opened from a bot whose token the API holds, because that token is what
+checks `initData`. Use a development bot for this, never the production one:
+the production token belongs to the moderator bot, which polls.
 
 ## Outside Telegram
 

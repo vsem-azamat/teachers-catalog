@@ -84,7 +84,7 @@ COPY --from=model --chown=students_cz:students_cz /model /app/model
 USER students_cz
 EXPOSE 8000
 
-# One worker, deliberately. The lifespan hook creates the bot, registers the
-# webhook and holds aiogram's dispatcher state; a second worker would register
-# the webhook twice and keep half the state in the wrong process.
+# One worker, deliberately. The connection pool is per process, so this pin is
+# what makes db_pool_size and db_max_overflow the whole budget against Postgres.
+# See docs/deploy.md.
 CMD ["uvicorn", "students_cz.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

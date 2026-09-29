@@ -31,6 +31,9 @@ class TelegramIdentity:
     language_code: str | None
     photo_url: str | None
     start_param: str | None
+    # Telegram's `allows_write_to_pm`: this person let the bot message them.
+    # The only record of that we have, now that /start is the moderator bot's.
+    may_write: bool = False
 
     @classmethod
     def from_init_data(cls, data: WebAppInitData) -> "TelegramIdentity":
@@ -45,6 +48,7 @@ class TelegramIdentity:
             language_code=user.language_code,
             photo_url=user.photo_url,
             start_param=data.start_param,
+            may_write=bool(user.allows_write_to_pm),
         )
 
 

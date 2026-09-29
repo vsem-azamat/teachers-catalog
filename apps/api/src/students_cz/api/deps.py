@@ -53,9 +53,7 @@ async def current_user(
     """Fetch the caller, creating the row on first sight.
 
     Telegram is the identity provider, so there is no sign-up: the first
-    authenticated request is the registration. The same function the bot uses,
-    so that a person recorded through one door is the same row as through the
-    other.
+    authenticated request is the registration.
     """
     user = await remember(
         session,
@@ -67,6 +65,7 @@ async def current_user(
         photo_url=identity.photo_url,
         supported_langs=settings.supported_ui_langs,
         source=identity.start_param,
+        may_write=identity.may_write,
     )
     # The one write that outlives a failed request, deliberately. Telegram is
     # the identity provider and the first authenticated request is the

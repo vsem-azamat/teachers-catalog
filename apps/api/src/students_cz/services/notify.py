@@ -2,7 +2,7 @@
 
 Every notification here answers something the recipient started — they posted a
 request, or they answered one — so this is not the announcement channel and
-deliberately does not consult `unsubscribed_at`: /stop opts out of us writing
+deliberately does not consult `unsubscribed_at`: that opts out of us writing
 unprompted, not out of being told that the thing you asked for happened.
 
 Nothing in here may raise. A notification is a side effect of an action that has
@@ -82,12 +82,13 @@ class Recipient:
         """Take the snapshot, and with it the decision about writing at all.
 
         `bot_started_at`, not only `bot_can_message`: the latter defaults to
-        true for every row including someone who reached the app through a
-        direct link and never messaged the bot. Telegram answers that send with
+        true for every row including someone who opened the app without
+        letting the bot write to them — `bot_started_at` is set only when
+        initData says they did. Telegram answers that send with
         a 403, which `tell` reads as "blocked" — so the notification is lost
         *and* the person is recorded as having blocked a bot they never met.
 
-        `unsubscribed_at` is deliberately not consulted. /stop opts out of us
+        `unsubscribed_at` is deliberately not consulted. It opts out of us
         writing unprompted; every message that goes through here is the answer
         to something the recipient set in motion.
         """

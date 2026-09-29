@@ -86,8 +86,8 @@ tunnel-tool:  ## Fetch cloudflared into .tools if it is not on PATH
 
 .PHONY: tunnel
 tunnel: tunnel-tool  ## Expose the mini app over HTTPS so Telegram can reach it
-	@echo "Put the printed https URL in PUBLIC_BASE_URL and in @BotFather,"
-	@echo "then restart the API so it re-registers the webhook."
+	@echo "Put the printed https URL in PUBLIC_BASE_URL and in your development"
+	@echo "bot's Menu Button in @BotFather, then restart the API."
 	"$(CLOUDFLARED)" tunnel --url https://localhost:5173 --no-tls-verify
 
 # ── checks ──────────────────────────────────────────────────────────────

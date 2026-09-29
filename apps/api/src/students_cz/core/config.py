@@ -64,17 +64,6 @@ class Settings(BaseSettings):
 
     @computed_field
     @property
-    def webhook_url(self) -> str:
-        """Where Telegram is told to send updates, and what /healthz compares.
-
-        Derived once: registration and the health check building the same
-        string separately is how a health check starts reporting "elsewhere"
-        about a webhook that is perfectly correct.
-        """
-        return f"{self.public_base_url.rstrip('/')}{self.webhook_path}"
-
-    @computed_field
-    @property
     def sqlalchemy_url(self) -> str:
         if self.database_url:
             return self.database_url
@@ -84,15 +73,13 @@ class Settings(BaseSettings):
         )
 
     # ── Telegram ────────────────────────────────────────────────────────
+    # The moderator bot's token in production. Used to send and to check
+    # initData, never to receive: see docs/architecture.md.
     bot_token: str = ""
-    # Echoed back by Telegram in X-Telegram-Bot-Api-Secret-Token on every
-    # webhook call; anything else is not Telegram.
-    webhook_secret: str = ""
-    webhook_path: str = "/tg/webhook"
     # Told when a profile or a request appears, and nothing else. Unset — which
     # is how it runs everywhere but production — means no ping. A numeric
     # Telegram id and not a handle: the bot needs a chat it can open, and it
-    # can only open one with somebody who has started it.
+    # can only open one with somebody who has started the moderator bot.
     owner_tg_id: int | None = None
 
     @field_validator("owner_tg_id", mode="before")

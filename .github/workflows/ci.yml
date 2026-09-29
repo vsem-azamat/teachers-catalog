@@ -104,7 +104,6 @@ jobs:
                  -e 's|^IMAGE_TAG=.*|IMAGE_TAG=prod-0000000|' \
                  -e 's|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=placeholder|' \
                  -e 's|^BOT_TOKEN=.*|BOT_TOKEN=placeholder|' \
-                 -e 's|^WEBHOOK_SECRET=.*|WEBHOOK_SECRET=placeholder|' \
                  -e 's|^PUBLIC_HOST=.*|PUBLIC_HOST=https://example.invalid|' \
                  -e 's|^PUBLIC_PORT=.*|PUBLIC_PORT=18086|' .env
           docker compose config > resolved.yml
