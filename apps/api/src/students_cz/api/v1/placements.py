@@ -28,7 +28,13 @@ async def placements_for_slot(
     slot: PlacementSlot,
     service_type: str | None = None,
     subject_id: int | None = None,
+    preview: bool = False,
 ) -> list[PlacementOut]:
+    """The partner cards for one slot, each counted as seen unless a preview.
+
+    `preview` can only lower the count, so trusting the client with it costs
+    nothing. See docs/architecture.md, «The ads page is a showcase».
+    """
     return await placements.for_slot(
         session,
         lang=lang,
@@ -41,6 +47,7 @@ async def placements_for_slot(
             # Impressions are worth nothing without knowing who saw them.
             "user_id": user.id,
         },
+        count=not preview,
     )
 
 

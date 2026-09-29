@@ -1,4 +1,7 @@
 import { createBrowserRouter } from 'react-router';
+import AdsPage from '@/pages/Ads';
+import AdsAppPage from '@/pages/AdsApp';
+import AdsChatsPage from '@/pages/AdsChats';
 import AskPage from '@/pages/Ask';
 import ChatSectionPage from '@/pages/ChatSection';
 import ChatsPage from '@/pages/Chats';
@@ -28,6 +31,9 @@ export const router = createBrowserRouter([
     element: <Root />,
     children: [
       { index: true, element: <HomePage /> },
+      { path: 'ads', element: <AdsPage /> },
+      { path: 'ads/chats', element: <AdsChatsPage /> },
+      { path: 'ads/app', element: <AdsAppPage /> },
       { path: 'ask', element: <AskPage /> },
       { path: 'chats', element: <ChatsPage /> },
       { path: 'chats/:group', element: <ChatSectionPage /> },

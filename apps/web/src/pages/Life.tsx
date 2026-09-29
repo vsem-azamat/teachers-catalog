@@ -1,20 +1,10 @@
 import { Trans } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
-import { openLink } from '@tma.js/sdk-react';
 
 import { AppHeader } from '@/components/AppHeader';
-import {
-  Empty,
-  Hint,
-  Label,
-  Screen,
-  SkeletonRows,
-  Sub,
-  Title,
-  ui,
-} from '@/components/Ui';
+import { PartnerBlock } from '@/components/PartnerBlock';
+import { Empty, Hint, Label, Screen, SkeletonRows, Sub, Title } from '@/components/Ui';
 import { api } from '@/lib/api';
-import type { Placement } from '@/lib/types';
 
 /**
  * The things a foreign student here has to buy anyway.
@@ -74,58 +64,5 @@ export default function LifePage() {
         </Hint>
       </div>
     </Screen>
-  );
-}
-
-function PartnerBlock({ placement }: { placement: Placement }) {
-  const open = () => {
-    // Counted before the browser leaves, and deliberately not awaited: the tap
-    // should open the link now, not after a round trip.
-    void api.registerPlacementClick(placement.id).catch(() => undefined);
-    openLink(placement.url);
-  };
-
-  return (
-    <div>
-      {placement.context_note ? (
-        <div style={{ marginBottom: 9 }}>
-          <Hint>{placement.context_note}</Hint>
-        </div>
-      ) : null}
-
-      <button type="button" className={`${ui.partner} ${ui.pressable}`} onClick={open}>
-        <span className={ui.partnerLabel}>
-          <Trans>Партнёр</Trans>
-        </span>
-        <span className={ui.partnerTop}>
-          {placement.logo_text ? (
-            <span
-              className={ui.partnerLogo}
-              style={{ background: placement.logo_bg ?? 'var(--surface)' }}
-            >
-              {placement.logo_text}
-            </span>
-          ) : null}
-          <span style={{ minWidth: 0 }}>
-            <span className={ui.partnerName}>{placement.title}</span>
-            {placement.subtitle ? (
-              <span
-                style={{
-                  display: 'block',
-                  marginTop: 2,
-                  fontSize: 11.5,
-                  color: 'var(--muted)',
-                }}
-              >
-                {placement.subtitle}
-              </span>
-            ) : null}
-          </span>
-          {placement.price_text ? (
-            <span className={ui.partnerPrice}>{placement.price_text}</span>
-          ) : null}
-        </span>
-      </button>
-    </div>
   );
 }

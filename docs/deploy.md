@@ -145,6 +145,7 @@ ssh-keyscan -t ed25519 <host>          # for DEPLOY_KNOWN_HOSTS
 | `INIT_DATA_MAX_AGE_SECONDS` | Optional; defaults to 86400. |
 | `LOG_LEVEL` | Optional; defaults to `INFO`. One of DEBUG, INFO, WARNING, ERROR, CRITICAL. |
 | `BACKUP_HOUR_UTC`, `BACKUP_RETENTION_DAYS` | Optional; default 3 and 14. |
+| `ADS_CONTACT` | Optional. The Telegram username, without `@`, that the ads page tells a business to write to. Unset means the page has no contact button. |
 | `OWNER_TG_ID` | Optional. Telegram id of whoever runs this, to be told when a profile or a request appears. Unset means no ping. A numeric id, not a handle — the bot needs a chat it can open, and it can only open one with somebody who has started the moderator bot. |
 
 ### 5. In @BotFather

@@ -1,6 +1,8 @@
 import { retrieveRawInitData } from '@tma.js/sdk-react';
 
 import { type PublicChat, sanitize } from './chats';
+import type { AdsInfo } from './generated/types.gen';
+import { isReach, type Reach } from './reach';
 import type {
   ContactStart,
   FeedRequest,
@@ -204,6 +206,16 @@ export const api = {
     return sanitize(payload);
   },
 
+  /** How far a post in the chats reaches: supervisor's, summed per group. */
+  getReach: async (signal?: AbortSignal): Promise<Reach> => {
+    const payload = await publicGet<unknown>('/reach', signal);
+    if (!isReach(payload)) throw new ApiError(502, payload, 'reach has the wrong shape');
+    return payload;
+  },
+
+  /** Who a business writes to about advertising, if anyone. */
+  getAds: (signal?: AbortSignal) => request<AdsInfo>('/ads', { signal }),
+
   /** The whole home screen in one response. */
   getHome: (signal?: AbortSignal) => request<Home>('/home', { signal }),
 
@@ -241,7 +253,12 @@ export const api = {
     request<ContactStart>(`/helpers/${userId}/contact`, { method: 'POST' }),
 
   getPlacements: (
-    params: { slot: string; service_type?: string; subject_id?: number },
+    params: {
+      slot: string;
+      service_type?: string;
+      subject_id?: number;
+      preview?: boolean;
+    },
     signal?: AbortSignal,
   ) => request<Placement[]>('/placements', { query: { ...params }, signal }),
 

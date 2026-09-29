@@ -45,6 +45,7 @@ async def for_slot(
     slot: str,
     context: dict[str, Any],
     limit: int = 3,
+    count: bool = True,
 ) -> list[PlacementOut]:
     now = datetime.now(UTC)
     rows = (
@@ -95,7 +96,9 @@ async def for_slot(
         if len(out) >= limit:
             break
 
-    for placement_out in out:
+    # A preview (the ads page showing a business what a card looks like) is
+    # not a student seeing an offer, and counting it would bill the partner.
+    for placement_out in out if count else []:
         session.add(
             PlacementEvent(
                 placement_id=placement_out.id,

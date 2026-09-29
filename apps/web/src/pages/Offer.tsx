@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router';
 
 import { AppHeader } from '@/components/AppHeader';
 import { ServiceGrid } from '@/components/ServiceGrid';
-import { Empty, Hint, Screen, SkeletonRows, Sub, Title } from '@/components/Ui';
+import { Empty, Hint, Screen, SkeletonRows, Sub, Title, ui } from '@/components/Ui';
 import { hapticSelection, useMainButton } from '@/hooks/useTelegram';
 import { api } from '@/lib/api';
 
@@ -125,10 +125,17 @@ export default function OfferPage() {
             group === 'life' ? (
               <div style={{ marginTop: -4, marginBottom: 10 }}>
                 <Hint>
-                  <Trans>
-                    Сейчас бесплатно. Когда людей станет больше, размещение таких услуг
-                    станет платным.
-                  </Trans>
+                  {/* Private people offer these for free. A company is sent
+                      to the ads page instead: docs/architecture.md. */}
+                  <Trans>Людям бесплатно. Если вы компания, для вас есть</Trans>{' '}
+                  <button
+                    type="button"
+                    className={ui.inlineLink}
+                    onClick={() => navigate('/ads')}
+                  >
+                    <Trans>реклама</Trans>
+                  </button>
+                  .
                 </Hint>
               </div>
             ) : null

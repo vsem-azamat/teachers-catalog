@@ -131,6 +131,11 @@ msgstr "Экзамены и поступление"
 msgid "Чешский для вуза"
 msgstr "Чешский для вуза"
 
+#: src/pages/Ads.tsx
+#: src/pages/AdsApp.tsx
+msgid "Карточка в приложении"
+msgstr "Карточка в приложении"
+
 #: src/components/InstitutionPicker.tsx
 msgid "Ничего не нашли. Попробуй сокращение — ČVUT, VŠE, MUNI."
 msgstr "Ничего не нашли. Попробуй сокращение — ČVUT, VŠE, MUNI."
@@ -169,6 +174,10 @@ msgstr "Добавить услугу"
 msgid "Это не наши услуги. Мы получаем комиссию с партнёра, со студента — ничего."
 msgstr "Это не наши услуги. Мы получаем комиссию с партнёра, со студента — ничего."
 
+#: src/pages/AdsApp.tsx
+msgid "Показываем тому, кому она нужна сейчас, а не всем подряд."
+msgstr "Показываем тому, кому она нужна сейчас, а не всем подряд."
+
 #: src/pages/BecomeHelper.tsx
 #~ msgid "Какие предметы"
 #~ msgstr "Какие предметы"
@@ -201,9 +210,17 @@ msgstr "первый год"
 msgid "Оставь заявку — ответят сами"
 msgstr "Оставь заявку — ответят сами"
 
+#: src/pages/AdsChats.tsx
+msgid "чатов"
+msgstr "чатов"
+
 #: src/components/AppHeader.tsx
 msgid "Оформление: как в системе. Нажми, чтобы сменить"
 msgstr "Оформление: как в системе. Нажми, чтобы сменить"
+
+#: src/pages/Ads.tsx
+msgid "Студенты чешских вузов в чатах и в этом приложении. Чаты модерируются каждый день, поэтому чужой спам не перебивает ваш пост."
+msgstr "Студенты чешских вузов в чатах и в этом приложении. Чаты модерируются каждый день, поэтому чужой спам не перебивает ваш пост."
 
 #: src/pages/Results.tsx
 msgid "Напиши иначе — или оставь заявку, и найдут тебя."
@@ -233,6 +250,11 @@ msgstr "Язык"
 msgid "Месяц"
 msgstr "Месяц"
 
+#: src/pages/Ads.tsx
+#: src/pages/Profile.tsx
+msgid "Реклама для студентов"
+msgstr "Реклама для студентов"
+
 #: src/pages/Ask.tsx
 msgid "Оставить заявку"
 msgstr "Оставить заявку"
@@ -250,6 +272,15 @@ msgstr "Твой предмет — {0}"
 #: src/pages/Offer.tsx
 msgid "Дальше · {0}"
 msgstr "Дальше · {0}"
+
+#. placeholder {0}: figures.members.value
+#: src/pages/Ads.tsx
+msgid "{0, plural, one {участник} few {участника} many {участников} other {участника}}"
+msgstr "{0, plural, one {участник} few {участника} many {участников} other {участника}}"
+
+#: src/pages/AdsChats.tsx
+msgid "Пост выходит, вы получаете ссылки на него."
+msgstr "Пост выходит, вы получаете ссылки на него."
 
 #: src/components/InstitutionPicker.tsx
 msgid "Вуз или факультет — ČVUT, VŠE, FEL"
@@ -270,6 +301,10 @@ msgstr "расскажи своими словами, анкету соберё�
 #: src/components/Incoming.tsx
 msgid "Заявку уже закрыли"
 msgstr "Заявку уже закрыли"
+
+#: src/pages/AdsApp.tsx
+msgid "«Не про учёбу»"
+msgstr "«Не про учёбу»"
 
 #: src/components/Incoming.tsx
 #: src/pages/Mine.tsx
@@ -310,7 +345,7 @@ msgstr "Напиши как думаешь. Поймём предмет, вуз,
 msgid "сдали"
 msgstr "сдали"
 
-#: src/pages/Life.tsx
+#: src/components/PartnerBlock.tsx
 msgid "Партнёр"
 msgstr "Партнёр"
 
@@ -318,6 +353,10 @@ msgstr "Партнёр"
 #: src/pages/OfferPrices.tsx
 msgid "Сохранить"
 msgstr "Сохранить"
+
+#: src/pages/Offer.tsx
+msgid "Людям бесплатно. Если вы компания, для вас есть"
+msgstr "Людям бесплатно. Если вы компания, для вас есть"
 
 #: src/pages/Results.tsx
 msgid "Оставить"
@@ -349,6 +388,10 @@ msgstr "Не сохранилось — попробуй ещё раз."
 msgid "Цена"
 msgstr "Цена"
 
+#: src/pages/Ads.tsx
+msgid "по вузам и факультетам"
+msgstr "по вузам и факультетам"
+
 #: src/lib/workFormat.tsx
 msgid "И так, и так"
 msgstr "И так, и так"
@@ -368,6 +411,10 @@ msgstr "Чаты"
 #: src/pages/BecomeHelper.tsx
 #~ msgid "Сколько берёшь"
 #~ msgstr "Сколько берёшь"
+
+#: src/pages/Ads.tsx
+msgid "рядом с нужной услугой"
+msgstr "рядом с нужной услугой"
 
 #: src/pages/Landing.tsx
 #~ msgid "Работы и материалы"
@@ -420,9 +467,17 @@ msgstr "Посмотреть похожее"
 #~ msgid "Пока ни одного. Найди предмет ниже — без них тебя не найдут по поиску."
 #~ msgstr "Пока ни одного. Найди предмет ниже — без них тебя не найдут по поиску."
 
+#: src/pages/Ads.tsx
+msgid "Форматы"
+msgstr "Форматы"
+
 #: src/pages/MyHelper.tsx
 msgid "Тебя видят в поиске и могут написать."
 msgstr "Тебя видят в поиске и могут написать."
+
+#: src/pages/AdsChats.tsx
+msgid "Пишете, что хотите разместить."
+msgstr "Пишете, что хотите разместить."
 
 #: src/components/Incoming.tsx
 msgid "Не отправилось — попробуй ещё раз"
@@ -466,6 +521,10 @@ msgstr "Выбрать"
 #: src/pages/Mine.tsx
 msgid "Опиши, что нужно, и получай отклики — вместо того чтобы искать самому."
 msgstr "Опиши, что нужно, и получай отклики — вместо того чтобы искать самому."
+
+#: src/pages/AdsApp.tsx
+msgid "Показ можно ограничить месяцем, языком интерфейса или услугой."
+msgstr "Показ можно ограничить месяцем, языком интерфейса или услугой."
 
 #: src/components/Incoming.tsx
 msgid "Сначала опубликуй профиль"
@@ -522,6 +581,10 @@ msgstr "договорная"
 msgid "за семестр"
 msgstr "за семестр"
 
+#: src/pages/AdsApp.tsx
+msgid "Рядом с услугой"
+msgstr "Рядом с услугой"
+
 #: src/pages/Chats.tsx
 msgid "Остальные"
 msgstr "Остальные"
@@ -571,9 +634,17 @@ msgstr "Ведёт предмет, но не привязан к этому ву
 msgid "Такого чата нет"
 msgstr "Такого чата нет"
 
+#: src/pages/AdsChats.tsx
+msgid "Куда попадёт"
+msgstr "Куда попадёт"
+
 #: src/pages/Chats.tsx
 msgid "ČVUT, FIT, Strahov…"
 msgstr "ČVUT, FIT, Strahov…"
+
+#: src/pages/AdsChats.tsx
+msgid "Как это работает"
+msgstr "Как это работает"
 
 #: src/pages/Profile.tsx
 msgid "B1, B2, нострификация"
@@ -587,6 +658,10 @@ msgstr "Регистрации нет — заходишь своим аккау
 #: src/pages/Profile.tsx
 msgid "Профиль"
 msgstr "Профиль"
+
+#: src/pages/AdsApp.tsx
+msgid "После заявки"
+msgstr "После заявки"
 
 #: src/pages/Helper.tsx
 msgid "Возможно, человек скрыл его."
@@ -637,6 +712,14 @@ msgstr "Кто может помочь"
 msgid "Это первое, что читают. Пара живых предложений работает лучше списка."
 msgstr "Это первое, что читают. Пара живых предложений работает лучше списка."
 
+#: src/pages/AdsChats.tsx
+msgid "Выходит в выбранных чатах один раз. Где он уместен, подскажем."
+msgstr "Выходит в выбранных чатах один раз. Где он уместен, подскажем."
+
+#: src/pages/Offer.tsx
+msgid "реклама"
+msgstr "реклама"
+
 #: src/pages/Profile.tsx
 #~ msgid "По этому мы отсеиваем тех, с кем вы друг друга не поймёте."
 #~ msgstr "По этому мы отсеиваем тех, с кем вы друг друга не поймёте."
@@ -648,6 +731,10 @@ msgstr "Заявку увидят все, кто предлагает помощ
 #: src/pages/Results.tsx
 msgid "Никто пока не предлагает то, что ты ищешь."
 msgstr "Никто пока не предлагает то, что ты ищешь."
+
+#: src/pages/AdsChats.tsx
+msgid "чатов · людей"
+msgstr "чатов · людей"
 
 #: src/lib/workFormat.tsx
 msgid "Удалённо"
@@ -706,9 +793,17 @@ msgstr "Срок: <0/>"
 msgid "Свободные окна"
 msgstr "Свободные окна"
 
+#: src/pages/AdsApp.tsx
+msgid "нострификация, языки"
+msgstr "нострификация, языки"
+
 #: src/pages/BecomeHelper.tsx
 #~ msgid "Не хватает"
 #~ msgstr "Не хватает"
+
+#: src/pages/AdsChats.tsx
+msgid "Отвечаем, в каких чатах это уместно и сколько стоит."
+msgstr "Отвечаем, в каких чатах это уместно и сколько стоит."
 
 #: src/pages/Profile.tsx
 msgid "черновик — не видна в каталоге"
@@ -777,6 +872,11 @@ msgstr "Чем ты можешь помочь?"
 #~ msgid "Открыть переписку в Telegram"
 #~ msgstr "Открыть переписку в Telegram"
 
+#: src/pages/Ads.tsx
+#: src/pages/AdsChats.tsx
+msgid "Пост в чатах"
+msgstr "Пост в чатах"
+
 #: src/pages/MyHelper.tsx
 msgid "Город"
 msgstr "Город"
@@ -824,6 +924,10 @@ msgstr "до {0}"
 msgid "{days} дн."
 msgstr "{days} дн."
 
+#: src/pages/Ads.tsx
+msgid "Займы, ставки, дипломы под ключ. Модерация чистит такое каждый день, и продавать то же самое сверху было бы странно."
+msgstr "Займы, ставки, дипломы под ключ. Модерация чистит такое каждый день, и продавать то же самое сверху было бы странно."
+
 #: src/pages/Profile.tsx
 msgid "Жизнь в Чехии"
 msgstr "Жизнь в Чехии"
@@ -867,6 +971,10 @@ msgstr "Хожу вместе"
 #: src/pages/ChatSection.tsx
 msgid "Такой группы больше нет"
 msgstr "Такой группы больше нет"
+
+#: src/pages/AdsApp.tsx
+msgid "Так она выглядит"
+msgstr "Так она выглядит"
 
 #: src/pages/MyHelper.tsx
 msgid "Район или где удобно встречаться"
@@ -936,9 +1044,21 @@ msgstr "{0, plural, one {# отклик} few {# отклика} many {# откл
 msgid "На эту заявку ты уже отвечал"
 msgstr "На эту заявку ты уже отвечал"
 
+#: src/pages/Ads.tsx
+msgid "Что не размещаем"
+msgstr "Что не размещаем"
+
+#: src/pages/AdsApp.tsx
+msgid "страховка, визы, банк, переводы"
+msgstr "страховка, визы, банк, переводы"
+
 #: src/pages/Helper.tsx
 msgid "У этого человека нет открытого username в Telegram, написать не получится."
 msgstr "У этого человека нет открытого username в Telegram, написать не получится."
+
+#: src/pages/Profile.tsx
+msgid "для компаний: посты в чатах и карточки"
+msgstr "для компаний: посты в чатах и карточки"
 
 #: src/pages/Chats.tsx
 msgid "Поиск чата"
@@ -986,6 +1106,7 @@ msgstr "Помощь в день экзамена"
 msgid "Профиль недоступен"
 msgstr "Профиль недоступен"
 
+#: src/pages/AdsChats.tsx
 #: src/pages/Chats.tsx
 #: src/pages/ChatSection.tsx
 #: src/pages/Home.tsx
@@ -1025,8 +1146,8 @@ msgid "Пока никого"
 msgstr "Пока никого"
 
 #: src/pages/Offer.tsx
-msgid "Сейчас бесплатно. Когда людей станет больше, размещение таких услуг станет платным."
-msgstr "Сейчас бесплатно. Когда людей станет больше, размещение таких услуг станет платным."
+#~ msgid "Сейчас бесплатно. Когда людей станет больше, размещение таких услуг станет платным."
+#~ msgstr "Сейчас бесплатно. Когда людей станет больше, размещение таких услуг станет платным."
 
 #: src/lib/workFormat.tsx
 msgid "Как работаешь"
@@ -1047,6 +1168,10 @@ msgstr "Дешевле остальных, но этот экзамен не в�
 #: src/components/AppHeader.tsx
 msgid "Язык приложения"
 msgstr "Язык приложения"
+
+#: src/pages/AdsApp.tsx
+msgid "когда студент уже что-то ищет"
+msgstr "когда студент уже что-то ищет"
 
 #. placeholder {0}: num(p.minutes)
 #: src/components/Phrase.tsx
@@ -1128,6 +1253,10 @@ msgstr "Помощь нужна до экзамена или на нём?"
 msgid "Найди свой чат"
 msgstr "Найди свой чат"
 
+#: src/components/AdsContact.tsx
+msgid "Написать в Telegram"
+msgstr "Написать в Telegram"
+
 #: src/components/RequestSheet.tsx
 msgid "Опубликовать заявку"
 msgstr "Опубликовать заявку"
@@ -1144,6 +1273,10 @@ msgstr "Что преподаёшь, где учишься, как проход�
 #: src/pages/Request.tsx
 msgid "Отклики"
 msgstr "Отклики"
+
+#: src/pages/AdsApp.tsx
+msgid "Где её видно"
+msgstr "Где её видно"
 
 #: src/pages/Ask.tsx
 #: src/pages/Results.tsx
@@ -1176,6 +1309,11 @@ msgstr "Никто не подошёл?"
 msgid "Предлагаю услугу"
 msgstr "Предлагаю услугу"
 
+#. placeholder {0}: figures.chats
+#: src/pages/Ads.tsx
+msgid "{0, plural, one {чат} few {чата} many {чатов} other {чата}}"
+msgstr "{0, plural, one {чат} few {чата} many {чатов} other {чата}}"
+
 #: src/pages/Chats.tsx
 #: src/pages/ChatSection.tsx
 msgid "Не удалось загрузить чаты"
@@ -1202,6 +1340,10 @@ msgstr "в день"
 #: src/components/InstitutionPicker.tsx
 msgid "Список вузов не загрузился. Попробуй ещё раз позже."
 msgstr "Список вузов не загрузился. Попробуй ещё раз позже."
+
+#: src/pages/AdsChats.tsx
+msgid "Не удалось загрузить охват"
+msgstr "Не удалось загрузить охват"
 
 #: src/pages/Results.tsx
 msgid "Подходят"

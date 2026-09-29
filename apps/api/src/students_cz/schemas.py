@@ -502,3 +502,9 @@ class ResponseOut(BaseModel):
     price: Price | None = None
     status: str
     created_at: datetime
+
+
+class AdsInfo(BaseModel):
+    """What the ads page needs from us: who a business writes to, if anyone."""
+
+    contact_url: str | None
