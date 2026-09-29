@@ -33,8 +33,15 @@ flag Telegram signs into the app's `initData`: `current_user` passes it to
 `bot_can_message`. The flag is absent when the app was opened without that
 permission, and then nothing is recorded, so `notify` does not try a send that
 Telegram would refuse with a 403. People recorded under the old bot are
-written to until the first 403, which `mark_unreachable` records. Their next
-visit through the moderator bot marks them reachable again.
+not written to at all: their `bot_started_at` is about the old bot, so a
+migration clears it at the cutover, and their next visit through the moderator
+bot sets it again. Without that, their first notification would go to a bot
+they never started, come back as a 403, and be recorded as a block.
+
+**Where somebody came from is `startapp`, not `start`.** `users.source` is the
+first `start_param` we see, and only the Mini App's own deep link carries one:
+`t.me/konnekt_moder_bot?startapp=<source>`. A `?start=<source>` link now
+reaches the moderator bot's `/start`, not us, and attributes nothing.
 
 **What we say is part of what we do.** A sentence telling somebody how to undo
 something, or who can see their request, or how fast an answer comes, is a
@@ -146,8 +153,6 @@ means — and each of them decided quietly, with a `getattr` default. There is
 one answer to that question per thing, it belongs where the thing is built, and
 a dependency is also the only shape a test can substitute.
 
-`api/v1/health.py` is the exception and stays one: it reports on `app.state`
-itself, so reaching for it is the job rather than a shortcut. 
 
 **Two notifications and one ping.** `services/notify.py` writes to people
 about something they set in motion — an answer to their request, an acceptance

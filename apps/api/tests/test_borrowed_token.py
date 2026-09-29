@@ -17,17 +17,6 @@ from students_cz.core.config import Settings
 
 pytestmark = pytest.mark.asyncio
 
-# Everything that takes updates away from the moderator or changes what its
-# chat offers. Sending a message is deliberately absent: that is what the
-# token is borrowed for.
-FORBIDDEN = {
-    "set_webhook",
-    "delete_webhook",
-    "get_updates",
-    "set_my_commands",
-    "set_chat_menu_button",
-}
-
 
 class RecordingBot:
     """Records every Telegram method the process calls on it."""
@@ -63,11 +52,13 @@ async def test_a_process_holding_the_token_asks_telegram_for_nothing(
 
     app = FastAPI()
     async with main.lifespan(app):
-        # Long enough for a background registration to have started.
+        # Long enough for any background work to have started.
         await asyncio.sleep(0.2)
         assert app.state.bot is bot, "notifications need the bot to send through"
 
-    assert FORBIDDEN.isdisjoint(bot.called), bot.called
+    # Nothing at all, not merely nothing from a list: set_my_description,
+    # log_out or close would change or break the moderator bot just as surely.
+    assert bot.called == [], bot.called
 
 
 async def test_there_is_no_address_for_updates_to_arrive_at() -> None:
@@ -128,3 +119,18 @@ async def test_opening_it_without_permission_does_not(session) -> None:
 
     user = await remember(session, tg_id=770002, first_name="Bo", supported_langs=("ru",))
     assert not Recipient.of(user).reachable
+
+
+async def test_the_app_passes_telegrams_permission_on_to_the_record(session) -> None:
+    """The wiring, not the two halves: initData in, a reachable person out."""
+    from students_cz.api.deps import current_user
+    from students_cz.core.security import parse_init_data
+    from students_cz.services.notify import Recipient
+
+    raw, config = _signed_open(allows_write=True)
+    identity = parse_init_data(raw, config)
+
+    user = await current_user(identity, session, config)
+
+    assert user.bot_started_at is not None
+    assert Recipient.of(user).reachable

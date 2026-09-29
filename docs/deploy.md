@@ -150,6 +150,32 @@ ssh-keyscan -t ed25519 <host>          # for DEPLOY_KNOWN_HOSTS
 Nothing. The Mini App URL, the menu button, the command list and the greeting
 belong to the moderator bot, and `supervisor-telegram` sets them.
 
+## Moving onto the moderator's token, once
+
+Until September 2026 the catalog had its own bot, `@student_cz_bot`. The order
+below matters, because each step assumes the one before it.
+
+1. Deploy the release that stops receiving updates, still on the old token.
+2. Run **Retire the old bot** (Actions → workflow dispatch). It reads the old
+   token from `BOT_TOKEN`, checks with `getMe` that it really is
+   `@student_cz_bot`, and refuses to touch any other bot. Then it deletes the
+   old bot's webhook, resets its menu button, clears its command list and
+   says in its description that the catalog moved to `@konnekt_moder_bot`.
+3. In @BotFather, remove `@student_cz_bot`'s Main Mini App URL. The Bot API
+   cannot do this one.
+4. Replace the `BOT_TOKEN` secret with the moderator bot's token, the same
+   value as `MODERATOR_BOT_TOKEN` in `supervisor-telegram`, and re-run the
+   deploy.
+5. Set `WEBAPI_HELP_URL` to `PUBLIC_HOST` in `supervisor-telegram` and deploy
+   it. Its `/start` then offers the catalog.
+6. Open the app from `@konnekt_moder_bot` and check that your row in `users`
+   now has `bot_started_at` set. That is the proof that Telegram sends
+   `allows_write_to_pm` on this launch.
+
+Old `web_app` buttons already sitting in people's chats with `@student_cz_bot`
+open the app with initData signed by the old token. After step 4 the API
+refuses it, and nothing can repair a message that was already sent.
+
 ## Two ways to break production
 
 **Asking for updates with this token.** The token is the moderator bot's, and
