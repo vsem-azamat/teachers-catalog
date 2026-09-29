@@ -190,8 +190,15 @@ Only a 403 means refused: the request expired or belongs to another account.
 Any other failure (the network, the proxy, supervisor or Telegram) keeps the
 button, says it did not get through, and lets the person try again, because
 telling somebody to reapply over our own outage sends them away for nothing.
-Leaving the passed screen replaces it in history, so going back cannot offer
-the spent check again.
+Supervisor marks a check spent before it asks Telegram, so a 403 after a retry
+may mean the first attempt went through. The page says so and points to the
+chat instead of telling the person to reapply.
+
+The outcome is kept for the tab's session under its query id. Coming back to
+`/join` by any route (the back button, the avatar) shows the settled answer,
+not a button for a check that is already spent. History is not rewritten:
+`/join` is often the first entry, and replacing it would leave Telegram's back
+button with nowhere to go.
 
 Opening the app registers the person like any other visit, so everyone who
 passes a join check becomes a catalog user with no `source`. That is

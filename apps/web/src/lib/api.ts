@@ -2,6 +2,7 @@ import { retrieveRawInitData } from '@tma.js/sdk-react';
 
 import { type PublicChat, sanitize } from './chats';
 import type { AdsInfo } from './generated/types.gen';
+import { isApproval } from './join';
 import { isReach, type Reach } from './reach';
 import type {
   ContactStart,
@@ -76,11 +77,6 @@ export function onUnauthorized(
 }
 
 /**
- * The `tma` scheme is the convention the Telegram SDKs and the API agree on.
- * initData must never travel as a query parameter — it would end up in proxy
- * and access logs.
- */
-/**
  * The raw initData, or nothing outside Telegram and without the dev mock. The
  * one place that decides what "no initData" means.
  */
@@ -92,6 +88,11 @@ export function rawInitData(): string | undefined {
   }
 }
 
+/**
+ * The `tma` scheme is the convention the Telegram SDKs and the API agree on.
+ * initData must never travel as a query parameter — it would end up in proxy
+ * and access logs.
+ */
 function authHeader(): Record<string, string> {
   // With none, the request goes out unauthenticated and the 401 says so.
   const raw = rawInitData();
@@ -180,30 +181,17 @@ function detailOf(payload: unknown): string | undefined {
 /**
  * supervisor-telegram's public API, served on this origin by the router.
  *
- * Read-only and anonymous: no initData goes with these reads, because they
- * need none. The join check is the one exception and goes through
- * `publicPost`. See docs/architecture.md, «Two backends, one origin».
+ * Anonymous reads need no initData and get none. The join check is the one
+ * call that carries it, in the body as supervisor's contract says, never in
+ * the address. See docs/architecture.md, «Two backends, one origin».
  */
-async function publicGet<T>(path: string, signal?: AbortSignal): Promise<T> {
+async function publicRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${BASE_URL}/api/public${path}`, {
-    headers: { Accept: 'application/json' },
-    signal,
-  });
-  const payload = await readBody(response);
-  if (!response.ok) throw new ApiError(response.status, payload, detailOf(payload));
-  return payload as T;
-}
-
-/**
- * The one public call that carries initData: supervisor checks that the
- * person pressing is the person the join request was issued to. It goes in
- * the body because that is supervisor's contract, never in the address.
- */
-async function publicPost<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(`${BASE_URL}/api/public${path}`, {
-    method: 'POST',
-    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    ...init,
+    headers: {
+      Accept: 'application/json',
+      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+    },
   });
   const payload = await readBody(response);
   if (!response.ok) throw new ApiError(response.status, payload, detailOf(payload));
@@ -220,7 +208,7 @@ async function publicPost<T>(path: string, body: unknown): Promise<T> {
 export const api = {
   /** The chat directory, supervisor's. Four fields per chat, in its order. */
   getChats: async (signal?: AbortSignal): Promise<PublicChat[]> => {
-    const payload = await publicGet<unknown>('/catalog', signal);
+    const payload = await publicRequest<unknown>('/catalog', { signal });
     // Not a list at all is a failure, not an empty directory: it shows the
     // error row, which offers a retry, instead of «Чатов пока нет».
     if (!Array.isArray(payload))
@@ -230,17 +218,21 @@ export const api = {
 
   /** How far a post in the chats reaches: supervisor's, summed per group. */
   getReach: async (signal?: AbortSignal): Promise<Reach> => {
-    const payload = await publicGet<unknown>('/reach', signal);
+    const payload = await publicRequest<unknown>('/reach', { signal });
     if (!isReach(payload)) throw new ApiError(502, payload, 'reach has the wrong shape');
     return payload;
   },
 
   /** Approve the caller's own join request to a moderated chat. */
-  passJoinCheck: (initData: string, queryId: string) =>
-    publicPost<{ status: string }>('/join-check', {
-      init_data: initData,
-      query_id: queryId,
-    }),
+  passJoinCheck: async (initData: string, queryId: string): Promise<void> => {
+    const answer = await publicRequest<unknown>('/join-check', {
+      method: 'POST',
+      body: JSON.stringify({ init_data: initData, query_id: queryId }),
+    });
+    // Only this counts as passing: a misrouted 200 must not say «Готово».
+    if (!isApproval(answer))
+      throw new ApiError(502, answer, 'join check gave no approval');
+  },
 
   /** Who a business writes to about advertising, if anyone. */
   getAds: (signal?: AbortSignal) => request<AdsInfo>('/ads', { signal }),

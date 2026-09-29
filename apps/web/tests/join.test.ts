@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { joinStart, joinStep } from '../src/lib/join.ts';
+import { isApproval, joinEventFor, joinStart, joinStep } from '../src/lib/join.ts';
 
 test('with initData and a query id the check can be taken', () => {
   assert.deepEqual(joinStart('user=...&hash=...', 'q-123'), {
@@ -51,4 +51,37 @@ test('an answer that arrives without a press is ignored', () => {
   const ready = joinStart('x', 'q');
   assert.equal(joinStep(ready, { type: 'approved' }), ready);
   assert.equal(joinStep(ready, { type: 'unreachable' }), ready);
+});
+
+test('a check settled earlier in this session opens settled', () => {
+  assert.deepEqual(joinStart('x', 'q', 'passed'), { phase: 'passed' });
+  assert.deepEqual(joinStart('x', 'q', 'failed'), { phase: 'failed', afterRetry: false });
+});
+
+test('only a 403 is a refusal; everything else may be tried again', () => {
+  const status = (code: number) => Object.assign(new Error('x'), { status: code });
+  assert.deepEqual(joinEventFor(status(403)), { type: 'refused' });
+  assert.deepEqual(joinEventFor(status(502)), { type: 'unreachable' });
+  assert.deepEqual(joinEventFor(status(422)), { type: 'unreachable' });
+  assert.deepEqual(joinEventFor(new TypeError('network')), { type: 'unreachable' });
+});
+
+test('a refusal after a retry may mean the first try went through', () => {
+  const sending = joinStep(joinStart('x', 'q'), { type: 'press' });
+  const again = joinStep(joinStep(sending, { type: 'unreachable' }), { type: 'press' });
+  assert.deepEqual(joinStep(again, { type: 'refused' }), {
+    phase: 'failed',
+    afterRetry: true,
+  });
+  assert.deepEqual(joinStep(sending, { type: 'refused' }), {
+    phase: 'failed',
+    afterRetry: false,
+  });
+});
+
+test('only status "approved" counts as passing', () => {
+  assert.equal(isApproval({ status: 'approved' }), true);
+  assert.equal(isApproval({ status: 'queued' }), false);
+  assert.equal(isApproval('<html>ok</html>'), false);
+  assert.equal(isApproval(null), false);
 });

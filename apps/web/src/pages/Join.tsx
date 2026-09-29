@@ -1,5 +1,5 @@
 import { Trans } from '@lingui/react/macro';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -18,8 +18,37 @@ import {
   ui,
 } from '@/components/Ui';
 import { hapticSelection } from '@/hooks/useTelegram';
-import { ApiError, api, rawInitData } from '@/lib/api';
-import { type JoinState, joinStart, joinStep } from '@/lib/join';
+import { api, rawInitData } from '@/lib/api';
+import {
+  type JoinState,
+  joinEventFor,
+  joinStart,
+  joinStep,
+  type Settled,
+} from '@/lib/join';
+
+/** Where a settled outcome is kept for this tab's session, per query id. */
+const settledKey = (queryId: string) => `join-check:${queryId}`;
+
+function readSettled(queryId: string | null): Settled | null {
+  if (!queryId) return null;
+  try {
+    const value = sessionStorage.getItem(settledKey(queryId));
+    return value === 'passed' || value === 'failed' ? value : null;
+  } catch {
+    // Storage can be refused (a private window, cleared site data). Then the
+    // check opens as new, which is what it was before this existed.
+    return null;
+  }
+}
+
+function writeSettled(queryId: string, outcome: Settled): void {
+  try {
+    sessionStorage.setItem(settledKey(queryId), outcome);
+  } catch {
+    // Nothing to do: see readSettled.
+  }
+}
 
 /**
  * «Я не бот», for a join request to a moderated chat.
@@ -30,9 +59,18 @@ import { type JoinState, joinStart, joinStep } from '@/lib/join';
  */
 export default function JoinPage() {
   const [params] = useSearchParams();
+  const queryId = params.get('q');
   const [state, setState] = useState<JoinState>(() =>
-    joinStart(rawInitData(), params.get('q')),
+    joinStart(rawInitData(), queryId, readSettled(queryId)),
   );
+
+  // Keep a settled outcome, so coming back by any route (the back button,
+  // the avatar) shows it rather than a button for a spent check.
+  useEffect(() => {
+    if (!queryId) return;
+    if (state.phase === 'passed' || state.phase === 'failed')
+      writeSettled(queryId, state.phase);
+  }, [queryId, state.phase]);
 
   const press = () => {
     const next = joinStep(state, { type: 'press' });
@@ -43,17 +81,7 @@ export default function JoinPage() {
     setState(next);
     api.passJoinCheck(next.initData, next.queryId).then(
       () => setState((current) => joinStep(current, { type: 'approved' })),
-      (error: unknown) =>
-        setState((current) =>
-          joinStep(current, {
-            // Only supervisor's 403 is a refusal. Anything else is ours or
-            // Telegram's to fix, and the person may simply try again.
-            type:
-              error instanceof ApiError && error.status === 403
-                ? 'refused'
-                : 'unreachable',
-          }),
-        ),
+      (error: unknown) => setState((current) => joinStep(current, joinEventFor(error))),
     );
   };
 
@@ -122,7 +150,7 @@ export default function JoinPage() {
                 </Action>
               </Actions>
               {state.phase === 'ready' && state.retried ? (
-                <div style={{ marginTop: 10 }}>
+                <div className={ui.centerNote}>
                   <Hint>
                     <Trans>Не получилось связаться. Попробуй ещё раз.</Trans>
                   </Hint>
@@ -137,8 +165,8 @@ export default function JoinPage() {
 }
 
 /**
- * Where to go from here. `replace`, not a push: going back must not return to
- * a check that has already been spent, which would offer the button again.
+ * Where to go from here. Plain pushes: going back shows the settled outcome,
+ * kept above, and never a button for a spent check.
  */
 function WayOn() {
   const navigate = useNavigate();
@@ -154,7 +182,7 @@ function WayOn() {
           title={<Trans>Студенческие чаты</Trans>}
           hint={<Trans>факультеты, общежития, общие</Trans>}
           trailing={<Chevron />}
-          onClick={() => navigate('/chats', { replace: true })}
+          onClick={() => navigate('/chats')}
         />
         <Row
           leading={
@@ -165,7 +193,7 @@ function WayOn() {
           title={<Trans>Помощь с учёбой</Trans>}
           hint={<Trans>репетиторы, přijímačky, нострификация</Trans>}
           trailing={<Chevron />}
-          onClick={() => navigate('/', { replace: true })}
+          onClick={() => navigate('/')}
         />
       </Rows>
     </div>

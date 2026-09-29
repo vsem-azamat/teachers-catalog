@@ -255,6 +255,11 @@
   text-align: left;
 }
 
+.centerNote {
+  margin-top: 10px;
+  text-align: center;
+}
+
 /* ── figures ────────────────────────────────────────────────────────── */
 
 /* Big numbers side by side: the ads page's reach. */
