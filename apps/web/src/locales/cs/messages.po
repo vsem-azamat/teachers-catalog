@@ -991,6 +991,10 @@ msgstr "Jdu s tebou"
 msgid "Такой группы больше нет"
 msgstr "Tahle skupina už neexistuje"
 
+#: src/pages/Join.tsx
+msgid "Не получилось связаться. Попробуй ещё раз."
+msgstr "Nepodařilo se spojit. Zkus to znovu."
+
 #: src/pages/AdsApp.tsx
 msgid "Так она выглядит"
 msgstr "Takhle vypadá"
@@ -1293,10 +1297,6 @@ msgstr "Zveřejnit poptávku"
 #~ msgstr "Moje"
 
 #: src/pages/Join.tsx
-msgid "Другие студенческие чаты"
-msgstr "Další studentské chaty"
-
-#: src/pages/Join.tsx
 msgid "Вступление в чат"
 msgstr "Vstup do chatu"
 
@@ -1384,13 +1384,17 @@ msgstr "Dosah se nepodařilo načíst"
 msgid "Подходят"
 msgstr "Vyhovují"
 
+#: src/pages/Join.tsx
+msgid "Студенческие чаты"
+msgstr "Studentské chaty"
+
 #: src/components/Phrase.tsx
 msgid "Учёба"
 msgstr "Studium"
 
 #: src/pages/Join.tsx
 msgid "Открой из заявки"
-msgstr "Otevři ji ze žádosti"
+msgstr "Otevři ze žádosti"
 
 #: src/components/Incoming.tsx
 msgid "Сначала заполни профиль"

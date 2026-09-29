@@ -991,6 +991,10 @@ msgstr "Хожу вместе"
 msgid "Такой группы больше нет"
 msgstr "Такой группы больше нет"
 
+#: src/pages/Join.tsx
+msgid "Не получилось связаться. Попробуй ещё раз."
+msgstr "Не получилось связаться. Попробуй ещё раз."
+
 #: src/pages/AdsApp.tsx
 msgid "Так она выглядит"
 msgstr "Так она выглядит"
@@ -1293,10 +1297,6 @@ msgstr "Опубликовать заявку"
 #~ msgstr "Мои"
 
 #: src/pages/Join.tsx
-msgid "Другие студенческие чаты"
-msgstr "Другие студенческие чаты"
-
-#: src/pages/Join.tsx
 msgid "Вступление в чат"
 msgstr "Вступление в чат"
 
@@ -1383,6 +1383,10 @@ msgstr "Не удалось загрузить охват"
 #: src/pages/Results.tsx
 msgid "Подходят"
 msgstr "Подходят"
+
+#: src/pages/Join.tsx
+msgid "Студенческие чаты"
+msgstr "Студенческие чаты"
 
 #: src/components/Phrase.tsx
 msgid "Учёба"

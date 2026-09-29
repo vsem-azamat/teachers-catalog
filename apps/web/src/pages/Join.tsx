@@ -2,11 +2,13 @@ import { Trans } from '@lingui/react/macro';
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
+import { AppHeader } from '@/components/AppHeader';
 import { ChatIcon, CheckIcon, PersonIcon } from '@/components/icons';
 import {
   Action,
   Actions,
   Chevron,
+  Hint,
   Row,
   Rows,
   Screen,
@@ -16,8 +18,8 @@ import {
   ui,
 } from '@/components/Ui';
 import { hapticSelection } from '@/hooks/useTelegram';
-import { api, rawInitData } from '@/lib/api';
-import { joinStart, joinStep } from '@/lib/join';
+import { ApiError, api, rawInitData } from '@/lib/api';
+import { type JoinState, joinStart, joinStep } from '@/lib/join';
 
 /**
  * «Я не бот», for a join request to a moderated chat.
@@ -27,27 +29,37 @@ import { joinStart, joinStep } from '@/lib/join';
  * See docs/architecture.md, «The join check answers one question».
  */
 export default function JoinPage() {
-  const navigate = useNavigate();
   const [params] = useSearchParams();
-  const [state, setState] = useState(() => joinStart(rawInitData(), params.get('q')));
+  const [state, setState] = useState<JoinState>(() =>
+    joinStart(rawInitData(), params.get('q')),
+  );
 
   const press = () => {
-    if (state.phase !== 'ready') return;
-    const initData = rawInitData();
+    const next = joinStep(state, { type: 'press' });
+    // The step decides whether anything is sent: the same state back means a
+    // request is already out, or the question is settled.
+    if (next === state || next.phase !== 'sending') return;
     hapticSelection();
-    setState((current) => joinStep(current, { type: 'press' }));
-    if (!initData) {
-      setState((current) => joinStep(current, { type: 'refused' }));
-      return;
-    }
-    api.passJoinCheck(initData, state.queryId).then(
+    setState(next);
+    api.passJoinCheck(next.initData, next.queryId).then(
       () => setState((current) => joinStep(current, { type: 'approved' })),
-      () => setState((current) => joinStep(current, { type: 'refused' })),
+      (error: unknown) =>
+        setState((current) =>
+          joinStep(current, {
+            // Only supervisor's 403 is a refusal. Anything else is ours or
+            // Telegram's to fix, and the person may simply try again.
+            type:
+              error instanceof ApiError && error.status === 403
+                ? 'refused'
+                : 'unreachable',
+          }),
+        ),
     );
   };
 
   return (
     <Screen>
+      <AppHeader />
       <div className={ui.center}>
         {state.phase === 'passed' ? (
           <>
@@ -60,32 +72,7 @@ export default function JoinPage() {
             <Sub>
               <Trans>Можно возвращаться в Telegram.</Trans>
             </Sub>
-            <div className={ui.centerRows}>
-              <Rows>
-                <Row
-                  leading={
-                    <Tile tone={3}>
-                      <ChatIcon size={19} />
-                    </Tile>
-                  }
-                  title={<Trans>Другие студенческие чаты</Trans>}
-                  hint={<Trans>факультеты, общежития, общие</Trans>}
-                  trailing={<Chevron />}
-                  onClick={() => navigate('/chats')}
-                />
-                <Row
-                  leading={
-                    <Tile tone={0}>
-                      <PersonIcon size={19} />
-                    </Tile>
-                  }
-                  title={<Trans>Помощь с учёбой</Trans>}
-                  hint={<Trans>репетиторы, přijímačky, нострификация</Trans>}
-                  trailing={<Chevron />}
-                  onClick={() => navigate('/')}
-                />
-              </Rows>
-            </div>
+            <WayOn />
           </>
         ) : state.phase === 'unavailable' ? (
           <>
@@ -97,6 +84,7 @@ export default function JoinPage() {
                 Эта проверка открывается кнопкой из заявки на вступление в чат.
               </Trans>
             </Sub>
+            <WayOn />
           </>
         ) : state.phase === 'failed' ? (
           <>
@@ -108,6 +96,7 @@ export default function JoinPage() {
                 Заявка устарела или открыта не тем аккаунтом. Подай её заново.
               </Trans>
             </Sub>
+            <WayOn />
           </>
         ) : (
           <>
@@ -124,18 +113,61 @@ export default function JoinPage() {
             </Sub>
             <div className={ui.centerRows}>
               <Actions>
-                <Action onClick={press} disabled={state.phase === 'working'}>
-                  {state.phase === 'working' ? (
+                <Action onClick={press} disabled={state.phase === 'sending'}>
+                  {state.phase === 'sending' ? (
                     <Trans>Проверяем…</Trans>
                   ) : (
                     <Trans>Я не бот</Trans>
                   )}
                 </Action>
               </Actions>
+              {state.phase === 'ready' && state.retried ? (
+                <div style={{ marginTop: 10 }}>
+                  <Hint>
+                    <Trans>Не получилось связаться. Попробуй ещё раз.</Trans>
+                  </Hint>
+                </div>
+              ) : null}
             </div>
           </>
         )}
       </div>
     </Screen>
+  );
+}
+
+/**
+ * Where to go from here. `replace`, not a push: going back must not return to
+ * a check that has already been spent, which would offer the button again.
+ */
+function WayOn() {
+  const navigate = useNavigate();
+  return (
+    <div className={ui.centerRows}>
+      <Rows>
+        <Row
+          leading={
+            <Tile tone={3}>
+              <ChatIcon size={19} />
+            </Tile>
+          }
+          title={<Trans>Студенческие чаты</Trans>}
+          hint={<Trans>факультеты, общежития, общие</Trans>}
+          trailing={<Chevron />}
+          onClick={() => navigate('/chats', { replace: true })}
+        />
+        <Row
+          leading={
+            <Tile tone={0}>
+              <PersonIcon size={19} />
+            </Tile>
+          }
+          title={<Trans>Помощь с учёбой</Trans>}
+          hint={<Trans>репетиторы, přijímačky, нострификация</Trans>}
+          trailing={<Chevron />}
+          onClick={() => navigate('/', { replace: true })}
+        />
+      </Rows>
+    </div>
   );
 }

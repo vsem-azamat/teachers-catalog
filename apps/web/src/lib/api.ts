@@ -80,15 +80,21 @@ export function onUnauthorized(
  * initData must never travel as a query parameter — it would end up in proxy
  * and access logs.
  */
-function authHeader(): Record<string, string> {
-  let raw: string | undefined;
+/**
+ * The raw initData, or nothing outside Telegram and without the dev mock. The
+ * one place that decides what "no initData" means.
+ */
+export function rawInitData(): string | undefined {
   try {
-    raw = retrieveRawInitData();
+    return retrieveRawInitData() || undefined;
   } catch {
-    // Outside Telegram and without the dev mock there is nothing to send. Let
-    // the request go out unauthenticated and surface the 401 honestly.
-    raw = undefined;
+    return undefined;
   }
+}
+
+function authHeader(): Record<string, string> {
+  // With none, the request goes out unauthenticated and the 401 says so.
+  const raw = rawInitData();
   return raw ? { Authorization: `tma ${raw}` } : {};
 }
 
@@ -174,9 +180,9 @@ function detailOf(payload: unknown): string | undefined {
 /**
  * supervisor-telegram's public API, served on this origin by the router.
  *
- * Read-only and anonymous: no initData goes with it, because nothing there
- * needs one and the other backend has no business seeing it. See
- * docs/architecture.md, «Two backends, one origin».
+ * Read-only and anonymous: no initData goes with these reads, because they
+ * need none. The join check is the one exception and goes through
+ * `publicPost`. See docs/architecture.md, «Two backends, one origin».
  */
 async function publicGet<T>(path: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(`${BASE_URL}/api/public${path}`, {
@@ -202,15 +208,6 @@ async function publicPost<T>(path: string, body: unknown): Promise<T> {
   const payload = await readBody(response);
   if (!response.ok) throw new ApiError(response.status, payload, detailOf(payload));
   return payload as T;
-}
-
-/** The raw initData, or nothing outside Telegram. */
-export function rawInitData(): string | undefined {
-  try {
-    return retrieveRawInitData() || undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 // ── endpoints ───────────────────────────────────────────────────────────

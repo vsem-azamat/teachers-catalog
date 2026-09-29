@@ -991,6 +991,10 @@ msgstr "I come with you"
 msgid "Такой группы больше нет"
 msgstr "This group is gone"
 
+#: src/pages/Join.tsx
+msgid "Не получилось связаться. Попробуй ещё раз."
+msgstr "Could not get through. Try again."
+
 #: src/pages/AdsApp.tsx
 msgid "Так она выглядит"
 msgstr "This is what it looks like"
@@ -1293,10 +1297,6 @@ msgstr "Post the request"
 #~ msgstr "Mine"
 
 #: src/pages/Join.tsx
-msgid "Другие студенческие чаты"
-msgstr "Other student chats"
-
-#: src/pages/Join.tsx
 msgid "Вступление в чат"
 msgstr "Joining the chat"
 
@@ -1383,6 +1383,10 @@ msgstr "Couldn't load the reach"
 #: src/pages/Results.tsx
 msgid "Подходят"
 msgstr "Good match"
+
+#: src/pages/Join.tsx
+msgid "Студенческие чаты"
+msgstr "Student chats"
 
 #: src/components/Phrase.tsx
 msgid "Учёба"

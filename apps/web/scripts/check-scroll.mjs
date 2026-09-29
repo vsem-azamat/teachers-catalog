@@ -75,6 +75,7 @@ const ROUTES = [
   { path: '/ads' },
   { path: '/ads/chats' },
   { path: '/ads/app' },
+  { path: '/join' },
   { path: '/profile' },
   {
     path: '/offer',

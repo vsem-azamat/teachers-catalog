@@ -182,8 +182,20 @@ approves the request. It needs both. Opened without them, it says to open it
 from the join request instead of offering a button that cannot work. After
 it passes, it does not close itself: it offers the chat directory and the help
 catalog, because for many people this is the first screen of the app they
-see. Supervisor answers with a status only, so the page does not name the
-chat.
+see. The dead ends (opened without a request, or refused) offer the same two
+ways on. Supervisor answers with a status only, so the page does not name the
+chat, and only an `approved` status counts.
+
+Only a 403 means refused: the request expired or belongs to another account.
+Any other failure (the network, the proxy, supervisor or Telegram) keeps the
+button, says it did not get through, and lets the person try again, because
+telling somebody to reapply over our own outage sends them away for nothing.
+Leaving the passed screen replaces it in history, so going back cannot offer
+the spent check again.
+
+Opening the app registers the person like any other visit, so everyone who
+passes a join check becomes a catalog user with no `source`. That is
+intended: it is their first screen of the app.
 
 ## `api/v1`, one module per domain
 
