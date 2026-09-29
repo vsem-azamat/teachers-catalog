@@ -250,6 +250,10 @@ msgstr "Язык"
 msgid "Месяц"
 msgstr "Месяц"
 
+#: src/pages/Offer.tsx
+msgid "Людям бесплатно. Компаниям — <0>реклама для студентов</0>."
+msgstr "Людям бесплатно. Компаниям — <0>реклама для студентов</0>."
+
 #: src/pages/Ads.tsx
 #: src/pages/Profile.tsx
 msgid "Реклама для студентов"
@@ -341,6 +345,10 @@ msgstr "Не понял запрос. Попробуй назвать предм
 msgid "Напиши как думаешь. Поймём предмет, вуз, срок и бюджет."
 msgstr "Напиши как думаешь. Поймём предмет, вуз, срок и бюджет."
 
+#: src/pages/Ads.tsx
+msgid "в разделе «Не про учёбу»"
+msgstr "в разделе «Не про учёбу»"
+
 #: src/components/Phrase.tsx
 msgid "сдали"
 msgstr "сдали"
@@ -353,10 +361,6 @@ msgstr "Партнёр"
 #: src/pages/OfferPrices.tsx
 msgid "Сохранить"
 msgstr "Сохранить"
-
-#: src/pages/Offer.tsx
-msgid "Людям бесплатно. Если вы компания, для вас есть"
-msgstr "Людям бесплатно. Если вы компания, для вас есть"
 
 #: src/pages/Results.tsx
 msgid "Оставить"
@@ -411,10 +415,6 @@ msgstr "Чаты"
 #: src/pages/BecomeHelper.tsx
 #~ msgid "Сколько берёшь"
 #~ msgstr "Сколько берёшь"
-
-#: src/pages/Ads.tsx
-msgid "рядом с нужной услугой"
-msgstr "рядом с нужной услугой"
 
 #: src/pages/Landing.tsx
 #~ msgid "Работы и материалы"
@@ -522,10 +522,6 @@ msgstr "Выбрать"
 msgid "Опиши, что нужно, и получай отклики — вместо того чтобы искать самому."
 msgstr "Опиши, что нужно, и получай отклики — вместо того чтобы искать самому."
 
-#: src/pages/AdsApp.tsx
-msgid "Показ можно ограничить месяцем, языком интерфейса или услугой."
-msgstr "Показ можно ограничить месяцем, языком интерфейса или услугой."
-
 #: src/components/Incoming.tsx
 msgid "Сначала опубликуй профиль"
 msgstr "Сначала опубликуй профиль"
@@ -580,10 +576,6 @@ msgstr "договорная"
 #: src/pages/OfferPrices.tsx
 msgid "за семестр"
 msgstr "за семестр"
-
-#: src/pages/AdsApp.tsx
-msgid "Рядом с услугой"
-msgstr "Рядом с услугой"
 
 #: src/pages/Chats.tsx
 msgid "Остальные"
@@ -659,10 +651,6 @@ msgstr "Регистрации нет — заходишь своим аккау
 msgid "Профиль"
 msgstr "Профиль"
 
-#: src/pages/AdsApp.tsx
-msgid "После заявки"
-msgstr "После заявки"
-
 #: src/pages/Helper.tsx
 msgid "Возможно, человек скрыл его."
 msgstr "Возможно, человек скрыл его."
@@ -715,10 +703,6 @@ msgstr "Это первое, что читают. Пара живых предл
 #: src/pages/AdsChats.tsx
 msgid "Выходит в выбранных чатах один раз. Где он уместен, подскажем."
 msgstr "Выходит в выбранных чатах один раз. Где он уместен, подскажем."
-
-#: src/pages/Offer.tsx
-msgid "реклама"
-msgstr "реклама"
 
 #: src/pages/Profile.tsx
 #~ msgid "По этому мы отсеиваем тех, с кем вы друг друга не поймёте."
@@ -793,10 +777,6 @@ msgstr "Срок: <0/>"
 msgid "Свободные окна"
 msgstr "Свободные окна"
 
-#: src/pages/AdsApp.tsx
-msgid "нострификация, языки"
-msgstr "нострификация, языки"
-
 #: src/pages/BecomeHelper.tsx
 #~ msgid "Не хватает"
 #~ msgstr "Не хватает"
@@ -812,6 +792,10 @@ msgstr "черновик — не видна в каталоге"
 #: src/pages/NotFound.tsx
 msgid "Ссылка устарела или в ней опечатка."
 msgstr "Ссылка устарела или в ней опечатка."
+
+#: src/pages/AdsApp.tsx
+msgid "Показ можно ограничить месяцами и языком интерфейса."
+msgstr "Показ можно ограничить месяцами и языком интерфейса."
 
 #: src/components/RequestSheet.tsx
 msgid "Что нужно"
@@ -1073,6 +1057,12 @@ msgstr "По этому запросу пока никого"
 msgid "Написать · {0} Kč"
 msgstr "Написать · {0} Kč"
 
+#. placeholder {0}: figures.coverage.measured
+#. placeholder {1}: figures.coverage.of
+#: src/pages/Ads.tsx
+msgid "Участники посчитаны по {0} из {1} чатов: Telegram отвечает не по всем, настоящая цифра выше."
+msgstr "Участники посчитаны по {0} из {1} чатов: Telegram отвечает не по всем, настоящая цифра выше."
+
 #: src/pages/Profile.tsx
 msgid "скрыта — в каталоге её не видно"
 msgstr "скрыта — в каталоге её не видно"
@@ -1106,7 +1096,6 @@ msgstr "Помощь в день экзамена"
 msgid "Профиль недоступен"
 msgstr "Профиль недоступен"
 
-#: src/pages/AdsChats.tsx
 #: src/pages/Chats.tsx
 #: src/pages/ChatSection.tsx
 #: src/pages/Home.tsx
@@ -1168,10 +1157,6 @@ msgstr "Дешевле остальных, но этот экзамен не в�
 #: src/components/AppHeader.tsx
 msgid "Язык приложения"
 msgstr "Язык приложения"
-
-#: src/pages/AdsApp.tsx
-msgid "когда студент уже что-то ищет"
-msgstr "когда студент уже что-то ищет"
 
 #. placeholder {0}: num(p.minutes)
 #: src/components/Phrase.tsx
@@ -1341,6 +1326,7 @@ msgstr "в день"
 msgid "Список вузов не загрузился. Попробуй ещё раз позже."
 msgstr "Список вузов не загрузился. Попробуй ещё раз позже."
 
+#: src/pages/Ads.tsx
 #: src/pages/AdsChats.tsx
 msgid "Не удалось загрузить охват"
 msgstr "Не удалось загрузить охват"
@@ -1360,6 +1346,11 @@ msgstr "Сначала заполни профиль"
 #: src/pages/Chats.tsx
 msgid "Попробуй название вуза или факультета латиницей."
 msgstr "Попробуй название вуза или факультета латиницей."
+
+#: src/pages/Ads.tsx
+#: src/pages/AdsChats.tsx
+msgid "Нажмите, чтобы попробовать ещё раз"
+msgstr "Нажмите, чтобы попробовать ещё раз"
 
 #: src/components/Phrase.tsx
 msgid "Разобраться заранее"

@@ -127,15 +127,20 @@ export default function OfferPage() {
                 <Hint>
                   {/* Private people offer these for free. A company is sent
                       to the ads page instead: docs/architecture.md. */}
-                  <Trans>Людям бесплатно. Если вы компания, для вас есть</Trans>{' '}
-                  <button
-                    type="button"
-                    className={ui.inlineLink}
-                    onClick={() => navigate('/ads')}
-                  >
-                    <Trans>реклама</Trans>
-                  </button>
-                  .
+                  <Trans>
+                    Людям бесплатно. Компаниям —{' '}
+                    <a
+                      href="/ads"
+                      className={ui.inlineLink}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        navigate('/ads');
+                      }}
+                    >
+                      реклама для студентов
+                    </a>
+                    .
+                  </Trans>
                 </Hint>
               </div>
             ) : null

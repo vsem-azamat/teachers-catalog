@@ -153,7 +153,11 @@ payment.
   measured than exist, and is left out when none were, because "0 people"
   would be read and believed.
 - A card in the app: a partner placement as the catalog already shows it, and
-  the three places it can appear. The example is fetched with `preview=true`
+  where it appears. Today that is «Не про учёбу» only, because it is the one
+  screen that asks for placements; the other slots are named on the page when
+  a screen renders them. Targeting by month and interface language works;
+  targeting by service needs a screen that sends the service, so the page does
+  not offer it yet. The example is fetched with `preview=true`
   and drawn without a button: listing placements records an impression and
   tapping one a click, and a business looking at the showcase is neither. It
   must not be billed to the partner.

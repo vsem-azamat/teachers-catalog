@@ -53,18 +53,10 @@ export default function AdsAppPage() {
           title={<Trans>«Не про учёбу»</Trans>}
           hint={<Trans>страховка, визы, банк, переводы</Trans>}
         />
-        <Row
-          title={<Trans>Рядом с услугой</Trans>}
-          hint={<Trans>нострификация, языки</Trans>}
-        />
-        <Row
-          title={<Trans>После заявки</Trans>}
-          hint={<Trans>когда студент уже что-то ищет</Trans>}
-        />
       </Rows>
       <div style={{ marginTop: 12 }}>
         <Sub>
-          <Trans>Показ можно ограничить месяцем, языком интерфейса или услугой.</Trans>
+          <Trans>Показ можно ограничить месяцами и языком интерфейса.</Trans>
         </Sub>
       </div>
 

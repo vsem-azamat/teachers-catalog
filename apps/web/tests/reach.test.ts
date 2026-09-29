@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { type Reach, reachFigures } from '../src/lib/reach.ts';
+import { isReach, type Reach, reachFigures } from '../src/lib/reach.ts';
 
 function reach(over: Partial<Reach> = {}): Reach {
   return {
@@ -40,4 +40,24 @@ test('a group with no measured members shows no count, not zero', () => {
 test('a group list with nothing measured shows no member column at all', () => {
   const figures = reachFigures(reach({ measured_chats: 0, members: 0 }));
   assert.ok(figures.groups.every((group) => group.members === null));
+});
+
+test('a reach of the wrong shape is refused at the boundary', async () => {
+  assert.equal(isReach(reach()), true);
+  const { measured_chats: _, ...missing } = reach();
+  assert.equal(isReach(missing), false);
+  assert.equal(
+    isReach({ ...reach(), groups: [{ name: 'x', chats: 1, members: '5' }] }),
+    false,
+  );
+  assert.equal(isReach({ ...reach(), groups: [null] }), false);
+  assert.equal(isReach('<html>'), false);
+});
+
+test('a partial measurement says how many chats it covers', () => {
+  assert.deepEqual(reachFigures(reach({ measured_chats: 12 })).coverage, {
+    measured: 12,
+    of: 19,
+  });
+  assert.equal(reachFigures(reach()).coverage, null);
 });

@@ -5,16 +5,21 @@ import { useNavigate } from 'react-router';
 import { AdsContact } from '@/components/AdsContact';
 import { AppHeader } from '@/components/AppHeader';
 import { ChatIcon, DocumentIcon } from '@/components/icons';
-import { Chevron, Label, Row, Rows, Screen, Sub, Tile, Title, ui } from '@/components/Ui';
-import { api } from '@/lib/api';
+import {
+  Chevron,
+  Hint,
+  Label,
+  Row,
+  Rows,
+  Screen,
+  SkeletonRows,
+  Sub,
+  Tile,
+  Title,
+  ui,
+} from '@/components/Ui';
+import { reachQuery } from '@/lib/api';
 import { reachFigures } from '@/lib/reach';
-
-/** Reach is recounted hourly by supervisor; an hour here costs nothing. */
-export const reachQuery = {
-  queryKey: ['reach'] as const,
-  queryFn: ({ signal }: { signal: AbortSignal }) => api.getReach(signal),
-  staleTime: 60 * 60_000,
-};
 
 /**
  * Advertising, for a business that wants students to see it.
@@ -26,7 +31,7 @@ export const reachQuery = {
 export default function AdsPage() {
   const navigate = useNavigate();
   const { i18n } = useLingui();
-  const { data } = useQuery(reachQuery);
+  const { data, isPending, isError, refetch } = useQuery(reachQuery);
   const figures = data ? reachFigures(data) : null;
 
   return (
@@ -44,39 +49,66 @@ export default function AdsPage() {
         </Sub>
       </div>
 
-      {figures ? (
-        <div className={ui.stats}>
-          <div className={ui.stat}>
-            <b>{figures.chats}</b>
-            <span>
-              <Plural
-                value={figures.chats}
-                one="чат"
-                few="чата"
-                many="чатов"
-                other="чата"
-              />
-            </span>
-          </div>
-          {figures.members ? (
+      {isPending ? (
+        <div style={{ marginTop: 16 }}>
+          <SkeletonRows count={1} />
+        </div>
+      ) : isError || !figures ? (
+        <div style={{ marginTop: 16 }}>
+          <Rows>
+            <Row
+              title={<Trans>Не удалось загрузить охват</Trans>}
+              hint={<Trans>Нажмите, чтобы попробовать ещё раз</Trans>}
+              onClick={() => void refetch()}
+            />
+          </Rows>
+        </div>
+      ) : (
+        <>
+          <div className={ui.stats}>
             <div className={ui.stat}>
-              <b>
-                {figures.members.approximate ? '≈' : ''}
-                {figures.members.value.toLocaleString(i18n.locale)}
-              </b>
+              <b>{figures.chats}</b>
               <span>
                 <Plural
-                  value={figures.members.value}
-                  one="участник"
-                  few="участника"
-                  many="участников"
-                  other="участника"
+                  value={figures.chats}
+                  one="чат"
+                  few="чата"
+                  many="чатов"
+                  other="чата"
                 />
               </span>
             </div>
+            {figures.members ? (
+              <div className={ui.stat}>
+                <b>
+                  {figures.members.approximate ? '≈' : ''}
+                  {figures.members.value.toLocaleString(i18n.locale)}
+                </b>
+                <span>
+                  <Plural
+                    value={figures.members.value}
+                    one="участник"
+                    few="участника"
+                    many="участников"
+                    other="участника"
+                  />
+                </span>
+              </div>
+            ) : null}
+          </div>
+          {figures.coverage ? (
+            <div style={{ marginTop: 8 }}>
+              <Hint>
+                <Trans>
+                  Участники посчитаны по {figures.coverage.measured} из{' '}
+                  {figures.coverage.of} чатов: Telegram отвечает не по всем, настоящая
+                  цифра выше.
+                </Trans>
+              </Hint>
+            </div>
           ) : null}
-        </div>
-      ) : null}
+        </>
+      )}
 
       <Label>
         <Trans>Форматы</Trans>
@@ -100,7 +132,7 @@ export default function AdsPage() {
             </Tile>
           }
           title={<Trans>Карточка в приложении</Trans>}
-          hint={<Trans>рядом с нужной услугой</Trans>}
+          hint={<Trans>в разделе «Не про учёбу»</Trans>}
           trailing={<Chevron />}
           onClick={() => navigate('/ads/app')}
         />

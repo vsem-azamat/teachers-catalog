@@ -15,10 +15,9 @@ import {
   Title,
   ui,
 } from '@/components/Ui';
+import { reachQuery } from '@/lib/api';
 import { initials } from '@/lib/chats';
 import { reachFigures } from '@/lib/reach';
-
-import { reachQuery } from './Ads';
 
 /**
  * A post in the chats: where it goes and how many people are there.
@@ -53,7 +52,7 @@ export default function AdsChatsPage() {
         <Rows>
           <Row
             title={<Trans>Не удалось загрузить охват</Trans>}
-            hint={<Trans>Нажми, чтобы попробовать ещё раз</Trans>}
+            hint={<Trans>Нажмите, чтобы попробовать ещё раз</Trans>}
             onClick={() => void refetch()}
           />
         </Rows>

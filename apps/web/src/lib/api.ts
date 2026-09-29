@@ -324,3 +324,10 @@ export const chatsQuery = {
   queryFn: ({ signal }: { signal: AbortSignal }) => api.getChats(signal),
   staleTime: 5 * 60_000,
 };
+
+/** Reach, shared by the ads pages. Supervisor recounts it hourly. */
+export const reachQuery = {
+  queryKey: ['reach'] as const,
+  queryFn: ({ signal }: { signal: AbortSignal }) => api.getReach(signal),
+  staleTime: 60 * 60_000,
+};

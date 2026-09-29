@@ -187,7 +187,8 @@
 }
 
 .field:focus-visible,
-.pressable:focus-visible {
+.pressable:focus-visible,
+.inlineLink:focus-visible {
   outline: 2px solid var(--good);
   outline-offset: 2px;
 }
@@ -233,11 +234,6 @@
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
-}
-
-.inlineLink:focus-visible {
-  outline: 2px solid var(--good);
-  outline-offset: 2px;
 }
 
 /* ── figures ────────────────────────────────────────────────────────── */

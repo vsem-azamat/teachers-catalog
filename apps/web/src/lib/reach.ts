@@ -30,6 +30,9 @@ export interface ReachFigures {
   chats: number;
   /** Absent when nothing was measured: "0 people" would be read and believed. */
   members: MemberFigure | null;
+  /** Set when only some chats were measured: the total is a lower bound,
+   *  and the page says over how many chats it was counted. */
+  coverage: { measured: number; of: number } | null;
   groups: { name: string; chats: number; members: number | null }[];
 }
 
@@ -40,6 +43,10 @@ export function reachFigures(reach: Reach): ReachFigures {
     members: counted
       ? { value: reach.members, approximate: reach.measured_chats < reach.chats }
       : null,
+    coverage:
+      counted && reach.measured_chats < reach.chats
+        ? { measured: reach.measured_chats, of: reach.chats }
+        : null,
     groups: reach.groups.map((group) => ({
       name: group.name,
       chats: group.chats,
