@@ -112,6 +112,9 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    environment:
+      # Where /api/public/* goes: supervisor-telegram. See the Caddyfile.
+      SUPERVISOR_ORIGIN: ${SUPERVISOR_ORIGIN}
     ports:
       # Loopback only. Publishing on a wildcard would put the app on the
       # internet without TLS, bypassing the edge entirely; the deploy script

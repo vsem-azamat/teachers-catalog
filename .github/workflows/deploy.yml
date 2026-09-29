@@ -103,6 +103,7 @@ jobs:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
           PUBLIC_PORT: ${{ vars.PUBLIC_PORT }}
+          SUPERVISOR_ORIGIN: ${{ vars.SUPERVISOR_ORIGIN }}
           EDGE_CADDY_SERVICE: ${{ vars.EDGE_CADDY_SERVICE }}
           EDGE_CADDY_CONFIG_PATH: ${{ vars.EDGE_CADDY_CONFIG_PATH }}
           POSTGRES_DB: ${{ vars.POSTGRES_DB }}
@@ -114,7 +115,7 @@ jobs:
                    EDGE_CADDY_DIR EDGE_CADDY_COMPOSE_FILE EDGE_CADDYFILE \
                    BOT_TOKEN POSTGRES_PASSWORD \
                    POSTGRES_DB POSTGRES_USER \
-                   PUBLIC_HOST PUBLIC_PORT EDGE_CADDY_SERVICE EDGE_CADDY_CONFIG_PATH; do
+                   PUBLIC_HOST PUBLIC_PORT SUPERVISOR_ORIGIN EDGE_CADDY_SERVICE EDGE_CADDY_CONFIG_PATH; do
             [ -n "${!v:-}" ] || missing+=("$v")
           done
           if [ ${#missing[@]} -gt 0 ]; then
@@ -127,6 +128,8 @@ jobs:
           # stray slash breaks at least one of them.
           [[ "$PUBLIC_HOST" =~ ^https://[a-z0-9.-]+$ ]] \
             || { echo "PUBLIC_HOST must look like https://host" >&2; exit 1; }
+          [[ "$SUPERVISOR_ORIGIN" =~ ^https://[a-z0-9.-]+$ ]] \
+            || { echo "SUPERVISOR_ORIGIN must look like https://host" >&2; exit 1; }
           # Above the privileged range and below the ephemeral one.
           [[ "$PUBLIC_PORT" =~ ^[0-9]{4,5}$ ]] && [ "$PUBLIC_PORT" -ge 1024 ] && [ "$PUBLIC_PORT" -le 32767 ] \
             || { echo "PUBLIC_PORT must be a port between 1024 and 32767" >&2; exit 1; }
@@ -161,6 +164,7 @@ jobs:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
           PUBLIC_PORT: ${{ vars.PUBLIC_PORT }}
+          SUPERVISOR_ORIGIN: ${{ vars.SUPERVISOR_ORIGIN }}
           INIT_DATA_MAX_AGE_SECONDS: ${{ vars.INIT_DATA_MAX_AGE_SECONDS || '86400' }}
           LOG_LEVEL: ${{ vars.LOG_LEVEL || 'INFO' }}
           # Optional, and empty is a working value: no ping.
@@ -180,6 +184,7 @@ jobs:
             echo "BOT_TOKEN=$BOT_TOKEN"
             echo "PUBLIC_HOST=$PUBLIC_HOST"
             echo "PUBLIC_PORT=$PUBLIC_PORT"
+            echo "SUPERVISOR_ORIGIN=$SUPERVISOR_ORIGIN"
             echo "INIT_DATA_MAX_AGE_SECONDS=$INIT_DATA_MAX_AGE_SECONDS"
             echo "LOG_LEVEL=$LOG_LEVEL"
             echo "OWNER_TG_ID=$OWNER_TG_ID"
@@ -229,6 +234,7 @@ jobs:
           DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
           RUN_ID: ${{ github.run_id }}.${{ github.run_attempt }}
           PUBLIC_PORT: ${{ vars.PUBLIC_PORT }}
+          SUPERVISOR_ORIGIN: ${{ vars.SUPERVISOR_ORIGIN }}
           GHCR_ACTOR: ${{ github.actor }}
           EDGE_CADDY_DIR: ${{ secrets.EDGE_CADDY_DIR }}
           EDGE_CADDY_COMPOSE_FILE: ${{ secrets.EDGE_CADDY_COMPOSE_FILE }}

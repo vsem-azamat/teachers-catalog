@@ -15,6 +15,11 @@ import mkcert from 'vite-plugin-mkcert';
 // and a proxy pointing at the wrong server fails as a blank screen.
 const API_TARGET = 'http://127.0.0.1:8010';
 
+// Where /api/public/* goes in development: supervisor-telegram, https://host.
+// No address is written here, the same as for deployment (docs/deploy.md).
+// Unset, the chat screens show their error state.
+const SUPERVISOR_TARGET = process.env.SUPERVISOR_ORIGIN;
+
 /**
  * Escape hatch for environments where mkcert cannot install its CA.
  *
@@ -55,6 +60,11 @@ export default defineConfig({
       ...(process.env.VITE_ALLOWED_HOST ? [process.env.VITE_ALLOWED_HOST] : []),
     ],
     proxy: {
+      // supervisor-telegram's public API, same origin as in production. The
+      // more specific prefix first: Vite takes the first match.
+      ...(SUPERVISOR_TARGET
+        ? { '/api/public': { target: SUPERVISOR_TARGET, changeOrigin: true, secure: true } }
+        : {}),
       '/api': { target: API_TARGET, changeOrigin: true },
       '/healthz': { target: API_TARGET, changeOrigin: true },
     },
