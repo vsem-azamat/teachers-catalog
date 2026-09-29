@@ -1,5 +1,6 @@
 import { retrieveRawInitData } from '@tma.js/sdk-react';
 
+import { type PublicChat, sanitize } from './chats';
 import type {
   ContactStart,
   FeedRequest,
@@ -168,6 +169,23 @@ function detailOf(payload: unknown): string | undefined {
   return undefined;
 }
 
+/**
+ * supervisor-telegram's public API, served on this origin by the router.
+ *
+ * Read-only and anonymous: no initData goes with it, because nothing there
+ * needs one and the other backend has no business seeing it. See
+ * docs/architecture.md, «Two backends, one origin».
+ */
+async function publicGet<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(`${BASE_URL}/api/public${path}`, {
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+  const payload = await readBody(response);
+  if (!response.ok) throw new ApiError(response.status, payload, detailOf(payload));
+  return payload as T;
+}
+
 // ── endpoints ───────────────────────────────────────────────────────────
 //
 // Written by hand, and not by the generator: `openapi-ts.config.ts` declares
@@ -176,6 +194,16 @@ function detailOf(payload: unknown): string | undefined {
 // apps/api/src/students_cz/api/v1/.
 
 export const api = {
+  /** The chat directory, supervisor's. Four fields per chat, in its order. */
+  getChats: async (signal?: AbortSignal): Promise<PublicChat[]> => {
+    const payload = await publicGet<unknown>('/catalog', signal);
+    // Not a list at all is a failure, not an empty directory: it shows the
+    // error row, which offers a retry, instead of «Чатов пока нет».
+    if (!Array.isArray(payload))
+      throw new ApiError(502, payload, 'chat directory is not a list');
+    return sanitize(payload);
+  },
+
   /** The whole home screen in one response. */
   getHome: (signal?: AbortSignal) => request<Home>('/home', { signal }),
 
@@ -268,3 +296,14 @@ export const api = {
 };
 
 export type Api = typeof api;
+
+/**
+ * The chat directory's query, shared by the directory and a section's screen
+ * so that opening a section costs no request. The directory changes when a
+ * moderator publishes a chat, not while somebody is looking at it.
+ */
+export const chatsQuery = {
+  queryKey: ['chats'] as const,
+  queryFn: ({ signal }: { signal: AbortSignal }) => api.getChats(signal),
+  staleTime: 5 * 60_000,
+};

@@ -166,6 +166,18 @@ export function Hint({ children }: { children: ReactNode }) {
 
 // ── atoms ───────────────────────────────────────────────────────────────
 
+/**
+ * A tile's letters, sized to fit: an abbreviation such as «VŠCHT» is the
+ * name, and a fixed size would push it over the tile's edge.
+ */
+export function Letters({ text }: { text: string }) {
+  return (
+    <span className={css.letters} data-length={Math.min(text.length, 5)}>
+      {text}
+    </span>
+  );
+}
+
 export function Tile({ tone, children }: { tone: number; children: ReactNode }) {
   return (
     <span className={css.tile} style={toneStyle(tone)}>

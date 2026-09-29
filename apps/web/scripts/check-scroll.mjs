@@ -71,6 +71,7 @@ const ROUTES = [
   { path: '/results', into: { name: 'helper detail', click: 'button[class*="card"]' } },
   { path: '/mine', into: { name: 'request detail', click: 'button[class*="card"]' } },
   { path: '/life' },
+  { path: '/chats' },
   { path: '/profile' },
   {
     path: '/offer',

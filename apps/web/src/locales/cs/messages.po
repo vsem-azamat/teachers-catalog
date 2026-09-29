@@ -29,6 +29,10 @@ msgstr "Nastav si v Telegramu veřejný @username — jinak ti nikdo neodpoví"
 msgid "Пара слов о себе — что делаешь и как быстро"
 msgstr "Pár slov o sobě — co děláš a jak rychle"
 
+#: src/pages/Chats.tsx
+msgid "Нашлось"
+msgstr "Nalezeno"
+
 #: src/components/Phrase.tsx
 msgid "оценка"
 msgstr "hodnocení"
@@ -79,13 +83,21 @@ msgstr "Přidej předmět — podle samotného termínu není co hledat."
 msgid "Přijímačky"
 msgstr "Přijímačky"
 
+#: src/components/TabBar.tsx
+msgid "Помощь"
+msgstr "Pomoc"
+
 #: src/pages/MyHelper.tsx
 msgid "Видимость"
 msgstr "Viditelnost"
 
+#: src/pages/ChatSection.tsx
+msgid "Вернись к списку чатов."
+msgstr "Vrať se na seznam chatů."
+
 #: src/components/TabBar.tsx
-msgid "Поиск"
-msgstr "Hledat"
+#~ msgid "Поиск"
+#~ msgstr "Hledat"
 
 #: src/pages/MyHelper.tsx
 #~ msgid "Предметы и цены"
@@ -94,6 +106,10 @@ msgstr "Hledat"
 #: src/components/Incoming.tsx
 msgid "Не сейчас"
 msgstr "Teď ne"
+
+#: src/components/ChatRow.tsx
+msgid "активный"
+msgstr "aktivní"
 
 #: src/pages/MyHelper.tsx
 msgid "Kč"
@@ -122,6 +138,10 @@ msgstr "Nic jsme nenašli. Zkus zkratku — ČVUT, VŠE, MUNI."
 #: src/pages/Helper.tsx
 msgid "Как проходит"
 msgstr "Jak to probíhá"
+
+#: src/components/ChatRow.tsx
+msgid "оживлённый"
+msgstr "živý"
 
 #: src/components/Phrase.tsx
 #: src/pages/MyHelper.tsx
@@ -311,6 +331,10 @@ msgstr "Příchozí"
 msgid "Заявки видят те, кто может на них ответить."
 msgstr "Poptávky vidí ti, kdo na ně můžou odpovědět."
 
+#: src/pages/Chats.tsx
+msgid "Факультеты, общежития, общие. Модерируются, спам вычищается."
+msgstr "Fakulty, koleje, obecné chaty. Moderované, spam se maže."
+
 #: src/pages/Helper.tsx
 msgid "Сколько стоит"
 msgstr "Kolik to stojí"
@@ -334,9 +358,8 @@ msgid "Заявку видят все, кто предлагает помощь.
 msgstr "Poptávku vidí všichni, kdo nabízejí pomoc. Odpovědi chodí sem."
 
 #: src/components/TabBar.tsx
-#: src/pages/Chats.tsx
-#~ msgid "Чаты"
-#~ msgstr "Chaty"
+msgid "Чаты"
+msgstr "Chaty"
 
 #: src/pages/MyHelper.tsx
 #~ msgid "Без предмета"
@@ -499,6 +522,10 @@ msgstr "dohodou"
 msgid "за семестр"
 msgstr "za semestr"
 
+#: src/pages/Chats.tsx
+msgid "Остальные"
+msgstr "Ostatní"
+
 #: src/pages/Profile.tsx
 msgid "Помогать другим"
 msgstr "Pomáhat ostatním"
@@ -539,6 +566,14 @@ msgstr "Koho to najde"
 #: src/components/Phrase.tsx
 msgid "Ведёт предмет, но не привязан к этому вузу"
 msgstr "Učí ten předmět, ale na tuhle školu není vázaný"
+
+#: src/pages/Chats.tsx
+msgid "Такого чата нет"
+msgstr "Takový chat tu není"
+
+#: src/pages/Chats.tsx
+msgid "ČVUT, FIT, Strahov…"
+msgstr "ČVUT, FIT, Strahov…"
 
 #: src/pages/Profile.tsx
 msgid "B1, B2, нострификация"
@@ -691,6 +726,10 @@ msgstr "Co potřebuješ"
 msgid "Отметь всё, что умеешь. Цены спросим на следующем экране."
 msgstr "Označ všechno, co umíš. Na ceny se zeptáme na dalším kroku."
 
+#: src/components/ChatRow.tsx
+msgid "тихий"
+msgstr "tichý"
+
 #: src/pages/Results.tsx
 msgid "Дешевле"
 msgstr "Levnější"
@@ -699,6 +738,7 @@ msgstr "Levnější"
 msgid "Такая заявка уже открыта — она в разделе «Заявки»"
 msgstr "Takovou poptávku už máš otevřenou — je v sekci Poptávky"
 
+#: src/pages/Chats.tsx
 #: src/pages/Life.tsx
 msgid "Загружаем"
 msgstr "Načítáme"
@@ -824,6 +864,10 @@ msgstr "Kolik si bereš?"
 msgid "Хожу вместе"
 msgstr "Jdu s tebou"
 
+#: src/pages/ChatSection.tsx
+msgid "Такой группы больше нет"
+msgstr "Tahle skupina už neexistuje"
+
 #: src/pages/MyHelper.tsx
 msgid "Район или где удобно встречаться"
 msgstr "Čtvrť nebo kde se ti hodí potkat"
@@ -896,6 +940,10 @@ msgstr "Na tuhle poptávku jsi už odpovídal"
 msgid "У этого человека нет открытого username в Telegram, написать не получится."
 msgstr "Tenhle člověk nemá veřejný username v Telegramu, napsat mu nepůjde."
 
+#: src/pages/Chats.tsx
+msgid "Поиск чата"
+msgstr "Hledat chat"
+
 #: src/pages/Ask.tsx
 msgid "По этому запросу пока никого"
 msgstr "Na tenhle dotaz tu zatím nikdo není"
@@ -938,6 +986,8 @@ msgstr "Pomoc v den zkoušky"
 msgid "Профиль недоступен"
 msgstr "Profil není dostupný"
 
+#: src/pages/Chats.tsx
+#: src/pages/ChatSection.tsx
 #: src/pages/Home.tsx
 msgid "Нажми, чтобы попробовать ещё раз"
 msgstr "Zkus to znovu"
@@ -945,6 +995,10 @@ msgstr "Zkus to znovu"
 #: src/components/Incoming.tsx
 msgid "Чем можешь помочь и когда"
 msgstr "S čím můžeš pomoct a kdy"
+
+#: src/pages/Chats.tsx
+msgid "Чатов пока нет"
+msgstr "Zatím tu nejsou žádné chaty"
 
 #: src/pages/Mine.tsx
 msgid "Заявок пока нет"
@@ -1002,6 +1056,11 @@ msgstr "{0, plural, one {Odpovídá zhruba za # minutu} few {Odpovídá zhruba z
 #: src/pages/Request.tsx
 msgid "Ты отказался"
 msgstr "Odmítl jsi"
+
+#. placeholder {0}: chats.length
+#: src/pages/ChatSection.tsx
+msgid "{0, plural, one {# чат} few {# чата} many {# чатов} other {# чата}}"
+msgstr "{0, plural, one {# chat} few {# chaty} many {# chatu} other {# chatů}}"
 
 #: src/pages/Ask.tsx
 msgid "čeština B2"
@@ -1065,6 +1124,10 @@ msgstr "3 dny"
 msgid "Помощь нужна до экзамена или на нём?"
 msgstr "Potřebuješ pomoc před zkouškou, nebo přímo na ní?"
 
+#: src/pages/Chats.tsx
+msgid "Найди свой чат"
+msgstr "Najdi svůj chat"
+
 #: src/components/RequestSheet.tsx
 msgid "Опубликовать заявку"
 msgstr "Zveřejnit poptávku"
@@ -1113,6 +1176,11 @@ msgstr "Nikdo se nehodil?"
 msgid "Предлагаю услугу"
 msgstr "Nabízím službu"
 
+#: src/pages/Chats.tsx
+#: src/pages/ChatSection.tsx
+msgid "Не удалось загрузить чаты"
+msgstr "Chaty se nepodařilo načíst"
+
 #: src/pages/Landing.tsx
 msgid "Репетиторы"
 msgstr "Doučování"
@@ -1146,6 +1214,10 @@ msgstr "Studium"
 #: src/components/Incoming.tsx
 msgid "Сначала заполни профиль"
 msgstr "Nejdřív vyplň profil"
+
+#: src/pages/Chats.tsx
+msgid "Попробуй название вуза или факультета латиницей."
+msgstr "Zkus název školy nebo fakulty latinkou."
 
 #: src/components/Phrase.tsx
 msgid "Разобраться заранее"

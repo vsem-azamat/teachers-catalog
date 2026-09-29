@@ -32,7 +32,7 @@ import { chromium } from 'playwright';
 import { BASE, phoneContext, preflight, VIEWPORTS } from './lib/stack.mjs';
 
 /** The screens that carry the bar and have something long enough to move. */
-const ROUTES = ['/', '/results'];
+const ROUTES = ['/', '/results', '/chats'];
 
 /** How far to push the list. Further than the bar is tall, so a whole new row
  *  of content passes behind it rather than the same one shifting slightly. */

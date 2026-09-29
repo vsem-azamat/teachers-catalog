@@ -4,28 +4,32 @@ import { useLocation, useNavigate } from 'react-router';
 
 import { hapticSelection } from '@/hooks/useTelegram';
 
-import { BookmarkIcon, PlusIcon, SearchIcon } from './icons';
+import { BookmarkIcon, ChatIcon, PlusIcon, SearchIcon } from './icons';
 import { Pick, Sheet } from './Sheet';
 import { Tile } from './Ui';
 import css from './ui.module.css';
 
 /**
- * Two destinations and one action.
+ * Three destinations and one action.
  *
- * It used to be four. "Профиль" moved to the avatar in the header, where a
- * person's own face is a better label than the word; "Чаты" was removed
- * outright, because the screen behind it existed only to say that we do not
- * have chats and that conversations happen in Telegram. A tab that explains an
- * absence is worse than no tab.
+ * "Профиль" is the avatar in the header, where a person's own face is a better
+ * label than the word. "Чаты" is the directory of moderated student chats
+ * (supervisor-telegram's), a real list behind the tab. "Помощь" is the catalog.
  *
- * The round button is not a third tab: it posts something, which is the
+ * The round button is not a fourth tab: it posts something, which is the
  * opposite direction from browsing, and keeping it visually apart is what says
  * so.
  */
 const TABS = [
-  { to: '/', icon: SearchIcon, label: <Trans>Поиск</Trans> },
+  { to: '/', icon: SearchIcon, label: <Trans>Помощь</Trans> },
+  { to: '/chats', icon: ChatIcon, label: <Trans>Чаты</Trans> },
   { to: '/mine', icon: BookmarkIcon, label: <Trans>Заявки</Trans> },
 ] as const;
+
+/** A tab stays lit on the screens below it: a chat section is still Чаты. */
+function isOn(to: string, pathname: string): boolean {
+  return to === '/' ? pathname === '/' : pathname === to || pathname.startsWith(`${to}/`);
+}
 
 export function TabBar() {
   const { t } = useLingui();
@@ -51,7 +55,7 @@ export function TabBar() {
           key={to}
           type="button"
           className={css.tab}
-          aria-current={pathname === to ? 'page' : undefined}
+          aria-current={isOn(to, pathname) ? 'page' : undefined}
           onClick={() => go(to)}
         >
           <Icon size={21} />

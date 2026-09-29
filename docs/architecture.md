@@ -111,13 +111,36 @@ The catalog API never calls `/api/public/*`, and the app reads only what those
 endpoints publish: a chat's title, link, group and activity, and reach summed
 per group. Member counts per chat are not public, and no screen may need them.
 The fields are supervisor's contract. `group` is the parent chat's title
-and changes whenever supervisor changes how it groups chats, so the app never
-matches on a group's name.
+and changes whenever supervisor changes how it groups chats. No group name is
+written in the app. A section's address carries its name, and a name that no
+longer exists shows as gone. The app checks what arrives: an item without a
+title or a `t.me` link is dropped, and an activity it does not know counts as
+`unknown`.
 
 Every `/api/public/*` request reaches supervisor from this host's address, not
 the user's. Nothing there limits per client today. A per-IP rate limit, or a
 Cloudflare rate rule in front of supervisor, would throttle every Mini App user
 as one client.
+
+**The chat directory reads the order it is given.** `/chats` is one of three
+tabs: Помощь, Чаты and Заявки. The directory keeps supervisor's order and
+builds its entries in `lib/chats.ts`:
+
+- chats that share a `group` form a section, which opens its own screen;
+- a group with one chat is not a section, and its chat stands as a row of its
+  own, because a screen with one line behind it is a tap for nothing;
+- chats without a group come last, under «Остальные», supervisor's own word
+  for them;
+- the entries above them have no heading: supervisor's groups are parent
+  chats, not a category the app could name;
+- a search is flat: the chats whose title or group contains the words, with
+  case and diacritics ignored, so `cvut` finds `ČVUT`;
+- activity is a chip for `busy`, `active` and `quiet`, and nothing for
+  `unknown`, because supervisor says `unknown` when it has not measured enough
+  to say anything.
+
+A tap on a chat opens its Telegram link. The directory shows no member counts:
+supervisor does not publish them per chat.
 
 ## `api/v1`, one module per domain
 
@@ -371,8 +394,10 @@ stack. It photographs the tab bar with a list scrolled to the top and again
 with that list moved under it, and requires the two pictures to be the same
 pixels: a bar that is opaque behind its controls cannot be changed by what
 passes beneath it, and one that is not changes wherever it is see-through.
-Measured on the two screens that have a list long enough to move, at the same
-three phone sizes. It says nothing about how the bar looks — only that what is
+Measured on the three screens that have a list long enough to move (`/`,
+`/results`, `/chats`), at the same three phone sizes. `/chats` needs
+`SUPERVISOR_ORIGIN` set for the dev server; without it the screen shows its
+error row and the check reports it unmeasured. It says nothing about how the bar looks — only that what is
 under it stays under it.
 
 ## The embedding model ships inside the image
