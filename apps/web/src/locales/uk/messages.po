@@ -202,6 +202,10 @@ msgstr "Якими мовами тобі зручно"
 msgid "первый год"
 msgstr "перший рік"
 
+#: src/pages/Join.tsx
+msgid "Эта проверка открывается кнопкой из заявки на вступление в чат."
+msgstr "Ця перевірка відкривається кнопкою із заявки на вступ до чату."
+
 #: src/pages/Results.tsx
 #~ msgid "По этому запросу ещё нет никого. Создай заявку — тогда найдут тебя."
 #~ msgstr "За цим запитом поки нікого немає. Створи заявку — тоді знайдуть тебе."
@@ -281,6 +285,10 @@ msgstr "Далі · {0}"
 #: src/pages/Ads.tsx
 msgid "{0, plural, one {участник} few {участника} many {участников} other {участника}}"
 msgstr "{0, plural, one {учасник} few {учасники} many {учасників} other {учасника}}"
+
+#: src/pages/Join.tsx
+msgid "факультеты, общежития, общие"
+msgstr "факультети, гуртожитки, загальні"
 
 #: src/pages/AdsChats.tsx
 msgid "Пост выходит, вы получаете ссылки на него."
@@ -435,6 +443,10 @@ msgstr "Чати"
 msgid "Убери что-нибудь из уточнений выше или напиши иначе."
 msgstr "Прибери щось з уточнень вище або напиши інакше."
 
+#: src/pages/Join.tsx
+msgid "Проверяем…"
+msgstr "Перевіряємо…"
+
 #: src/pages/OfferPrices.tsx
 msgid "Срок"
 msgstr "Термін"
@@ -521,6 +533,10 @@ msgstr "Пропонувати послуги"
 msgid "Заявки"
 msgstr "Заявки"
 
+#: src/pages/Join.tsx
+msgid "Проверка не прошла"
+msgstr "Перевірка не пройшла"
+
 #: src/pages/Request.tsx
 msgid "Выбрать"
 msgstr "Обрати"
@@ -528,6 +544,10 @@ msgstr "Обрати"
 #: src/pages/Mine.tsx
 msgid "Опиши, что нужно, и получай отклики — вместо того чтобы искать самому."
 msgstr "Опиши, що потрібно, і отримуй відгуки — замість того щоб шукати самому."
+
+#: src/pages/Join.tsx
+msgid "Готово, ты в чате"
+msgstr "Готово, ти в чаті"
 
 #: src/components/Incoming.tsx
 msgid "Сначала опубликуй профиль"
@@ -808,6 +828,10 @@ msgstr "Показ можна обмежити місяцями й мовою і
 msgid "Что нужно"
 msgstr "Що потрібно"
 
+#: src/pages/Join.tsx
+msgid "репетиторы, přijímačky, нострификация"
+msgstr "репетитори, přijímačky, нострифікація"
+
 #: src/pages/Offer.tsx
 msgid "Отметь всё, что умеешь. Цены спросим на следующем экране."
 msgstr "Познач усе, що вмієш. Ціни спитаємо на наступному екрані."
@@ -943,6 +967,10 @@ msgstr "Тут з'являться заявки з усього каталогу
 msgid "Пока никто ничего не просит"
 msgstr "Поки ніхто нічого не просить"
 
+#: src/pages/Join.tsx
+msgid "Я не бот"
+msgstr "Я не бот"
+
 #: src/components/TabBar.tsx
 msgid "Разместить"
 msgstr "Розмістити"
@@ -1022,9 +1050,17 @@ msgstr "Роботи"
 msgid "+ бюджет"
 msgstr "+ бюджет"
 
+#: src/pages/Join.tsx
+msgid "Нажми кнопку, чтобы подтвердить, что ты не бот. Заявка одобрится сразу."
+msgstr "Натисни кнопку, щоб підтвердити, що ти не бот. Заявку схвалять одразу."
+
 #: src/pages/OfferPrices.tsx
 msgid "Опубликовать"
 msgstr "Опублікувати"
+
+#: src/pages/Join.tsx
+msgid "Можно возвращаться в Telegram."
+msgstr "Можна повертатися в Telegram."
 
 #. placeholder {0}: request.responses_count
 #: src/pages/Mine.tsx
@@ -1079,6 +1115,10 @@ msgstr "обраний"
 #: src/components/Phrase.tsx
 msgid "Работает именно с этим вузом"
 msgstr "Працює саме з цим вишем"
+
+#: src/pages/Join.tsx
+msgid "Помощь с учёбой"
+msgstr "Допомога з навчанням"
 
 #: src/pages/Landing.tsx
 msgid "Открыть в Telegram"
@@ -1252,6 +1292,14 @@ msgstr "Опублікувати заявку"
 #~ msgid "Мои"
 #~ msgstr "Мої"
 
+#: src/pages/Join.tsx
+msgid "Другие студенческие чаты"
+msgstr "Інші студентські чати"
+
+#: src/pages/Join.tsx
+msgid "Вступление в чат"
+msgstr "Вступ до чату"
+
 #: src/pages/MyHelper.tsx
 msgid "Что преподаёшь, где учишься, как проходят занятия. Своими словами."
 msgstr "Що викладаєш, де вчишся, як проходять заняття. Своїми словами."
@@ -1340,6 +1388,10 @@ msgstr "Підходять"
 msgid "Учёба"
 msgstr "Навчання"
 
+#: src/pages/Join.tsx
+msgid "Открой из заявки"
+msgstr "Відкрий із заявки"
+
 #: src/components/Incoming.tsx
 msgid "Сначала заполни профиль"
 msgstr "Спершу заповни профіль"
@@ -1347,6 +1399,10 @@ msgstr "Спершу заповни профіль"
 #: src/pages/Chats.tsx
 msgid "Попробуй название вуза или факультета латиницей."
 msgstr "Спробуй назву вишу чи факультету латиницею."
+
+#: src/pages/Join.tsx
+msgid "Заявка устарела или открыта не тем аккаунтом. Подай её заново."
+msgstr "Заявка застаріла або відкрита не тим акаунтом. Подай її знову."
 
 #: src/pages/Ads.tsx
 #: src/pages/AdsChats.tsx

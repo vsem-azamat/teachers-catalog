@@ -236,6 +236,25 @@
   cursor: pointer;
 }
 
+/* ── centred screens ───────────────────────────────────────────────── */
+
+/* One question in the middle of the screen: the join check. */
+.center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.centerRows {
+  width: 100%;
+  margin-top: 12px;
+  text-align: left;
+}
+
 /* ── figures ────────────────────────────────────────────────────────── */
 
 /* Big numbers side by side: the ads page's reach. */

@@ -188,6 +188,31 @@ async function publicGet<T>(path: string, signal?: AbortSignal): Promise<T> {
   return payload as T;
 }
 
+/**
+ * The one public call that carries initData: supervisor checks that the
+ * person pressing is the person the join request was issued to. It goes in
+ * the body because that is supervisor's contract, never in the address.
+ */
+async function publicPost<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(`${BASE_URL}/api/public${path}`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const payload = await readBody(response);
+  if (!response.ok) throw new ApiError(response.status, payload, detailOf(payload));
+  return payload as T;
+}
+
+/** The raw initData, or nothing outside Telegram. */
+export function rawInitData(): string | undefined {
+  try {
+    return retrieveRawInitData() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // ── endpoints ───────────────────────────────────────────────────────────
 //
 // Written by hand, and not by the generator: `openapi-ts.config.ts` declares
@@ -212,6 +237,13 @@ export const api = {
     if (!isReach(payload)) throw new ApiError(502, payload, 'reach has the wrong shape');
     return payload;
   },
+
+  /** Approve the caller's own join request to a moderated chat. */
+  passJoinCheck: (initData: string, queryId: string) =>
+    publicPost<{ status: string }>('/join-check', {
+      init_data: initData,
+      query_id: queryId,
+    }),
 
   /** Who a business writes to about advertising, if anyone. */
   getAds: (signal?: AbortSignal) => request<AdsInfo>('/ads', { signal }),

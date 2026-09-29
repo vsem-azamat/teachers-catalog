@@ -174,6 +174,17 @@ The page is reached from the profile and from the note under «Документ�
 warning private people about fees: private people offer those services for
 free.
 
+**The join check answers one question and then shows the way on.** `/join`
+is where a person lands from a join request to a moderated chat: supervisor
+sends them a Mini App button with `?q=<query id>`. The page sends the signed
+`initData` and that id to supervisor's `POST /api/public/join-check`, which
+approves the request. It needs both. Opened without them, it says to open it
+from the join request instead of offering a button that cannot work. After
+it passes, it does not close itself: it offers the chat directory and the help
+catalog, because for many people this is the first screen of the app they
+see. Supervisor answers with a status only, so the page does not name the
+chat.
+
 ## `api/v1`, one module per domain
 
 Each module owns a slice of the URL space and nothing else. The prefix is
