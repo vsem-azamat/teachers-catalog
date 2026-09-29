@@ -114,6 +114,11 @@ The fields are supervisor's contract. `group` is the parent chat's title
 and changes whenever supervisor changes how it groups chats, so the app never
 matches on a group's name.
 
+Every `/api/public/*` request reaches supervisor from this host's address, not
+the user's. Nothing there limits per client today. A per-IP rate limit, or a
+Cloudflare rate rule in front of supervisor, would throttle every Mini App user
+as one client.
+
 ## `api/v1`, one module per domain
 
 Each module owns a slice of the URL space and nothing else. The prefix is

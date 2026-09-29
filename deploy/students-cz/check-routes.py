@@ -3,13 +3,15 @@
 Reads the Caddyfile as Caddy itself understands it (`caddy adapt` output on
 stdin) and checks one rule from docs/architecture.md, «Two backends, one
 origin»: `/api/public/*` belongs to supervisor-telegram and is proxied to
-SUPERVISOR_ORIGIN over TLS, before the catch-all `/api/*` that goes to this
-project's API. A request the router sends to the wrong backend comes back 404,
+SUPERVISOR_ORIGIN over TLS. Checked by behaviour: walk the routes as Caddy
+does and see which one a sample path lands on, so no matcher shape or order
+elsewhere can hide a misroute. A request the router sends to the wrong backend comes back 404,
 and nothing else in CI would notice.
 
 Usage: caddy adapt ... | python3 check-routes.py <expected supervisor host>
 """
 
+import fnmatch
 import json
 import sys
 
@@ -51,29 +53,37 @@ def proxies(route: dict) -> list[dict]:
     return out
 
 
+SAMPLE = "/api/public/catalog"
+
+
+def matches(route: dict, path: str) -> bool:
+    """Whether Caddy would pick this route for `path`. No matcher matches all."""
+    patterns = paths(route)
+    if not route.get("match"):
+        return True
+    return any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns)
+
+
 def main() -> int:
     expected_host = sys.argv[1]
-    order = routes(json.load(sys.stdin))
-    public = next((i for i, r in enumerate(order) if "/api/public/*" in paths(r)), None)
-    if public is None:
-        print("no route for /api/public/*", file=sys.stderr)
+    # `handle` blocks share a group and exactly one of them runs: the first
+    # whose matcher fits. Routes outside a group (encode) pass through.
+    terminal = [r for r in routes(json.load(sys.stdin)) if "group" in r]
+    chosen = next((r for r in terminal if matches(r, SAMPLE)), None)
+    if chosen is None:
+        print(f"nothing handles {SAMPLE}", file=sys.stderr)
         return 1
 
-    catch_all = next((i for i, r in enumerate(order) if "/api/*" in paths(r)), None)
-    if catch_all is not None and catch_all < public:
-        print("/api/* is matched before /api/public/*", file=sys.stderr)
-        return 1
-
-    (proxy,) = proxies(order[public])
-    dials = [u.get("dial") for u in proxy.get("upstreams", [])]
+    found = proxies(chosen)
+    dials = [u.get("dial") for proxy in found for u in proxy.get("upstreams", [])]
     if dials != [f"{expected_host}:443"]:
-        print(f"/api/public/* goes to {dials}, not {expected_host}:443", file=sys.stderr)
+        print(f"{SAMPLE} goes to {dials or 'no proxy'}, not {expected_host}:443", file=sys.stderr)
         return 1
-    if "tls" not in proxy.get("transport", {}):
-        print("/api/public/* is proxied without TLS", file=sys.stderr)
+    if not all("tls" in proxy.get("transport", {}) for proxy in found):
+        print(f"{SAMPLE} is proxied without TLS", file=sys.stderr)
         return 1
 
-    print(f"/api/public/* → {expected_host} over TLS, ahead of /api/*")
+    print(f"{SAMPLE} → {expected_host} over TLS")
     return 0
 
 

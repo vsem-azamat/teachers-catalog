@@ -12,13 +12,12 @@
 :80 {
 	encode zstd gzip
 
-	# The API is the same origin as the app, which is not
-	# a convenience: since 20 July 2026 Telegram only allows Mini App API calls
-	# from the app's own origin.
 	# supervisor-telegram's public API: the chat directory, the advertising
 	# reach and the join check. Same origin for the app, a different backend.
 	# First, so the catch-all below never sees it. See docs/architecture.md,
-	# «Two backends, one origin».
+	# «Two backends, one origin». The Host header is Caddy's default for an
+	# https upstream; it is written out because the upstream's Cloudflare
+	# routes on it and this must not depend on a default.
 	@supervisor path /api/public/*
 	handle @supervisor {
 		reverse_proxy {$SUPERVISOR_ORIGIN} {
@@ -26,6 +25,9 @@
 		}
 	}
 
+	# The API is the same origin as the app, which is not
+	# a convenience: since 20 July 2026 Telegram only allows Mini App API calls
+	# from the app's own origin.
 	@backend path /api/* /healthz
 	handle @backend {
 		reverse_proxy api:8000

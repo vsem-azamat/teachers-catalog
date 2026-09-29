@@ -2,7 +2,7 @@ import { fileURLToPath, URL } from 'node:url';
 import { lingui, linguiTransformerBabelPreset } from '@lingui/vite-plugin';
 import babel from '@rolldown/plugin-babel';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import mkcert from 'vite-plugin-mkcert';
 
 /**
@@ -17,8 +17,12 @@ const API_TARGET = 'http://127.0.0.1:8010';
 
 // Where /api/public/* goes in development: supervisor-telegram, https://host.
 // No address is written here, the same as for deployment (docs/deploy.md).
-// Unset, the chat screens show their error state.
-const SUPERVISOR_TARGET = process.env.SUPERVISOR_ORIGIN;
+// Read from the repository's root .env, the one file the API reads too, or
+// from the shell. loadEnv with an empty prefix is needed because Vite fills
+// process.env from nothing. Unset, the chat screens show their error state.
+const ROOT = fileURLToPath(new URL('../..', import.meta.url));
+const SUPERVISOR_TARGET =
+  process.env.SUPERVISOR_ORIGIN || loadEnv('development', ROOT, '').SUPERVISOR_ORIGIN;
 
 /**
  * Escape hatch for environments where mkcert cannot install its CA.

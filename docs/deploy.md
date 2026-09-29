@@ -138,7 +138,7 @@ ssh-keyscan -t ed25519 <host>          # for DEPLOY_KNOWN_HOSTS
 | --- | --- |
 | `PUBLIC_HOST` | `https://<subdomain>` — scheme and host, no path, no trailing slash. |
 | `PUBLIC_PORT` | A loopback port not used by another project on the host. |
-| `SUPERVISOR_ORIGIN` | `https://<host>` of `supervisor-telegram`. The router proxies `/api/public/*` there, see docs/architecture.md, «Two backends, one origin». |
+| `SUPERVISOR_ORIGIN` | `https://<host>` of `supervisor-telegram`. The router proxies `/api/public/*` there, see docs/architecture.md, «Two backends, one origin». The deploy refuses a missing one. Caddy itself accepts an empty value and answers 502 on those paths, and the deploy's outside smoke test catches that. |
 | `EDGE_CADDY_SERVICE` | Service name of the edge Caddy in its compose file. |
 | `EDGE_CADDY_CONFIG_PATH` | Path to the Caddyfile *inside* that container. |
 | `POSTGRES_DB`, `POSTGRES_USER` | Required, and checked before anything ships. No default on purpose: they name a role and a database that already exist inside a volume, and a wrong guess does not create them — the entrypoint skips `initdb` on a cluster that is not empty. The password is a secret, above. |

@@ -234,7 +234,6 @@ jobs:
           DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
           RUN_ID: ${{ github.run_id }}.${{ github.run_attempt }}
           PUBLIC_PORT: ${{ vars.PUBLIC_PORT }}
-          SUPERVISOR_ORIGIN: ${{ vars.SUPERVISOR_ORIGIN }}
           GHCR_ACTOR: ${{ github.actor }}
           EDGE_CADDY_DIR: ${{ secrets.EDGE_CADDY_DIR }}
           EDGE_CADDY_COMPOSE_FILE: ${{ secrets.EDGE_CADDY_COMPOSE_FILE }}
@@ -348,6 +347,10 @@ jobs:
           set -euo pipefail
           curl --fail --silent --show-error --retry 8 --retry-delay 3 \
                --retry-all-errors --max-time 20 "$PUBLIC_HOST/healthz" | tee /dev/stderr
+          # The path the router hands to supervisor-telegram. A deploy that serves
+          # the app but not the chat directory is not a working deploy.
+          curl --fail --silent --show-error --retry 8 --retry-delay 3 \
+               --retry-all-errors --max-time 20 -o /dev/null "$PUBLIC_HOST/api/public/reach"
           curl --fail --silent --show-error --retry 4 --retry-delay 3 \
                --retry-all-errors --max-time 20 -o /dev/null "$PUBLIC_HOST/"
 
