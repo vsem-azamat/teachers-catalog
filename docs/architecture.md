@@ -98,6 +98,27 @@ The repository is still `teachers-catalog` and the domain is still
 one breaks every clone and remote, the other breaks the Mini App's registered
 URL and every link anybody has shared.
 
+## Two backends, one origin
+
+The app reads from two APIs. `/api/v1/*` is this repository's. `/api/public/*`
+belongs to `supervisor-telegram`: the chat directory (`catalog`), the
+advertising reach (`reach`) and the join check (`join-check`). Telegram lets a
+Mini App call only its own origin, so the router in front of the app proxies
+`/api/public/*` to `SUPERVISOR_ORIGIN`. For the browser it is one host. Vite
+does the same in development.
+
+The catalog API never calls `/api/public/*`, and the app reads only what those
+endpoints publish: a chat's title, link, group and activity, and reach summed
+per group. Member counts per chat are not public, and no screen may need them.
+The fields are supervisor's contract. `group` is the parent chat's title
+and changes whenever supervisor changes how it groups chats, so the app never
+matches on a group's name.
+
+Every `/api/public/*` request reaches supervisor from this host's address, not
+the user's. Nothing there limits per client today. A per-IP rate limit, or a
+Cloudflare rate rule in front of supervisor, would throttle every Mini App user
+as one client.
+
 ## `api/v1`, one module per domain
 
 Each module owns a slice of the URL space and nothing else. The prefix is

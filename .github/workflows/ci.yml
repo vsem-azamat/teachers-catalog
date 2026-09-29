@@ -105,7 +105,8 @@ jobs:
                  -e 's|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=placeholder|' \
                  -e 's|^BOT_TOKEN=.*|BOT_TOKEN=placeholder|' \
                  -e 's|^PUBLIC_HOST=.*|PUBLIC_HOST=https://example.invalid|' \
-                 -e 's|^PUBLIC_PORT=.*|PUBLIC_PORT=18086|' .env
+                 -e 's|^PUBLIC_PORT=.*|PUBLIC_PORT=18086|' \
+                 -e 's|^SUPERVISOR_ORIGIN=.*|SUPERVISOR_ORIGIN=https://supervisor.invalid|' .env
           docker compose config > resolved.yml
 
       - name: Nothing may be published except the router, on loopback
@@ -113,8 +114,17 @@ jobs:
 
       - name: The internal Caddyfile must be valid
         run: |
-          docker run --rm -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" \
+          docker run --rm -e SUPERVISOR_ORIGIN=https://supervisor.invalid \
+            -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" \
             caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
+
+      - name: Each path goes to the backend that owns it
+        run: |
+          set -euo pipefail
+          docker run --rm -e SUPERVISOR_ORIGIN=https://supervisor.invalid \
+            -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2-alpine caddy adapt --config /etc/caddy/Caddyfile \
+            | python3 check-routes.py supervisor.invalid
 
   contract:
     # The client in apps/web/src/lib/generated is generated from the API's own
