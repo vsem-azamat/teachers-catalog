@@ -404,6 +404,13 @@ msgstr "Obojí"
 msgid "Заявку видят все, кто предлагает помощь. Отклики приходят сюда."
 msgstr "Poptávku vidí všichni, kdo nabízejí pomoc. Odpovědi chodí sem."
 
+#. placeholder {0}: figures.coverage.of
+#. placeholder {1}: figures.coverage.measured
+#. placeholder {2}: figures.coverage.measured
+#: src/pages/Ads.tsx
+msgid "{0, plural, one {Участники посчитаны по {1} из # чата: Telegram отдаёт данные не по всем, настоящая цифра выше.} other {Участники посчитаны по {2} из # чатов: Telegram отдаёт данные не по всем, настоящая цифра выше.}}"
+msgstr "{0, plural, one {Členové spočítáni v {1} z # chatu: Telegram neuvádí údaje u všech, skutečné číslo je vyšší.} few {Členové spočítáni v {2} z # chatů: Telegram neuvádí údaje u všech, skutečné číslo je vyšší.} many {Členové spočítáni v {2} z # chatu: Telegram neuvádí údaje u všech, skutečné číslo je vyšší.} other {Členové spočítáni v {2} z # chatů: Telegram neuvádí údaje u všech, skutečné číslo je vyšší.}}"
+
 #: src/components/TabBar.tsx
 msgid "Чаты"
 msgstr "Chaty"
@@ -1056,12 +1063,6 @@ msgstr "Na tenhle dotaz tu zatím nikdo není"
 #: src/pages/Helper.tsx
 msgid "Написать · {0} Kč"
 msgstr "Napsat · {0} Kč"
-
-#. placeholder {0}: figures.coverage.measured
-#. placeholder {1}: figures.coverage.of
-#: src/pages/Ads.tsx
-msgid "Участники посчитаны по {0} из {1} чатов: Telegram отвечает не по всем, настоящая цифра выше."
-msgstr "Členové spočítáni v {0} z {1} chatů: Telegram neodpovídá za všechny, skutečné číslo je vyšší."
 
 #: src/pages/Profile.tsx
 msgid "скрыта — в каталоге её не видно"

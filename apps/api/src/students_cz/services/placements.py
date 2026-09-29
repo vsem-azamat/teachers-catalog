@@ -98,14 +98,15 @@ async def for_slot(
 
     # A preview (the ads page showing a business what a card looks like) is
     # not a student seeing an offer, and counting it would bill the partner.
-    for placement_out in out if count else []:
-        session.add(
-            PlacementEvent(
-                placement_id=placement_out.id,
-                user_id=context.get("user_id"),
-                kind=PlacementEventKind.IMPRESSION,
+    if count:
+        for placement_out in out:
+            session.add(
+                PlacementEvent(
+                    placement_id=placement_out.id,
+                    user_id=context.get("user_id"),
+                    kind=PlacementEventKind.IMPRESSION,
+                )
             )
-        )
     return out
 
 

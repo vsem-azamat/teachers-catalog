@@ -404,6 +404,13 @@ msgstr "И так, и так"
 msgid "Заявку видят все, кто предлагает помощь. Отклики приходят сюда."
 msgstr "Заявку видят все, кто предлагает помощь. Отклики приходят сюда."
 
+#. placeholder {0}: figures.coverage.of
+#. placeholder {1}: figures.coverage.measured
+#. placeholder {2}: figures.coverage.measured
+#: src/pages/Ads.tsx
+msgid "{0, plural, one {Участники посчитаны по {1} из # чата: Telegram отдаёт данные не по всем, настоящая цифра выше.} other {Участники посчитаны по {2} из # чатов: Telegram отдаёт данные не по всем, настоящая цифра выше.}}"
+msgstr "{0, plural, one {Участники посчитаны по {1} из # чата: Telegram отдаёт данные не по всем, настоящая цифра выше.} other {Участники посчитаны по {2} из # чатов: Telegram отдаёт данные не по всем, настоящая цифра выше.}}"
+
 #: src/components/TabBar.tsx
 msgid "Чаты"
 msgstr "Чаты"
@@ -1056,12 +1063,6 @@ msgstr "По этому запросу пока никого"
 #: src/pages/Helper.tsx
 msgid "Написать · {0} Kč"
 msgstr "Написать · {0} Kč"
-
-#. placeholder {0}: figures.coverage.measured
-#. placeholder {1}: figures.coverage.of
-#: src/pages/Ads.tsx
-msgid "Участники посчитаны по {0} из {1} чатов: Telegram отвечает не по всем, настоящая цифра выше."
-msgstr "Участники посчитаны по {0} из {1} чатов: Telegram отвечает не по всем, настоящая цифра выше."
 
 #: src/pages/Profile.tsx
 msgid "скрыта — в каталоге её не видно"

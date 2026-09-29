@@ -150,8 +150,12 @@ payment.
 
 - A post in chats: the reach comes from supervisor's `/api/public/reach`,
   summed per group. The member total carries «≈» when fewer chats were
-  measured than exist, and is left out when none were, because "0 people"
-  would be read and believed.
+  measured than exist, with a line saying over how many, and is left out when
+  none were, because "0 people" would be read and believed. The per-group
+  sums are lower bounds in the same way. Group names are shown as supervisor
+  sends them, including its own Russian «Остальные» for chats without a group:
+  the app writes no group name, and a translated label would need supervisor
+  to send a code instead.
 - A card in the app: a partner placement as the catalog already shows it, and
   where it appears. Today that is «Не про учёбу» only, because it is the one
   screen that asks for placements; the other slots are named on the page when

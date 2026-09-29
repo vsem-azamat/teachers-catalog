@@ -99,11 +99,11 @@ export default function AdsPage() {
           {figures.coverage ? (
             <div style={{ marginTop: 8 }}>
               <Hint>
-                <Trans>
-                  Участники посчитаны по {figures.coverage.measured} из{' '}
-                  {figures.coverage.of} чатов: Telegram отвечает не по всем, настоящая
-                  цифра выше.
-                </Trans>
+                <Plural
+                  value={figures.coverage.of}
+                  one={`Участники посчитаны по ${figures.coverage.measured} из # чата: Telegram отдаёт данные не по всем, настоящая цифра выше.`}
+                  other={`Участники посчитаны по ${figures.coverage.measured} из # чатов: Telegram отдаёт данные не по всем, настоящая цифра выше.`}
+                />
               </Hint>
             </div>
           ) : null}
