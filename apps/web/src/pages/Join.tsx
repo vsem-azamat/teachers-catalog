@@ -20,11 +20,13 @@ import {
 import { hapticSelection } from '@/hooks/useTelegram';
 import { api, rawInitData } from '@/lib/api';
 import {
+  isSettled,
   type JoinEvent,
   type JoinState,
   joinEventFor,
   joinStart,
   joinStep,
+  keepSettled,
   type Settled,
   settledOf,
 } from '@/lib/join';
@@ -36,9 +38,7 @@ function readSettled(queryId: string | null): Settled | null {
   if (!queryId) return null;
   try {
     const value = sessionStorage.getItem(settledKey(queryId));
-    return value === 'passed' || value === 'failed' || value === 'failed-after-retry'
-      ? value
-      : null;
+    return isSettled(value) ? value : null;
   } catch {
     // Storage can be refused (a private window, cleared site data). Then the
     // check opens as new, which is what it was before this existed.
@@ -48,7 +48,10 @@ function readSettled(queryId: string | null): Settled | null {
 
 function writeSettled(queryId: string, outcome: Settled): void {
   try {
-    sessionStorage.setItem(settledKey(queryId), outcome);
+    sessionStorage.setItem(
+      settledKey(queryId),
+      keepSettled(readSettled(queryId), outcome),
+    );
   } catch {
     // Nothing to do: see readSettled.
   }

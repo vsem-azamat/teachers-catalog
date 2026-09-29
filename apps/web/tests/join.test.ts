@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { isApproval, joinEventFor, joinStart, joinStep } from '../src/lib/join.ts';
+import {
+  isApproval,
+  isSettled,
+  joinEventFor,
+  joinStart,
+  joinStep,
+  keepSettled,
+  settledOf,
+} from '../src/lib/join.ts';
 
 test('with initData and a query id the check can be taken', () => {
   assert.deepEqual(joinStart('user=...&hash=...', 'q-123'), {
@@ -91,9 +99,22 @@ test('only status "approved" counts as passing', () => {
 });
 
 test('what is kept of a settled check says which way it ended', async () => {
-  const { settledOf } = await import('../src/lib/join.ts');
   assert.equal(settledOf({ phase: 'passed' }), 'passed');
   assert.equal(settledOf({ phase: 'failed', afterRetry: false }), 'failed');
   assert.equal(settledOf({ phase: 'failed', afterRetry: true }), 'failed-after-retry');
   assert.equal(settledOf({ phase: 'unavailable' }), null);
+});
+
+test('only the three outcomes are read back from storage', () => {
+  assert.equal(isSettled('passed'), true);
+  assert.equal(isSettled('failed-after-retry'), true);
+  assert.equal(isSettled('sending'), false);
+  assert.equal(isSettled(null), false);
+});
+
+test('a kept «passed» is never overwritten by a later refusal', () => {
+  assert.equal(keepSettled('passed', 'failed'), 'passed');
+  assert.equal(keepSettled('passed', 'failed-after-retry'), 'passed');
+  assert.equal(keepSettled(null, 'failed'), 'failed');
+  assert.equal(keepSettled('failed', 'passed'), 'passed');
 });

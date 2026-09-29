@@ -61,6 +61,22 @@ export function joinStep(state: JoinState, event: JoinEvent): JoinState {
   return { ...state, phase: 'ready', retried: true };
 }
 
+/** Whether a stored value is one of the outcomes, the only ones read back. */
+export function isSettled(value: unknown): value is Settled {
+  return value === 'passed' || value === 'failed' || value === 'failed-after-retry';
+}
+
+/**
+ * What to store when a check settles, given what is stored already.
+ *
+ * «passed» is never replaced: a second attempt after leaving mid-request gets
+ * supervisor's 403 because the first went through, and that refusal must not
+ * tell somebody who is in the chat to apply again.
+ */
+export function keepSettled(stored: Settled | null, outcome: Settled): Settled {
+  return stored === 'passed' ? 'passed' : outcome;
+}
+
 /** What to keep of a state, or nothing while it is not settled. */
 export function settledOf(state: JoinState): Settled | null {
   if (state.phase === 'passed') return 'passed';
