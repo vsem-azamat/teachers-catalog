@@ -57,9 +57,6 @@ export default defineConfig({
     proxy: {
       '/api': { target: API_TARGET, changeOrigin: true },
       '/healthz': { target: API_TARGET, changeOrigin: true },
-      // The bot webhook goes through the same origin as the app, so one
-      // tunnel serves both — which is also how it is deployed.
-      '/tg': { target: API_TARGET, changeOrigin: true },
     },
   },
   preview: {

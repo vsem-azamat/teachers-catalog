@@ -9,10 +9,10 @@ client
   → shared Edge Caddy on the host, ports 80/443
   → 127.0.0.1:<project port>
   → this project's Caddy
-  → the mini app (static) or FastAPI (/api, /healthz, /tg)
+  → the mini app (static) or FastAPI (/api, /healthz)
 ```
 
-The webhook, the API and the page share one origin. That is not tidiness:
+The API and the page share one origin. That is not tidiness:
 since 20 July 2026 Telegram only allows Mini App API calls from the app's own
 origin.
 
@@ -35,7 +35,7 @@ Nothing is built on the server.
 7. The hostname is registered with the shared Edge Caddy, under a marked block
    this project owns, behind a host-wide lock, validated before reload and
    rolled back on failure.
-8. Public smoke tests, and a check that Telegram is pointing at our webhook.
+8. Public smoke tests.
 
 If anything fails before step 6, the previous `.env` is restored and the
 previous stack is brought back up. After step 6 the release is committed;
@@ -128,8 +128,7 @@ ssh-keyscan -t ed25519 <host>          # for DEPLOY_KNOWN_HOSTS
 | `EDGE_CADDY_DIR` | Directory of the shared edge project. |
 | `EDGE_CADDY_COMPOSE_FILE` | Its compose file. |
 | `EDGE_CADDYFILE` | Path on the host to the shared Caddyfile. |
-| `BOT_TOKEN` | From @BotFather. See the warning below about which bot. |
-| `WEBHOOK_SECRET` | `openssl rand -hex 32`. At least 32 characters; the deploy refuses less. |
+| `BOT_TOKEN` | The Konnekt moderator bot's token, the same value as `MODERATOR_BOT_TOKEN` in `supervisor-telegram`. See the warning below. |
 | `POSTGRES_PASSWORD` | `openssl rand -hex 24`. |
 
 ### 4. Repository variables
@@ -144,31 +143,69 @@ ssh-keyscan -t ed25519 <host>          # for DEPLOY_KNOWN_HOSTS
 | `INIT_DATA_MAX_AGE_SECONDS` | Optional; defaults to 86400. |
 | `LOG_LEVEL` | Optional; defaults to `INFO`. One of DEBUG, INFO, WARNING, ERROR, CRITICAL. |
 | `BACKUP_HOUR_UTC`, `BACKUP_RETENTION_DAYS` | Optional; default 3 and 14. |
-| `OWNER_TG_ID` | Optional. Telegram id of whoever runs this, to be told when a profile or a request appears. Unset means no ping. A numeric id, not a handle — the bot needs a chat it can open, and it can only open one with somebody who has started it. |
+| `OWNER_TG_ID` | Optional. Telegram id of whoever runs this, to be told when a profile or a request appears. Unset means no ping. A numeric id, not a handle — the bot needs a chat it can open, and it can only open one with somebody who has started the moderator bot. |
 
 ### 5. In @BotFather
 
-Set the Mini App URL to `PUBLIC_HOST`. The webhook is registered by the
-application at startup, but that does **not** configure the Mini App or the
-menu button — the app sets the menu button itself, and the Main Mini App entry
-has to be set by hand.
+Nothing. The Mini App URL, the menu button, the command list and the greeting
+belong to the moderator bot, and `supervisor-telegram` sets them.
+
+## Moving onto the moderator's token, once
+
+The catalog's own bot is `@student_cz_bot`, and its token is in `BOT_TOKEN`
+until step 3. Each step assumes the one before it. Steps 2 to 4 run back to
+back: in between, the old bot has no menu and the moderator bot has no door
+to the catalog yet.
+
+1. Deploy the release that stops receiving updates, still on the old token.
+2. Run **Retire the old bot** (Actions → workflow dispatch). It reads the old
+   token from `BOT_TOKEN`, checks with `getMe` that it really is
+   `@student_cz_bot`, and refuses to touch any other bot. Then it deletes the
+   old bot's webhook, resets its menu button, clears its command list and
+   says in its description how to reach the catalog through
+   `@konnekt_moder_bot`. After step 3 the guard makes it refuse.
+3. Replace the `BOT_TOKEN` secret with the moderator bot's token, the same
+   value as `MODERATOR_BOT_TOKEN` in `supervisor-telegram`, and re-run the
+   deploy.
+4. Set `WEBAPI_HELP_URL` to `PUBLIC_HOST` in `supervisor-telegram` (its #124
+   added the setting) and re-run its deploy. Its `/start` then offers
+   «🎓 Помощь с учёбой».
+5. In @BotFather, remove `@student_cz_bot`'s Main Mini App URL. The Bot API
+   cannot do this one.
+6. Check that Telegram sends `allows_write_to_pm` on this launch. Set your
+   own row's `bot_can_message` to false in `users`, open the catalog from
+   `@konnekt_moder_bot` with «🎓 Помощь с учёбой», and read the row again. It
+   has to be true. If it stays false, nobody new can be notified: stop and
+   look at the `initData` the app sends before going further.
+
+Old `web_app` buttons already sitting in people's chats with `@student_cz_bot`
+open the app with initData signed by the old token. After step 3 the API
+refuses it, and nothing can repair a message that was already sent.
+
+**`rollback.yml` cannot return to a release before this one, on purpose.** Releases before
+this one register a webhook and refuse to start without `WEBHOOK_SECRET`.
+Compose still passes `WEBHOOK_SECRET` for one release, so a failed step-1
+deploy can restore the previous `.env` and come back up. `rollback.yml`
+keeps the new `.env`, which has no `WEBHOOK_SECRET`, so an old image crashes
+at start. Keep it that way once `BOT_TOKEN` is the moderator's: an old image
+on that token would set a webhook every minute and break the moderator bot's
+polling. Never put `WEBHOOK_SECRET` back.
 
 ## Two ways to break production
 
-**Running the legacy bot with the production token.** `bot/` still contains the
-old polling bot, and polling calls `delete_webhook()`. Start it against the
-production token and the webhook silently stops existing. It is not in any
-image and no workflow runs it, but do not run it locally with that token
-either. See [legacy-bot.md](legacy-bot.md).
+**Asking for updates with this token.** The token is the moderator bot's, and
+`supervisor-telegram` receives its updates by polling. Telegram gives a token
+one consumer. A `setWebhook` from anywhere stops that polling, and a second
+`getUpdates` makes the two pollers fail each other with `409 Conflict`. The API
+never does either. The legacy bot in `bot/` polls, so never run it with this
+token. See [legacy-bot.md](legacy-bot.md).
 
-**More than one Uvicorn worker.** The lifespan hook creates the bot, registers
-the webhook and holds aiogram's dispatcher state. Two workers register the
-webhook twice and keep half the state in the wrong process. The Dockerfile
-pins `--workers 1`; leave it there until the bot moves out of the API process.
-
-The connection pool is per process, so that pin is also what makes
-`db_pool_size` and `db_max_overflow` the whole budget against Postgres —
-15 connections by default. Raising the worker count multiplies it.
+**More than one Uvicorn worker.** The API holds no bot state, so a second
+worker would not break Telegram. It would still double the database budget:
+the connection pool is per process, and the `--workers 1` pin in the
+Dockerfile is what makes `db_pool_size` and `db_max_overflow` the whole budget
+against Postgres — 15 connections by default. Raising the worker count
+multiplies it.
 
 ## Backups
 
@@ -199,51 +236,7 @@ docker compose -f <DEPLOY_DIR>/docker-compose.yml ps
 docker compose -f <DEPLOY_DIR>/docker-compose.yml logs -f api
 ```
 
-`/healthz` reports the webhook as **Telegram** sees it, not as the application
-remembers registering it. Asked at most once a minute, under a lock so a burst
-of probes makes one call, on a 2.5-second timeout, and never fatal — a bad
-minute at Telegram must not take the catalog out of rotation.
-
-| `webhook` | What it means |
-| --- | --- |
-| `ok` | Telegram is pointing at this host |
-| `missing: …` | Telegram has no webhook for this bot — it is deaf. Carries the registration error, if there was one |
-| `elsewhere: <url>` | something else claimed the token |
-| `unknown: <error>` | Telegram could not be reached or did not answer in time. Says nothing about the webhook either way; retried after ten seconds |
-| `not configured` | no bot token — the API runs without one on purpose |
-
-The distinction is not academic. A webhook registers, something clears it
-afterwards, and a status remembered at startup stays `ok` for as long as the
-process lives — which is how a deaf bot passes every health check it has.
-
-Telegram's own view, for when `/healthz` says something is wrong:
-
-```sh
-curl "https://api.telegram.org/bot<token>/getWebhookInfo"
-```
-
-`pending_update_count` climbing means updates are arriving and not being
-accepted. A `last_error_message` naming a certificate or DNS problem is
-Cloudflare or the edge, not this project.
-
-### If the webhook goes missing
-
-The application re-registers it by itself. A webhook is state held by Telegram,
-not by us, and anything holding the same bot token can clear it — `deleteWebhook`
-from a stray process, or a `polling` bot, which deletes it on every start. So
-registration is not a thing that happens once at boot: the application checks
-once a minute that Telegram still points here, and sets it again when it does
-not, logging `webhook was cleared by someone else` each time it has to.
-
-Restoring it keeps whatever Telegram queued while the bot was deaf — those
-are the messages the outage cost. Only the first registration at boot drops
-the queue, because that queue predates the process.
-
-Those log lines are the evidence trail. Repeated entries mean the token is
-live somewhere else, and the fix is to find that process — not to restart this
-one. `docker compose logs api | grep webhook` reads them. A line saying the
-webhook *points somewhere else* rather than that it was cleared means the
-other holder is setting its own, and the two are taking turns.
-
-If it cannot be found, rotate the token in @BotFather: the other holder stops
-working immediately, and the new value reaches the server on the next deploy.
+`/healthz` answers `status`, `database` and `uptime_seconds`. It says nothing
+about Telegram: this process holds no webhook, so there is nothing of its own
+there to report. Whether the bot hears people is `supervisor-telegram`'s
+health check.

@@ -10,27 +10,51 @@ services/  The rules. Everything a second caller would need to reuse.
 db/        Models, session, migrations. No behaviour.
 ```
 
-The bot is a fourth door onto the same rules, not a fifth layer. Anything a
-bot handler and an endpoint both have to get right belongs in `services/`, and
-`services/people.remember` is the pattern: both doors call it, so a person who
-writes to the bot and a person who opens the app are recorded the same way.
+**The bot is not ours to run.** The token this process holds belongs to the
+Konnekt moderator bot (`supervisor-telegram`), and that process receives every
+update by polling. Telegram gives a token one consumer: a webhook set from here
+would stop the moderator's polling, and the moderator's `deleteWebhook` on start
+would silence us. So this process never asks for updates. It does not register
+a webhook, does not call `getUpdates`, and does not set the command list or the
+menu button. It has no `/tg/webhook` route. `/start`, the greeting and the
+chat's menu belong to the moderator bot.
 
-**What the chat offers is part of what we say.** Telegram remembers a bot's
-command list and a chat's reply keyboard until somebody replaces them, and this
-token belonged to a command-driven bot before it belonged to this one — so a
-list nobody sets is the old one, still offering `/language` to a bot that has
-no such command. `bot.configure` sets the two that exist. The old keyboard goes
-the same way: a reply is the only thing that removes one, so `/stop` and every
-message that is neither command carry `ReplyKeyboardRemove` — which is what a
-person with a stale keyboard triggers, because tapping one of its buttons sends
-its label as ordinary text. The greeting is the exception and cannot carry it:
-`reply_markup` holds one thing, and there it is the button that opens the app.
+It uses the token for two things only. `core/security.py` checks the Mini App's
+`initData` against it, which is why the app has to be opened from the moderator
+bot. `services/notify.py` sends messages through it. Sending does not compete
+with polling, so notifications keep arriving from the same bot people opened
+the app from.
 
-Both are the same rule as the copy above: what a person is offered has to
-exist. And neither is worth a failed registration — `main._describe_bot` sets
-them after the webhook is registered and swallows what Telegram says, because
-a command list that will not set is cosmetic while a webhook that will not set
-is a deaf bot.
+**Who may be written to is what Telegram says in `initData`.** A bot may only
+message somebody who allowed it, and the record of that is the
+`allows_write_to_pm` flag Telegram signs into the app's `initData`, because
+`/start` is not ours to see. `current_user` passes it to
+`people.remember`, which sets `bot_started_at` (the first time only) and
+`bot_can_message`. The flag is absent when the app was opened without that
+permission, and then nothing is recorded, so `notify` does not try a send that
+Telegram would refuse with a 403.
+
+A `bot_started_at` recorded under `@student_cz_bot` does not say which bot it
+was. Such a person counts as reachable until the first send through the
+moderator bot comes back as a 403. `mark_unreachable` then records it as
+`BOT_BLOCKED`, although they never blocked anything (the event keeps
+Telegram's reason, "bot can't initiate conversation", which tells it apart
+from a real block), and their next visit
+through the moderator bot makes them reachable again. That notification is
+lost either way, because they have not started the moderator bot. The only
+cost is one misleading event per person.
+
+**The token is also a trust boundary we share.** Every Mini App on the
+moderator bot checks `initData` against the same token, and that includes the
+`supervisor-telegram` console, which signs super admins in from it. Valid
+`initData` for one app is valid for all of them, so a leaked `initData`
+string or an XSS in any of these apps reaches the others.
+
+**Nothing attributes a visit yet.** `users.source` is the first `start_param`
+we see, and Telegram sends one only through a Mini App deep link such as
+`t.me/konnekt_moder_bot/<app>?startapp=<source>`. The catalog is not
+registered as a named Mini App of the moderator bot, so no such link reaches
+it. A `?start=<source>` link goes to the moderator bot's `/start`.
 
 **What we say is part of what we do.** A sentence telling somebody how to undo
 something, or who can see their request, or how fast an answer comes, is a
@@ -43,14 +67,14 @@ code disagree, cutting the promise is a fix, not a retreat.
 The rule is younger than the copy, and the copy has not all been brought to it
 yet — what is still owed is listed at the bottom of this document.
 
-**Opting out keeps everything.** `/stop` writes one timestamp and deletes
-nothing: not the person, not their profile, not their requests or the answers
-to them. The row is what makes them the same person if they come back, and an
-opt-out that destroyed it would be a worse answer than the blocking it exists
-to prevent.
+**Opting out has no door here.** `users.unsubscribed_at` stays, and
+`notify` still does not read it: an answer to your own request is not us
+writing to you unprompted. The `/stop` that wrote it went with the bot's
+handlers, and nothing sends broadcasts yet. Whichever process sends the first
+one owns the way out of it.
 
 Nothing here is DDD. There are no aggregates, no repository per model, no
-command bus. This is a catalog with two dozen endpoints, one bot and one
+command bus. This is a catalog with two dozen endpoints, a borrowed bot token and one
 database; layering it further would cost more than it returns.
 
 ## One name
@@ -110,7 +134,7 @@ database.
 
 **A write is a rule**, even a one-line one. An endpoint does not add a row: a
 row added in a handler is a fact about the product that only an HTTP test can
-reach, and the bot cannot reach it at all. The two that read like exceptions
+reach. The two that read like exceptions
 are not: `catalog.open_home` and `catalog.view_helper` are the plain readers
 plus the event each records, kept apart from `home_sections` and
 `helper_detail` so that reading the sections is not itself a claim that
@@ -118,13 +142,12 @@ somebody opened the app.
 
 **A service** takes a session and plain values, and returns DTOs. It does not
 raise `HTTPException`: an HTTP status is a fact about a protocol, and a
-service that knows about protocols cannot be called by the bot.
+service that knows about protocols cannot be called from anywhere else.
 
 What it raises instead lives in `services/errors.py` — `NotFound`,
 `Forbidden`, `Conflict`, `Invalid`, `BadRequest` — and one handler in
 `main.py` turns each into its status code, walking the class hierarchy so a
-subclass keeps its family's answer. The bot can catch them and answer in
-words.
+subclass keeps its family's answer.
 
 **A name is a rule too.** Every reference table keeps its names in a side
 table, one row per language, and `services/naming.py` is the only place that
@@ -142,12 +165,6 @@ client, so every route reaching for it had to decide what "it is not there"
 means — and each of them decided quietly, with a `getattr` default. There is
 one answer to that question per thing, it belongs where the thing is built, and
 a dependency is also the only shape a test can substitute.
-
-`api/v1/health.py` is the exception and stays one: it reports on `app.state`
-itself, so reaching for it is the job rather than a shortcut. So is the webhook
-route in `main.py`, which is defined inside `create_app` and hands the update
-to the dispatcher the lifespan put there — it is the seam between the two
-runtimes rather than a handler.
 
 **Two notifications and one ping.** `services/notify.py` writes to people
 about something they set in motion — an answer to their request, an acceptance
@@ -172,12 +189,6 @@ with no bot answers `None`.
 Built in `deps.py` and not in the lifespan, deliberately: the lifespan does
 not run under the test client, so a handle built there would leave the tested
 path and the production path as different code.
-
-The webhook watchdog's state — `webhook_observed`, `webhook_checked_at` and
-the lock beside them — is the exception, and it belongs to the same carve-out
-as `health.py` above: it exists so that `/healthz` can report on the process
-without asking Telegram on every probe, and it is read by the one route whose
-job is reporting on the process.
 
 **A schema** is a leaf. `students_cz/schemas.py` — the package root, not inside
 `api/` — describes what goes over the wire. A service may return one without
@@ -209,7 +220,7 @@ means the generated types are current, not that every type the app uses is.
 
 `db/session.py` holds the engine and the sessionmaker as module singletons,
 created once and lazily. Not on `app.state`, deliberately: the API is not the
-only door. The bot's middleware, the notifier's background task and the seed
+only door. The notifier's background task and the seed
 scripts all need a session and none of them has a FastAPI app to reach
 through, and a second engine would double the connection count against
 Postgres without anybody deciding to.
@@ -261,12 +272,6 @@ Everything that commits outside it:
   Passing the row itself works only for as long as nothing expires it, and the
   thing that would notice is a `MissingGreenlet` inside a task whose exception
   nobody is waiting for.
-- The bot has no request to hang a transaction on, so `bot/middleware.py` and
-  the `/stop` handler open and commit their own sessions. The middleware
-  commits the person's record before the handler runs, for the same reason
-  `current_user` does: neither a slow handler nor a throwing one should decide
-  whether we remember that this person exists. So a bot update is two
-  transactions, deliberately, and not one.
 - `db/seed.py` and `db/demo.py` are scripts, not requests. They commit because
   nothing else will.
 

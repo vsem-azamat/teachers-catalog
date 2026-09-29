@@ -53,9 +53,7 @@ async def current_user(
     """Fetch the caller, creating the row on first sight.
 
     Telegram is the identity provider, so there is no sign-up: the first
-    authenticated request is the registration. The same function the bot uses,
-    so that a person recorded through one door is the same row as through the
-    other.
+    authenticated request is the registration.
     """
     user = await remember(
         session,
@@ -67,6 +65,7 @@ async def current_user(
         photo_url=identity.photo_url,
         supported_langs=settings.supported_ui_langs,
         source=identity.start_param,
+        may_write=identity.may_write,
     )
     # The one write that outlives a failed request, deliberately. Telegram is
     # the identity provider and the first authenticated request is the
@@ -101,8 +100,8 @@ async def current_notifier(http: Request, settings: SettingsDep) -> Notifier:
     decide it once, rather than in each route that happens to send a message.
 
     Per request, and cheap: two attribute reads and a cached `Settings`. It
-    reads state fixed at startup but is not itself a singleton, and the only
-    other places that reach for `app.state` are named in docs/architecture.md.
+    reads state fixed at startup but is not itself a singleton, and it is one
+    of the few places that reach for `app.state`: see docs/architecture.md.
     """
     return Notifier(
         getattr(http.app.state, "bot", None),

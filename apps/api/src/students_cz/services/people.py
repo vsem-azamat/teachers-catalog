@@ -1,10 +1,8 @@
 """Remembering who showed up, and whether we may write to them.
 
-One place for it, used by both halves of the process. The bot sees people the
-mini app never does — someone presses start, reads the description and closes
-Telegram — and those are precisely the people an announcement is for. If the
-two halves recorded users differently, the audience would depend on which door
-someone came through.
+One place for it. The mini app is the only door this process has: `/start`
+belongs to the moderator bot, so whether we may write to somebody comes from
+the `allows_write_to_pm` flag in their initData. See docs/architecture.md.
 """
 
 from datetime import UTC, datetime
@@ -44,7 +42,7 @@ async def remember(
     photo_url: str | None = None,
     is_premium: bool = False,
     source: str | None = None,
-    started_bot: bool = False,
+    may_write: bool = False,
 ) -> User:
     """Insert or refresh a person, and return them.
 
@@ -65,15 +63,16 @@ async def remember(
     }
     if source:
         values["source"] = source[:64]
-    if started_bot:
+    if may_write:
+        # Telegram says the bot may message them. That is also how someone
+        # comes back after blocking: the next visit clears the old 403.
         values["bot_started_at"] = now
-        # Pressing start is also how someone comes back after blocking.
         values["bot_can_message"] = True
 
     # Name, username and avatar belong to Telegram and change outside our
     # reach; a stale username breaks the "write to them" link. Everything the
     # person chose here — language, city, whether they unsubscribed — is left
-    # alone, and bot_started_at only ever gets set, never cleared.
+    # alone, and bot_started_at only ever gets set here, never cleared.
     on_update: dict[str, Any] = {
         "first_name": values["first_name"],
         "last_name": values["last_name"],
@@ -82,7 +81,7 @@ async def remember(
         "is_premium": values["is_premium"],
         "last_seen_at": now,
     }
-    if started_bot:
+    if may_write:
         on_update["bot_started_at"] = func.coalesce(User.bot_started_at, now)
         on_update["bot_can_message"] = True
 
@@ -122,25 +121,6 @@ async def log_event(
     )
 
 
-async def unsubscribe(session: AsyncSession, tg_id: int) -> bool:
-    """Stop writing to this person unprompted. Returns whether anything changed.
-
-    A timestamp and nothing else. Not the person, not their profile, not their
-    requests or the answers to them: opting out of being written to is not
-    leaving, and the row is what makes somebody the same person if they come
-    back. An opt-out that destroyed it would be a worse answer than the
-    blocking it exists to prevent.
-
-    Answers `False` for somebody who already had, and for somebody with no row
-    at all — a /stop from an update we never saw the start of is not a failure.
-    """
-    user = await session.scalar(select(User).where(User.tg_id == tg_id))
-    if user is None or user.unsubscribed_at is not None:
-        return False
-    user.unsubscribed_at = datetime.now(UTC)
-    return True
-
-
 async def mark_unreachable(session: AsyncSession, tg_id: int, reason: str) -> None:
     """Telegram said we may not write to this person any more.
 
@@ -157,9 +137,9 @@ async def mark_unreachable(session: AsyncSession, tg_id: int, reason: str) -> No
 def reachable(*, langs: list[str] | None = None, source: str | None = None):
     """Everyone an announcement may legitimately go to.
 
-    Three conditions, and all three matter: they started the bot (so Telegram
-    permits it), Telegram has not since told us otherwise, and they have not
-    asked us to stop.
+    Three conditions, and all three matter: their initData said the bot may
+    write to them (so Telegram permits it), Telegram has not since told us
+    otherwise, and they have not asked us to stop.
     """
     stmt = select(User).where(
         User.bot_started_at.is_not(None),

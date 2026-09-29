@@ -2,9 +2,10 @@
 > its data is migrated. The rewrite is described in the root README and in
 > [data-model.md](data-model.md); nothing new depends on this.
 >
-> **Never start this bot with the production token.** It uses long polling, and
-> polling calls `delete_webhook()` — the production webhook would stop existing
-> without anything reporting an error. It is in no image and no workflow runs
+> **Never start this bot with the production token.** That token is the
+> moderator bot's, which `supervisor-telegram` long-polls. A second poller on
+> it makes Telegram answer both with `409 Conflict`, and this bot's
+> `delete_webhook()` call does nothing to help. It is in no image and no workflow runs
 > it; the hazard is running it by hand. See [deploy.md](deploy.md).
 
 # Teachers-catalog

@@ -68,7 +68,11 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       BOT_TOKEN: ${BOT_TOKEN}
-      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      # Read only by the release before this one, which a failed first deploy
+      # restores and which refuses to start without it. Remove after one
+      # release, and never restore it once BOT_TOKEN is the moderator's: see
+      # docs/deploy.md.
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:-}
       PUBLIC_BASE_URL: ${PUBLIC_HOST}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       INIT_DATA_MAX_AGE_SECONDS: ${INIT_DATA_MAX_AGE_SECONDS:-86400}

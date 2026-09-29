@@ -90,7 +90,9 @@ class User(IdMixin, TimestampMixin, Base):
     # bot_can_message: one is their choice, the other is Telegram's report.
     unsubscribed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    # start_param from the deep link that brought them: t.me/bot?start=<source>.
+    # start_param from the Mini App deep link that brought them
+    # (t.me/<bot>/<app>?startapp=<source>). None reaches the catalog yet: it is
+    # not a named Mini App of the moderator bot. See docs/architecture.md.
     # First one wins — the question is where someone came from, not where they
     # most recently came from.
     source: Mapped[str | None] = mapped_column(String(64), index=True)

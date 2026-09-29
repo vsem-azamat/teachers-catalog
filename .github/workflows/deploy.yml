@@ -100,7 +100,6 @@ jobs:
           EDGE_CADDY_COMPOSE_FILE: ${{ secrets.EDGE_CADDY_COMPOSE_FILE }}
           EDGE_CADDYFILE: ${{ secrets.EDGE_CADDYFILE }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
           PUBLIC_PORT: ${{ vars.PUBLIC_PORT }}
@@ -113,7 +112,7 @@ jobs:
           missing=()
           for v in DEPLOY_HOST DEPLOY_USER DEPLOY_DIR DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS \
                    EDGE_CADDY_DIR EDGE_CADDY_COMPOSE_FILE EDGE_CADDYFILE \
-                   BOT_TOKEN WEBHOOK_SECRET POSTGRES_PASSWORD \
+                   BOT_TOKEN POSTGRES_PASSWORD \
                    POSTGRES_DB POSTGRES_USER \
                    PUBLIC_HOST PUBLIC_PORT EDGE_CADDY_SERVICE EDGE_CADDY_CONFIG_PATH; do
             [ -n "${!v:-}" ] || missing+=("$v")
@@ -124,17 +123,13 @@ jobs:
           fi
 
           # https, one host, no path and no trailing slash: the value is used as
-          # the webhook base, the CORS origin and the Caddy site address, and a
+          # the CORS origin and the Caddy site address, and a
           # stray slash breaks at least one of them.
           [[ "$PUBLIC_HOST" =~ ^https://[a-z0-9.-]+$ ]] \
             || { echo "PUBLIC_HOST must look like https://host" >&2; exit 1; }
           # Above the privileged range and below the ephemeral one.
           [[ "$PUBLIC_PORT" =~ ^[0-9]{4,5}$ ]] && [ "$PUBLIC_PORT" -ge 1024 ] && [ "$PUBLIC_PORT" -le 32767 ] \
             || { echo "PUBLIC_PORT must be a port between 1024 and 32767" >&2; exit 1; }
-          # A weak webhook secret is the difference between "only Telegram can
-          # post updates" and "anyone can".
-          [ "${#WEBHOOK_SECRET}" -ge 32 ] \
-            || { echo "WEBHOOK_SECRET must be at least 32 characters" >&2; exit 1; }
 
       - name: Configure SSH
         env:
@@ -164,7 +159,6 @@ jobs:
           POSTGRES_USER: ${{ vars.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
           PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
           PUBLIC_PORT: ${{ vars.PUBLIC_PORT }}
           INIT_DATA_MAX_AGE_SECONDS: ${{ vars.INIT_DATA_MAX_AGE_SECONDS || '86400' }}
@@ -184,7 +178,6 @@ jobs:
             echo "POSTGRES_USER=$POSTGRES_USER"
             echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD"
             echo "BOT_TOKEN=$BOT_TOKEN"
-            echo "WEBHOOK_SECRET=$WEBHOOK_SECRET"
             echo "PUBLIC_HOST=$PUBLIC_HOST"
             echo "PUBLIC_PORT=$PUBLIC_PORT"
             echo "INIT_DATA_MAX_AGE_SECONDS=$INIT_DATA_MAX_AGE_SECONDS"
@@ -351,31 +344,6 @@ jobs:
                --retry-all-errors --max-time 20 "$PUBLIC_HOST/healthz" | tee /dev/stderr
           curl --fail --silent --show-error --retry 4 --retry-delay 3 \
                --retry-all-errors --max-time 20 -o /dev/null "$PUBLIC_HOST/"
-
-      - name: Confirm Telegram accepted the webhook
-        env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
-        run: |
-          set -euo pipefail
-          # Registration is asynchronous and retried by the application, so
-          # this polls rather than reading once: a webhook that takes a few
-          # seconds is normal, one that never arrives is not.
-          for attempt in $(seq 1 10); do
-            info="$(curl --fail --silent --max-time 20 \
-              "https://api.telegram.org/bot$BOT_TOKEN/getWebhookInfo")"
-            url="$(echo "$info" | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"].get("url",""))')"
-            [ "$url" = "$PUBLIC_HOST/tg/webhook" ] && break
-            echo "  attempt $attempt: Telegram points at '${url:-<none>}'"
-            sleep 6
-          done
-          err="$(echo "$info" | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"].get("last_error_message",""))')"
-          echo "webhook: ${url:-<none>}"
-          [ "$url" = "$PUBLIC_HOST/tg/webhook" ] \
-            || { echo "FATAL: Telegram never accepted the webhook" >&2; exit 1; }
-          # A stale error from before this deployment is not a failure, but an
-          # empty webhook with a fresh error certainly is.
-          [ -z "$err" ] || echo "note: Telegram last reported '$err'"
 
       - name: Remove transient files
         if: always()
