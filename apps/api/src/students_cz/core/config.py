@@ -1,3 +1,4 @@
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -81,6 +82,26 @@ class Settings(BaseSettings):
     # Telegram id and not a handle: the bot needs a chat it can open, and it
     # can only open one with somebody who has started the moderator bot.
     owner_tg_id: int | None = None
+    # Who a business writes to about advertising: a Telegram username. Unset
+    # means the ads page offers no contact. See docs/architecture.md.
+    ads_contact: str | None = None
+
+    @field_validator("ads_contact", mode="before")
+    @classmethod
+    def _a_username_or_nobody(cls, value: object) -> object:
+        """A username, forgiving a leading «@»; anything else refuses to start.
+
+        A typo in a deploy variable should stop the deploy, not become a
+        button that opens nothing.
+        """
+        if value is None or value == "":
+            return None
+        if not isinstance(value, str):
+            raise ValueError("ADS_CONTACT must be a Telegram username")
+        username = value.strip().removeprefix("@")
+        if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{3,31}", username):
+            raise ValueError("ADS_CONTACT must be a Telegram username, without a link")
+        return username
 
     @field_validator("owner_tg_id", mode="before")
     @classmethod

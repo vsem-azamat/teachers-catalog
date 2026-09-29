@@ -142,6 +142,38 @@ builds its entries in `lib/chats.ts`:
 A tap on a chat opens its Telegram link. The directory shows no member counts:
 supervisor does not publish them per chat.
 
+**The ads page is a showcase, not a shop.** `/ads` is for a business that
+wants students to see it. It shows two formats and how far they reach, then
+hands the conversation to a person in Telegram. It never shows a price: a
+price depends on the chats and the season, and nothing here can take a
+payment.
+
+- A post in chats: the reach comes from supervisor's `/api/public/reach`,
+  summed per group. The member total carries «≈» when fewer chats were
+  measured than exist, with a line saying over how many, and is left out when
+  none were, because "0 people" would be read and believed. The per-group
+  sums are lower bounds in the same way. Group names are shown as supervisor
+  sends them, including its own Russian «Остальные» for chats without a group:
+  the app writes no group name, and a translated label would need supervisor
+  to send a code instead.
+- A card in the app: a partner placement as the catalog already shows it, and
+  where it appears. Today that is «Не про учёбу» only, because it is the one
+  screen that asks for placements; the other slots are named on the page when
+  a screen renders them. Targeting by month and interface language works;
+  targeting by service needs a screen that sends the service, so the page does
+  not offer it yet. The example is fetched with `preview=true`
+  and drawn without a button: listing placements records an impression and
+  tapping one a click, and a business looking at the showcase is neither. It
+  must not be billed to the partner.
+- Contact: `ADS_CONTACT`, a Telegram username, served by `GET /api/v1/ads`.
+  Unset, the page offers no button, so it does not promise a conversation
+  nobody will answer.
+
+The page is reached from the profile and from the note under «Документы и
+жизнь» on the offer screen. That note tells a company where to go instead of
+warning private people about fees: private people offer those services for
+free.
+
 ## `api/v1`, one module per domain
 
 Each module owns a slice of the URL space and nothing else. The prefix is

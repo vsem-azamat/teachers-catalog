@@ -2,7 +2,7 @@ import { Trans } from '@lingui/react/macro';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { AppHeader } from '@/components/AppHeader';
-import { LanguageIcon, PersonIcon, SealIcon } from '@/components/icons';
+import { DocumentIcon, LanguageIcon, PersonIcon, SealIcon } from '@/components/icons';
 import { TabBar } from '@/components/TabBar';
 import {
   AvatarView,
@@ -165,6 +165,16 @@ export default function ProfilePage() {
                 }
                 title={<Trans>Чешский для вуза</Trans>}
                 hint={<Trans>B1, B2, нострификация</Trans>}
+              />
+              <Row
+                onClick={() => navigate('/ads')}
+                leading={
+                  <Tile tone={1}>
+                    <DocumentIcon size={19} />
+                  </Tile>
+                }
+                title={<Trans>Реклама для студентов</Trans>}
+                hint={<Trans>для компаний: посты в чатах и карточки</Trans>}
               />
             </Rows>
           </>

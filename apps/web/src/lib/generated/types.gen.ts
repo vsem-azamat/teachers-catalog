@@ -5,6 +5,18 @@ export type ClientOptions = {
 };
 
 /**
+ * AdsInfo
+ *
+ * What the ads page needs from us: who a business writes to, if anyone.
+ */
+export type AdsInfo = {
+    /**
+     * Contact Url
+     */
+    contact_url: string | null;
+};
+
+/**
  * AlsoSubject
  *
  * A subject the parser guessed at but would not search by.
@@ -1175,6 +1187,22 @@ export type ValidationError = {
  */
 export type WorkFormat = 'online' | 'offline' | 'both';
 
+export type AdsApiV1AdsGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/ads';
+};
+
+export type AdsApiV1AdsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: AdsInfo;
+};
+
+export type AdsApiV1AdsGetResponse = AdsApiV1AdsGetResponses[keyof AdsApiV1AdsGetResponses];
+
 export type ReadMeApiV1MeGetData = {
     body?: never;
     headers?: {
@@ -1945,6 +1973,10 @@ export type PlacementsForSlotApiV1PlacementsGetData = {
          * Subject Id
          */
         subject_id?: number | null;
+        /**
+         * Preview
+         */
+        preview?: boolean;
     };
     url: '/api/v1/placements';
 };

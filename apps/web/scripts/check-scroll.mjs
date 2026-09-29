@@ -72,6 +72,9 @@ const ROUTES = [
   { path: '/mine', into: { name: 'request detail', click: 'button[class*="card"]' } },
   { path: '/life' },
   { path: '/chats' },
+  { path: '/ads' },
+  { path: '/ads/chats' },
+  { path: '/ads/app' },
   { path: '/profile' },
   {
     path: '/offer',
