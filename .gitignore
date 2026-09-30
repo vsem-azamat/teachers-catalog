@@ -29,8 +29,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-# Anchored: unanchored, these Python build-output patterns also matched
-# apps/web/src/lib, which is source and was silently absent from the repo.
+# Anchored: unanchored, these Python build-output patterns also match any
+# source directory called lib.
 /lib/
 /lib64/
 parts/
@@ -182,16 +182,9 @@ dist/
 *.tsbuildinfo
 .pnpm-store/
 
-# Compiled translation catalogues are build output; the .po files are source.
-apps/web/src/locales/**/*.mo
-apps/web/src/locales/**/messages.ts
-
 # ── Python ──────────────────────────────────────────────────────────────
 .venv/
 .ruff_cache/
-
-# Downloaded dev tooling (cloudflared); not part of the project
-.tools/
 
 # Generated on the runner and installed on the server; never in the repository.
 deploy/**/.env

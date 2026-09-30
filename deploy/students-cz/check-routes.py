@@ -1,27 +1,31 @@
-"""The router sends each path to the backend that owns it.
+"""The router serves the API and sends everything else to the app.
 
 Reads the Caddyfile as Caddy itself understands it (`caddy adapt` output on
-stdin) and checks one rule from docs/architecture.md, «Two backends, one
-origin»: `/api/public/*` belongs to supervisor-telegram and is proxied to
-SUPERVISOR_ORIGIN over TLS, and `/api/v1/*` stays with this project's API.
-Checked by behaviour: walk the routes as Caddy does and see where a sample
-path of each lands, so no matcher shape or order can hide a misroute. A
-request the router sends to the wrong backend comes back 404, and nothing else
-in CI would notice.
+stdin) and checks one rule from docs/architecture.md, «The app lives
+elsewhere»: `/api/v1/*` and `/healthz` go to this project's API, and every
+other path answers 301 to the same path under APP_URL. Checked by behaviour:
+walk the routes as Caddy does and see where a sample path of each kind lands,
+so no matcher shape or order can hide a misroute.
 
-Usage: caddy adapt ... | python3 check-routes.py <expected supervisor host>
+Usage: caddy adapt ... | python3 check-routes.py <APP_URL as given to caddy>
 """
 
 import fnmatch
 import json
 import sys
 
+API = "api:8000"
+OWN = ["/api/v1/me", "/api/v1/open", "/healthz"]
+# The app's screens, a stale asset, and supervisor's API, which this host used
+# to proxy: all of them belong to the app's host now.
+ELSEWHERE = ["/", "/chats", "/requests/12", "/assets/index-abc.js", "/api/public/catalog"]
+
 
 def routes(config: dict) -> list[dict]:
-    """The server's routes in match order.
+    """The server's routes in match order, unwrapped from a host subroute.
 
-    A site address without a host (`:80`) puts them at the top level; one with
-    a host wraps them in a subroute behind a host matcher. Both are read.
+    A site address with a host wraps everything in one subroute outside any
+    `handle` group; a `handle` block's own subroute is left as it is.
     """
     servers = config["apps"]["http"]["servers"]
     (server,) = servers.values()
@@ -30,77 +34,61 @@ def routes(config: dict) -> list[dict]:
         wrapped = [
             sub
             for handler in route.get("handle", [])
-            if handler.get("handler") == "subroute" and not paths(route)
+            if handler.get("handler") == "subroute" and "group" not in route
             for sub in handler["routes"]
         ]
         found.extend(wrapped or [route])
     return found
 
 
-def paths(route: dict) -> list[str]:
-    return [p for match in route.get("match", []) for p in match.get("path", [])]
+def matches(route: dict, path: str) -> bool:
+    """Whether Caddy would pick this route for `path`. No matcher matches all."""
+    if not route.get("match"):
+        return True
+    patterns = [p for match in route["match"] for p in match.get("path", [])]
+    return any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns)
 
 
-def proxies(route: dict) -> list[dict]:
-    """Every reverse_proxy handler under a route, however deeply nested."""
+def handlers(route: dict) -> list[dict]:
+    """Every handler under a route, however deeply nested in subroutes."""
     out: list[dict] = []
     stack = list(route.get("handle", []))
     while stack:
         handler = stack.pop()
-        if handler.get("handler") == "reverse_proxy":
-            out.append(handler)
+        out.append(handler)
         for sub in handler.get("routes", []):
             stack.extend(sub.get("handle", []))
     return out
 
 
-SAMPLE = "/api/public/catalog"
-# And one that must stay here, so widening the supervisor matcher to /api/*
-# cannot pass.
-OWN = "/api/v1/me"
-OWN_DIAL = "api:8000"
-
-
-def matches(route: dict, path: str) -> bool:
-    """Whether Caddy would pick this route for `path`. No matcher matches all."""
-    patterns = paths(route)
-    if not route.get("match"):
-        return True
-    return any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns)
+def outcome(route: dict) -> str:
+    """`proxy <dial>`, `<status> <Location>`, or what else the route does."""
+    for handler in handlers(route):
+        if handler.get("handler") == "reverse_proxy":
+            return "proxy " + ",".join(u.get("dial") for u in handler.get("upstreams", []))
+        if handler.get("handler") == "static_response":
+            location = handler.get("headers", {}).get("Location", ["?"])[0]
+            return f"{handler.get('status_code')} {location}"
+    return "nothing"
 
 
 def main() -> int:
-    expected_host = sys.argv[1]
-    # `handle` blocks share a group and exactly one of them runs: the first
-    # whose matcher fits. Routes outside a group (encode) pass through.
+    app_url = sys.argv[1]
     terminal = [r for r in routes(json.load(sys.stdin)) if "group" in r]
-    chosen = next((r for r in terminal if matches(r, SAMPLE)), None)
-    if chosen is None:
-        print(f"nothing handles {SAMPLE}", file=sys.stderr)
-        return 1
+    expected = {path: f"proxy {API}" for path in OWN}
+    # Caddy fills the placeholder per request; the path rides along whole.
+    expected |= {path: f"301 {app_url}{{http.request.uri}}" for path in ELSEWHERE}
 
-    found = proxies(chosen)
-    dials = [u.get("dial") for proxy in found for u in proxy.get("upstreams", [])]
-    if dials != [f"{expected_host}:443"]:
-        print(
-            f"{SAMPLE} goes to {dials or 'no proxy'}, not {expected_host}:443",
-            file=sys.stderr,
-        )
-        return 1
-    if not all("tls" in proxy.get("transport", {}) for proxy in found):
-        print(f"{SAMPLE} is proxied without TLS", file=sys.stderr)
-        return 1
-
-    mine = next((r for r in terminal if matches(r, OWN)), None)
-    own_dials = [
-        u.get("dial") for proxy in proxies(mine or {}) for u in proxy.get("upstreams", [])
-    ]
-    if own_dials != [OWN_DIAL]:
-        print(f"{OWN} goes to {own_dials or 'nothing'}, not {OWN_DIAL}", file=sys.stderr)
-        return 1
-
-    print(f"{SAMPLE} → {expected_host} over TLS, {OWN} → {OWN_DIAL}")
-    return 0
+    failed = False
+    for path, want in expected.items():
+        chosen = next((r for r in terminal if matches(r, path)), None)
+        got = outcome(chosen) if chosen else "nothing"
+        if got != want:
+            print(f"{path}: {got}, not {want}", file=sys.stderr)
+            failed = True
+        else:
+            print(f"{path} → {got}")
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

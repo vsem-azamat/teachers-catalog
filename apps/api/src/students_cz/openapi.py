@@ -1,9 +1,9 @@
 """Print the OpenAPI document to stdout.
 
-The client in `apps/web/src/lib/generated` is generated from this and committed,
-so something has to produce the document without a server: the generator's
-default is to fetch it from a running API, and CI has no reason to start one to
-read a description of itself.
+The document is committed as `apps/api/openapi.json`, the contract the Mini App
+(supervisor-telegram) generates its client from, so something has to produce
+it without a server: CI has no reason to start one to read a description of
+itself.
 
 Importing the app is enough — the routes and schemas are declared at import
 time, and the lifespan that needs a database never runs.

@@ -1,6 +1,5 @@
 .DEFAULT_GOAL := help
 API := apps/api
-WEB := apps/web
 
 # Port 8010, not 8000: something else on this machine already listens there,
 # and a dev server that silently fails to bind is worse than one on an odd port.
@@ -17,9 +16,8 @@ help:  ## Show this list
 setup: db-up install migrate seed demo  ## Everything needed for a first run
 
 .PHONY: install
-install:  ## Install both apps' dependencies
+install:  ## Install the API's dependencies
 	cd $(API) && uv sync
-	cd $(WEB) && pnpm install
 
 .PHONY: db-up
 db-up:  ## Start Postgres and wait until it answers
@@ -69,76 +67,50 @@ demo-clear:  ## Remove demo content, keep reference data
 api:  ## Run the API with reload
 	cd $(API) && uv run uvicorn students_cz.main:app --reload --port $(API_PORT)
 
-.PHONY: web
-web:  ## Run the mini app
-	cd $(WEB) && pnpm dev
-
-CLOUDFLARED := $(shell command -v cloudflared 2>/dev/null || echo .tools/cloudflared)
-
-.PHONY: tunnel-tool
-tunnel-tool:  ## Fetch cloudflared into .tools if it is not on PATH
-	@test -x "$(CLOUDFLARED)" || { \
-	  mkdir -p .tools && \
-	  curl -sfL -o .tools/cloudflared \
-	    https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 && \
-	  chmod +x .tools/cloudflared; }
-	@"$(CLOUDFLARED)" --version
-
-.PHONY: tunnel
-tunnel: tunnel-tool  ## Expose the mini app over HTTPS so Telegram can reach it
-	@echo "Put the printed https URL in PUBLIC_BASE_URL and in your development"
-	@echo "bot's Menu Button in @BotFather, then restart the API."
-	"$(CLOUDFLARED)" tunnel --url https://localhost:5173 --no-tls-verify
-
 # ── checks ──────────────────────────────────────────────────────────────
 
 .PHONY: test
-test:  ## Run both test suites (the API's needs the database up)
+test:  ## Run the API's tests (they need the database up)
 	cd $(API) && uv run pytest -q
-	cd $(WEB) && pnpm test
 
 .PHONY: lint
-lint:  ## Lint and type-check both apps
+lint:  ## Lint and type-check the API
 	cd $(API) && uv run ruff check src tests && uv run ruff format --check src tests
 	cd $(API) && uv run ty check src tests
-	cd $(WEB) && pnpm lint && pnpm typecheck
 
 .PHONY: format
-format:  ## Reformat both apps
+format:  ## Reformat the API
 	cd $(API) && uv run ruff check --fix src tests && uv run ruff format src tests
-	cd $(WEB) && pnpm format
 
 # Committed: the contract for clients outside this repository. See
 # docs/architecture.md.
 OPENAPI_DUMP := $(CURDIR)/$(API)/openapi.json
 
 .PHONY: contract
-contract:  ## Check the committed OpenAPI document and the client generated from it are current
+contract:  ## Check the committed OpenAPI document is current
 	@# Written beside and moved into place: a dump that fails halfway must not
 	@# leave the committed document truncated.
 	cd $(API) && PYTHONIOENCODING=utf-8 uv run python -m students_cz.openapi > $(OPENAPI_DUMP).tmp \
 	  || { rm -f $(OPENAPI_DUMP).tmp; exit 1; }
 	mv $(OPENAPI_DUMP).tmp $(OPENAPI_DUMP)
-	@# openapi-ts exits 0 without writing anything when its input is missing or
-	@# empty, and a generator that quietly did nothing leaves a stale client
-	@# looking identical to itself. Check the document before trusting the diff.
+	@# An empty or broken dump would differ too, and be committed as the
+	@# contract. Check it is a document before trusting the diff.
 	@grep -q '"openapi"' $(OPENAPI_DUMP) || { \
 	  echo "The OpenAPI dump is empty or not a document: $(OPENAPI_DUMP)"; \
 	  exit 1; \
 	}
-	cd $(WEB) && OPENAPI_URL=$(OPENAPI_DUMP) pnpm api:generate
-	@# --porcelain and not `git diff`: a generated file that is new is untracked,
+	@# --porcelain and not `git diff`: a document that is new is untracked,
 	@# and `git diff` cannot see those at all. Kept in a variable so a git that
 	@# failed — no repository, a dubious-ownership refusal, no git at all — is
 	@# not read as an empty answer, which is the same string a clean tree gives.
-	@changed=$$(git status --porcelain -- $(WEB)/src/lib/generated $(OPENAPI_DUMP)) || { \
+	@changed=$$(git status --porcelain -- $(OPENAPI_DUMP)) || { \
 	  echo "git status failed; the contract check compared nothing."; \
 	  exit 1; \
 	}; \
 	test -z "$$changed" || { \
 	  echo; \
-	  echo "The contract is out of date. Commit $(API)/openapi.json and what api:generate just wrote."; \
-	  git --no-pager status --short -- $(WEB)/src/lib/generated $(OPENAPI_DUMP); \
+	  echo "The contract is out of date. Commit $(API)/openapi.json."; \
+	  git --no-pager status --short -- $(OPENAPI_DUMP); \
 	  exit 1; \
 	}
 
