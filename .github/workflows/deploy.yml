@@ -297,16 +297,20 @@ jobs:
                 [ "${PIPESTATUS[0]}" -eq 0 ] \
                   || echo "the previous release did not come back up" >&2
               else
-                # The running containers are untouched, but the directory now
-                # holds files of both releases, and a restart (a reboot too)
-                # would start that mix.
+                # The restore does not touch the containers, whatever state the
+                # failure left them in, but the directory now holds files of both
+                # releases, and a restart (a reboot too) would start that mix.
+                # The copies stay, mode 0700, for whoever puts them back.
                 echo "could not restore:$unrestored" >&2
-                echo "not restarting anything. $PWD now mixes two releases:" \
-                     "put those files back by hand or deploy forward before" \
-                     "anything restarts." >&2
+                echo "not restarting anything. $PWD now mixes two releases." \
+                     "The previous release's files are kept in $previous:" \
+                     "copy them back, or deploy forward, before anything" \
+                     "restarts." >&2
+                previous=""
               fi
             fi
-            rm -rf "$DOCKER_CONFIG" "$previous"
+            rm -rf "$DOCKER_CONFIG"
+            if [ -n "$previous" ]; then rm -rf "$previous"; fi
             rm -f ".env.$RUN_ID.tmp" ".ghcr.$RUN_ID.tmp"
             for f in $release_files; do rm -f "$f.$RUN_ID.tmp"; done
             exit "$code"
