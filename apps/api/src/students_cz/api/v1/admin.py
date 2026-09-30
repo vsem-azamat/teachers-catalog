@@ -3,7 +3,7 @@
 See services/admin.py.
 """
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, status
 
 from students_cz.api.deps import AdminDep, LangDep, SessionDep
 from students_cz.schemas import (
@@ -46,7 +46,4 @@ async def switch_placement(
     session: SessionDep,
     lang: LangDep,
 ) -> AdminPlacement:
-    row = await admin.set_placement_active(session, lang, placement_id, change.is_active)
-    if row is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such placement")
-    return row
+    return await admin.set_placement_active(session, lang, placement_id, change.is_active)

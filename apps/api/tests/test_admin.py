@@ -436,6 +436,7 @@ async def test_a_partner_of_the_same_name_is_reused(session: AsyncSession) -> No
         {"title": "   "},
         {"partner": ""},
         {"logo_text": "TOOLONG"},
+        {"url": "https://exa mple.test/vzp"},
     ],
 )
 async def test_a_card_that_would_mislead_is_refused(
@@ -451,7 +452,39 @@ async def test_a_card_that_would_mislead_is_refused(
     assert response.status_code == 422
 
 
+async def test_a_new_card_goes_first(session: AsyncSession) -> None:
+    """A slot shows three; the one just added must be among them, whatever the
+    others' priorities."""
+    async with _client(session) as http:
+        for title in ("Первая", "Вторая", "Третья"):
+            await http.post(
+                "/api/v1/admin/placements",
+                headers=auth_header(OPERATOR),
+                json={**CARD, "title": title},
+            )
+        latest = (
+            await http.post(
+                "/api/v1/admin/placements",
+                headers=auth_header(OPERATOR),
+                json={**CARD, "title": "Новейшая"},
+            )
+        ).json()
+        shown = (
+            await http.get(
+                "/api/v1/placements",
+                params={"slot": "screen_life"},
+                headers=auth_header(STRANGER),
+            )
+        ).json()
+
+    assert shown[0]["id"] == latest["placement_id"]
+
+
 async def test_a_card_is_switched_off_and_on(session: AsyncSession) -> None:
+    # Only this card on the screen, so its absence means it is off.
+    for other in (await session.scalars(select(Placement))).all():
+        other.is_active = False
+    await session.flush()
     async with _client(session) as http:
         card = (
             await http.post(
@@ -475,11 +508,19 @@ async def test_a_card_is_switched_off_and_on(session: AsyncSession) -> None:
             headers=auth_header(OPERATOR),
             json={"is_active": True},
         )
+        shown_again = (
+            await http.get(
+                "/api/v1/placements",
+                params={"slot": "screen_life"},
+                headers=auth_header(STRANGER),
+            )
+        ).json()
 
     assert off.status_code == 200, off.text
     assert off.json()["is_active"] is False
     assert all(row["title"] != CARD["title"] for row in shown)
     assert on.json()["is_active"] is True
+    assert any(row["title"] == CARD["title"] for row in shown_again)
 
 
 async def test_switching_a_card_that_does_not_exist_is_a_404(

@@ -37,6 +37,7 @@ from students_cz.schemas import (
     AdminSearch,
 )
 from students_cz.services.catalog import display_name
+from students_cz.services.errors import NotFound
 from students_cz.services.naming import names_by_id
 from students_cz.services.placements import offer_text
 from students_cz.services.requests import live
@@ -167,10 +168,22 @@ async def _failed_searches(
     return [AdminSearch(text=text, times=n, last_at=at) for text, n, at in rows]
 
 
-async def partners(
-    session: AsyncSession, lang: UiLang, *, placement_id: int | None = None
+async def partners(session: AsyncSession, lang: UiLang) -> list[AdminPlacement]:
+    """Every placement with its last month's numbers."""
+    return await _placements(session, lang)
+
+
+async def _placement(
+    session: AsyncSession, lang: UiLang, placement_id: int
+) -> AdminPlacement:
+    """One placement as the list shows it; the caller knows it exists."""
+    (row,) = await _placements(session, lang, Placement.id == placement_id)
+    return row
+
+
+async def _placements(
+    session: AsyncSession, lang: UiLang, *where: ColumnElement[bool]
 ) -> list[AdminPlacement]:
-    """Every placement with its last month's numbers; with an id, that one."""
     since = datetime.now(UTC) - MONTH
     recent = and_(
         PlacementEvent.placement_id == Placement.id, PlacementEvent.created_at >= since
@@ -187,7 +200,7 @@ async def partners(
                 selectinload(Placement.offer).selectinload(PartnerOffer.partner),
                 selectinload(Placement.offer).selectinload(PartnerOffer.texts),
             )
-            .where(*([] if placement_id is None else [Placement.id == placement_id]))
+            .where(*where)
             .group_by(Placement.id)
             .order_by(Placement.is_active.desc(), impressions.desc(), Placement.id)
         )
@@ -231,7 +244,9 @@ async def create_placement(
     """
     partner = (
         await session.scalars(
-            select(Partner).where(func.lower(Partner.name) == card.partner.lower())
+            select(Partner)
+            .where(func.lower(Partner.name) == card.partner.lower())
+            .order_by(Partner.id)
         )
     ).first()
     if partner is None:
@@ -255,19 +270,28 @@ async def create_placement(
             context_note=card.context_note or None,
         )
     )
-    placement = Placement(offer_id=offer.id, slot=PlacementSlot.SCREEN_LIFE)
+    # First on the screen: a slot shows three, and the operator must see the
+    # card they just added.
+    top = await session.scalar(
+        select(func.max(Placement.priority)).where(
+            Placement.slot == PlacementSlot.SCREEN_LIFE
+        )
+    )
+    placement = Placement(
+        offer_id=offer.id, slot=PlacementSlot.SCREEN_LIFE, priority=(top or 0) + 1
+    )
     session.add(placement)
     await session.flush()
-    return (await partners(session, lang, placement_id=placement.id))[0]
+    return await _placement(session, lang, placement.id)
 
 
 async def set_placement_active(
     session: AsyncSession, lang: UiLang, placement_id: int, active: bool
-) -> AdminPlacement | None:
+) -> AdminPlacement:
     """On or off; nothing is deleted, so a stopped card keeps its numbers."""
     placement = await session.get(Placement, placement_id)
     if placement is None:
-        return None
+        raise NotFound("no such placement")
     placement.is_active = active
     await session.flush()
-    return (await partners(session, lang, placement_id=placement_id))[0]
+    return await _placement(session, lang, placement_id)

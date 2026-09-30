@@ -566,7 +566,7 @@ def _https_link(value: str) -> str:
 
     link = value.strip()
     parts = urlsplit(link)
-    if parts.scheme != "https" or not parts.netloc:
+    if parts.scheme != "https" or not parts.netloc or any(c.isspace() for c in link):
         raise ValueError("The link must start with https://")
     return link
 

@@ -229,7 +229,7 @@ neighbours about where it lives.
 | `cabinet.py` | a helper's own profile: reading it and saving it |
 | `requests.py` | the catalog in reverse — post, answer, accept, close |
 | `placements.py` | partner placements |
-| `admin.py` | what the operator reads in the console, see below |
+| `admin.py` | what the operator reads in the console, and the partner cards they run; see below |
 | `health.py` | `/healthz`, on its own router with no prefix |
 
 `health.py` is deliberately outside the versioned router: `/healthz` is what
@@ -257,6 +257,9 @@ stop one is the database.
   app draws. It takes the partner's name, an `https` link, the title and,
   optionally, a subtitle, a price, a note and a monogram of up to four
   letters. A partner is reused when one of that name, ignoring case, exists.
+  The new card goes first, above every card there is: a slot shows three at
+  most, by priority and then newest first, so the operator sees what they
+  just added, and the lowest card drops off until another is switched off.
   The text is stored in the operator's language; a reader in another language
   sees it too, since a card shows the first text it has when none is in theirs.
 - `PATCH /admin/placements/{id}`: switches a card on or off. Stopping is how
