@@ -310,9 +310,10 @@ appearing. It is not product copy — nobody reading it chose a language, and it
 is addressed to whoever runs this — so it lives in `bot/texts.py` as a plain
 string rather than a table per language, and it is off unless that setting
 names somebody. It carries one button, «Открыть в консоли», which opens the
-console's catalog screen (`APP_URL/console/catalog`) where the new profile or
-request is listed: the ping is the reason to look, the console is where to
-look. No button when the app's address is not https, as for the others. A
+console's catalog screen (`APP_URL/console/catalog`), where recent profiles
+and unanswered requests are listed: the ping is the reason to look, the
+console is where to look. The owner should be one of `ADMIN_TG_IDS`, or the
+button opens a refusal. No button when the app's address is not https, as for the others. A
 ping that cannot be sent, like a notification that cannot, costs the action
 nothing: both are queued after the response and neither may raise.
 

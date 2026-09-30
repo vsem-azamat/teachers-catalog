@@ -37,41 +37,28 @@ log = logging.getLogger("students_cz.notify")
 SEND_TIMEOUT = 10.0
 
 
-def _keyboard(lang: UiLang, app_url: str | None) -> InlineKeyboardMarkup | None:
-    """A button that opens the mini app, when we know our own address.
+def _web_app_button(text: str, url: str | None) -> InlineKeyboardMarkup | None:
+    """One button that opens the Mini App at `url`, when that is https.
 
     A web_app button requires an https URL; during local development there is
     none, and a notification without a button is better than a failed send.
     """
-    if not app_url or not app_url.startswith("https://"):
+    if not url or not url.startswith("https://"):
         return None
     return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=pick(OPEN_APP, lang),
-                    web_app=WebAppInfo(url=app_url),
-                )
-            ]
-        ]
+        inline_keyboard=[[InlineKeyboardButton(text=text, web_app=WebAppInfo(url=url))]]
     )
+
+
+def _keyboard(lang: UiLang, app_url: str | None) -> InlineKeyboardMarkup | None:
+    """The app, in the recipient's language."""
+    return _web_app_button(pick(OPEN_APP, lang), app_url)
 
 
 def _console_keyboard(app_url: str | None) -> InlineKeyboardMarkup | None:
-    """«Открыть в консоли», to the console's catalog screen. Russian only, like
-    the ping itself; https only, like every web_app button."""
-    if not app_url or not app_url.startswith("https://"):
-        return None
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=OWNER_OPEN_CONSOLE,
-                    web_app=WebAppInfo(url=f"{app_url.rstrip('/')}/console/catalog"),
-                )
-            ]
-        ]
-    )
+    """The console's catalog screen, in Russian like the ping itself."""
+    url = f"{app_url.rstrip('/')}/console/catalog" if app_url else None
+    return _web_app_button(OWNER_OPEN_CONSOLE, url)
 
 
 @dataclass(frozen=True)
@@ -193,6 +180,9 @@ async def tell(
     keyboard: InlineKeyboardMarkup | None = None,
 ) -> bool:
     """Send one message. Returns whether it arrived.
+
+    The button is `keyboard` when one is given, else the one that opens the app
+    at `app_url`, else none.
 
     `bot` is None when the API runs without a token, which is how it runs
     locally — so every caller works unchanged with notifications simply not
