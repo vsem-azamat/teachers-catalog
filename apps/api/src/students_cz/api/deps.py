@@ -98,7 +98,7 @@ def is_operator(user: User, settings: Settings) -> bool:
 async def current_admin(user: UserDep, settings: SettingsDep) -> User:
     """The caller, if they are one of the console's operators; 403 otherwise.
 
-    See docs/architecture.md, «The operator reads, and only reads».
+    See docs/architecture.md, «The operator reads the catalog and runs the partner cards».
     """
     if not is_operator(user, settings):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "not an operator")

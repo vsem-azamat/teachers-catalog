@@ -229,19 +229,21 @@ neighbours about where it lives.
 | `cabinet.py` | a helper's own profile: reading it and saving it |
 | `requests.py` | the catalog in reverse — post, answer, accept, close |
 | `placements.py` | partner placements |
-| `admin.py` | what the operator reads in the console, see below |
+| `admin.py` | what the operator reads in the console, and the partner cards they run; see below |
 | `health.py` | `/healthz`, on its own router with no prefix |
 
 `health.py` is deliberately outside the versioned router: `/healthz` is what
 the deploy and the shared edge Caddy watch, and it must not move when the API
 version does.
 
-**The operator reads, and only reads.** The moderator console (in
-`supervisor-telegram`'s app) shows the catalog to the people named in
-`ADMIN_TG_IDS`, the same Telegram ids as supervisor's `ADMIN_SUPER_ADMINS`.
+**The operator reads the catalog and runs the partner cards.** The moderator
+console (in `supervisor-telegram`'s app) shows the catalog to the people named
+in `ADMIN_TG_IDS`, the same Telegram ids as supervisor's `ADMIN_SUPER_ADMINS`.
 They sign in with the same init data as anybody else; `/me` says `is_admin`,
-and `/admin/*` answers 403 to everybody not on the list. Nothing there writes:
-moderating profiles is not a feature yet, so the console has nothing to change.
+and `/admin/*` answers 403 to everybody not on the list. The catalog itself is
+read-only there: moderating profiles is not a feature yet. Partner cards are
+the one thing the console writes, because otherwise the only way to add or
+stop one is the database.
 
 - `/admin/catalog`: profiles published in the last 7 days, newest first;
   requests nobody has answered that can still be answered (open and before
@@ -251,6 +253,17 @@ moderating profiles is not a feature yet, so the console has nothing to change.
   number of requests posted this week.
 - `/admin/partners`: every placement, active or not, with its impressions and
   clicks over the last 30 days.
+- `POST /admin/placements`: a new card on the Life screen, the one slot the
+  app draws. It takes the partner's name, an `https` link, the title and,
+  optionally, a subtitle, a price, a note and a monogram of up to four
+  letters. A partner is reused when one of that name, ignoring case, exists.
+  The new card goes first, above every card there is: a slot shows three at
+  most, by priority and then newest first, so the operator sees what they
+  just added, and the lowest card drops off until another is switched off.
+  The text is stored in the operator's language; a reader in another language
+  sees it too, since a card shows the first text it has when none is in theirs.
+- `PATCH /admin/placements/{id}`: switches a card on or off. Stopping is how
+  a card ends; nothing is deleted, so its impressions and clicks stay.
 
 It names people as the catalog does, a first name and an initial: no handle,
 no Telegram id, no contact. The console opens a profile through the app, like

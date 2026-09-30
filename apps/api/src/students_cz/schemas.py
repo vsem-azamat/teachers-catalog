@@ -558,3 +558,46 @@ class AdminPlacement(BaseModel):
     is_active: bool
     impressions: int
     clicks: int
+
+
+def _https_link(value: str) -> str:
+    """A card's link leaves the app for the partner's site; only https does."""
+    from urllib.parse import urlsplit
+
+    link = value.strip()
+    parts = urlsplit(link)
+    if parts.scheme != "https" or not parts.netloc or any(c.isspace() for c in link):
+        raise ValueError("The link must start with https://")
+    return link
+
+
+Line = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+
+
+class AdminPlacementIn(BaseModel):
+    """A new partner card on the Life screen. See docs/architecture.md."""
+
+    partner: Annotated[Line, StringConstraints(max_length=200)]
+    url: Annotated[str, StringConstraints(max_length=1024)]
+    title: Annotated[Line, StringConstraints(max_length=200)]
+    subtitle: Annotated[
+        str | None, StringConstraints(strip_whitespace=True, max_length=240)
+    ] = None
+    price_text: Annotated[
+        str | None, StringConstraints(strip_whitespace=True, max_length=64)
+    ] = None
+    context_note: Annotated[
+        str | None, StringConstraints(strip_whitespace=True, max_length=600)
+    ] = None
+    logo_text: Annotated[
+        str | None, StringConstraints(strip_whitespace=True, max_length=4)
+    ] = None
+
+    @field_validator("url")
+    @classmethod
+    def _url_is_https(cls, value: str) -> str:
+        return _https_link(value)
+
+
+class AdminPlacementSwitch(BaseModel):
+    is_active: bool

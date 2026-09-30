@@ -52,7 +52,8 @@ async def for_slot(
         await session.scalars(
             select(Placement)
             .where(Placement.slot == slot, Placement.is_active.is_(True))
-            .order_by(Placement.priority.desc())
+            # Newest first among equals, so the order is the same every time.
+            .order_by(Placement.priority.desc(), Placement.id.desc())
             .options(
                 selectinload(Placement.offer).selectinload(PartnerOffer.texts),
             )

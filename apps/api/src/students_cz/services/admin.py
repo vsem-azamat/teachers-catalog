@@ -1,6 +1,6 @@
-"""What the operator reads in the console. Reads only.
+"""What the operator reads in the console, and the partner cards they run.
 
-See docs/architecture.md, «The operator reads, and only reads».
+See docs/architecture.md, «The operator reads the catalog and runs the partner cards».
 """
 
 from datetime import UTC, datetime, timedelta
@@ -13,22 +13,31 @@ from sqlalchemy.orm import QueryableAttribute, selectinload
 from students_cz.db.models import HelperProfile, Offer, ServiceType, User
 from students_cz.db.models.enums import (
     PlacementEventKind,
+    PlacementSlot,
     PublishStatus,
     RequestStatus,
     UiLang,
 )
 from students_cz.db.models.ops import SearchQuery
-from students_cz.db.models.partners import PartnerOffer, Placement, PlacementEvent
+from students_cz.db.models.partners import (
+    Partner,
+    PartnerOffer,
+    PartnerOfferI18n,
+    Placement,
+    PlacementEvent,
+)
 from students_cz.db.models.requests import HelpRequest, RequestResponse
 from students_cz.schemas import (
     AdminCatalog,
     AdminCounts,
     AdminPlacement,
+    AdminPlacementIn,
     AdminProfile,
     AdminRequest,
     AdminSearch,
 )
 from students_cz.services.catalog import display_name
+from students_cz.services.errors import NotFound
 from students_cz.services.naming import names_by_id
 from students_cz.services.placements import offer_text
 from students_cz.services.requests import live
@@ -160,6 +169,21 @@ async def _failed_searches(
 
 
 async def partners(session: AsyncSession, lang: UiLang) -> list[AdminPlacement]:
+    """Every placement with its last month's numbers."""
+    return await _placements(session, lang)
+
+
+async def _placement(
+    session: AsyncSession, lang: UiLang, placement_id: int
+) -> AdminPlacement:
+    """One placement as the list shows it; the caller knows it exists."""
+    (row,) = await _placements(session, lang, Placement.id == placement_id)
+    return row
+
+
+async def _placements(
+    session: AsyncSession, lang: UiLang, *where: ColumnElement[bool]
+) -> list[AdminPlacement]:
     since = datetime.now(UTC) - MONTH
     recent = and_(
         PlacementEvent.placement_id == Placement.id, PlacementEvent.created_at >= since
@@ -176,6 +200,7 @@ async def partners(session: AsyncSession, lang: UiLang) -> list[AdminPlacement]:
                 selectinload(Placement.offer).selectinload(PartnerOffer.partner),
                 selectinload(Placement.offer).selectinload(PartnerOffer.texts),
             )
+            .where(*where)
             .group_by(Placement.id)
             .order_by(Placement.is_active.desc(), impressions.desc(), Placement.id)
         )
@@ -192,3 +217,81 @@ async def partners(session: AsyncSession, lang: UiLang) -> list[AdminPlacement]:
         )
         for placement, shown, clicked in rows
     ]
+
+
+def _partner_code(name: str, taken: set[str]) -> str:
+    """A stable, readable key for a partner, unique among the ones there are."""
+    import re
+    import unicodedata
+
+    ascii_name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+    base = re.sub(r"[^a-z0-9]+", "-", ascii_name.lower()).strip("-")[:48] or "partner"
+    code, n = base, 2
+    while code in taken:
+        code, n = f"{base}-{n}", n + 1
+    return code
+
+
+async def create_placement(
+    session: AsyncSession, lang: UiLang, card: AdminPlacementIn
+) -> AdminPlacement:
+    """A card on the Life screen, the one slot the app draws.
+
+    The partner is found by name ignoring case, so a second card for the same
+    company does not make a second company; the text is stored in the
+    operator's language, and readers in another see it as the first text the
+    card has.
+    """
+    partner = (
+        await session.scalars(
+            select(Partner)
+            .where(func.lower(Partner.name) == card.partner.lower())
+            .order_by(Partner.id)
+        )
+    ).first()
+    if partner is None:
+        taken = set((await session.scalars(select(Partner.code))).all())
+        partner = Partner(code=_partner_code(card.partner, taken), name=card.partner)
+        session.add(partner)
+        await session.flush()
+
+    offer = PartnerOffer(
+        partner_id=partner.id, url=card.url, logo_text=card.logo_text or None
+    )
+    session.add(offer)
+    await session.flush()
+    session.add(
+        PartnerOfferI18n(
+            offer_id=offer.id,
+            lang=lang,
+            title=card.title,
+            subtitle=card.subtitle or None,
+            price_text=card.price_text or None,
+            context_note=card.context_note or None,
+        )
+    )
+    # First on the screen: a slot shows three, and the operator must see the
+    # card they just added.
+    top = await session.scalar(
+        select(func.max(Placement.priority)).where(
+            Placement.slot == PlacementSlot.SCREEN_LIFE
+        )
+    )
+    placement = Placement(
+        offer_id=offer.id, slot=PlacementSlot.SCREEN_LIFE, priority=(top or 0) + 1
+    )
+    session.add(placement)
+    await session.flush()
+    return await _placement(session, lang, placement.id)
+
+
+async def set_placement_active(
+    session: AsyncSession, lang: UiLang, placement_id: int, active: bool
+) -> AdminPlacement:
+    """On or off; nothing is deleted, so a stopped card keeps its numbers."""
+    placement = await session.get(Placement, placement_id)
+    if placement is None:
+        raise NotFound("no such placement")
+    placement.is_active = active
+    await session.flush()
+    return await _placement(session, lang, placement_id)
