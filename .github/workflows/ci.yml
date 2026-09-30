@@ -159,7 +159,7 @@ jobs:
           cd apps/api && uv sync --locked
           cd ../web && pnpm install --frozen-lockfile
 
-      - name: The committed client must match the API
+      - name: The committed OpenAPI document and client must match the API
         # No database and no server: the document is declared at import time,
         # and the lifespan that needs one never runs.
         run: make contract

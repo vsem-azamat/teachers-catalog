@@ -108,13 +108,17 @@ format:  ## Reformat both apps
 	cd $(API) && uv run ruff check --fix src tests && uv run ruff format src tests
 	cd $(WEB) && pnpm format
 
-# Named per user: /tmp is shared, and a file owned by somebody else fails in a
-# way that reads as a broken check rather than a full disk.
-OPENAPI_DUMP := $(or $(TMPDIR),/tmp)/students-cz-openapi-$(shell id -u).json
+# Committed: the contract for clients outside this repository. See
+# docs/architecture.md.
+OPENAPI_DUMP := $(CURDIR)/$(API)/openapi.json
 
 .PHONY: contract
-contract:  ## Check the committed client still matches the API's OpenAPI document
-	cd $(API) && uv run python -m students_cz.openapi > $(OPENAPI_DUMP)
+contract:  ## Check the committed OpenAPI document and the client generated from it are current
+	@# Written beside and moved into place: a dump that fails halfway must not
+	@# leave the committed document truncated.
+	cd $(API) && PYTHONIOENCODING=utf-8 uv run python -m students_cz.openapi > $(OPENAPI_DUMP).tmp \
+	  || { rm -f $(OPENAPI_DUMP).tmp; exit 1; }
+	mv $(OPENAPI_DUMP).tmp $(OPENAPI_DUMP)
 	@# openapi-ts exits 0 without writing anything when its input is missing or
 	@# empty, and a generator that quietly did nothing leaves a stale client
 	@# looking identical to itself. Check the document before trusting the diff.
@@ -127,14 +131,14 @@ contract:  ## Check the committed client still matches the API's OpenAPI documen
 	@# and `git diff` cannot see those at all. Kept in a variable so a git that
 	@# failed — no repository, a dubious-ownership refusal, no git at all — is
 	@# not read as an empty answer, which is the same string a clean tree gives.
-	@changed=$$(git status --porcelain -- $(WEB)/src/lib/generated) || { \
+	@changed=$$(git status --porcelain -- $(WEB)/src/lib/generated $(OPENAPI_DUMP)) || { \
 	  echo "git status failed; the contract check compared nothing."; \
 	  exit 1; \
 	}; \
 	test -z "$$changed" || { \
 	  echo; \
-	  echo "The generated client is out of date. Commit what api:generate just wrote."; \
-	  git --no-pager status --short -- $(WEB)/src/lib/generated; \
+	  echo "The contract is out of date. Commit $(API)/openapi.json and what api:generate just wrote."; \
+	  git --no-pager status --short -- $(WEB)/src/lib/generated $(OPENAPI_DUMP); \
 	  exit 1; \
 	}
 

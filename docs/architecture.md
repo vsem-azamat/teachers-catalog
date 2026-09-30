@@ -316,6 +316,13 @@ file rather than fetching it: given a URL, the generator writes that URL into
 the client as a literal type, so a client generated against somebody's laptop
 carries their address.
 
+**The document itself is committed too**, as `apps/api/openapi.json`, and the
+same check fails when it is out of date. It is the contract for clients that do
+not live here: the Mini App is moving to `supervisor-telegram`, which is to
+generate its client from this file. The API does serve `/openapi.json`, but
+the router sends only `/api/*` and `/healthz` to it, and a live endpoint cannot
+be pinned to a revision anyway. A checked-in file can.
+
 The check covers what has moved across, and that is not yet the whole client.
 `apps/web/src/lib/types.ts` still declares most of the wire types by hand and
 says so; each moves to the generated module as the screen using it is touched,
