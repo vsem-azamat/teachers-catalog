@@ -229,11 +229,32 @@ neighbours about where it lives.
 | `cabinet.py` | a helper's own profile: reading it and saving it |
 | `requests.py` | the catalog in reverse — post, answer, accept, close |
 | `placements.py` | partner placements |
+| `admin.py` | what the operator reads in the console, see below |
 | `health.py` | `/healthz`, on its own router with no prefix |
 
 `health.py` is deliberately outside the versioned router: `/healthz` is what
 the deploy and the shared edge Caddy watch, and it must not move when the API
 version does.
+
+**The operator reads, and only reads.** The moderator console (in
+`supervisor-telegram`'s app) shows the catalog to the people named in
+`ADMIN_TG_IDS`, the same Telegram ids as supervisor's `ADMIN_SUPER_ADMINS`.
+They sign in with the same init data as anybody else; `/me` says `is_admin`,
+and `/admin/*` answers 403 to everybody not on the list. Nothing there writes:
+moderating profiles is not a feature yet, so the console has nothing to change.
+
+- `/admin/catalog`: profiles published in the last 7 days, newest first;
+  requests nobody has answered that can still be answered (open and before
+  their deadline), oldest first; and searches that found nothing in the last
+  30 days, grouped by their text ignoring case and leading or trailing spaces, most frequent
+  first. Each list is capped; the counts give each list's full length, and the
+  number of requests posted this week.
+- `/admin/partners`: every placement, active or not, with its impressions and
+  clicks over the last 30 days.
+
+It names people as the catalog does, a first name and an initial: no handle,
+no Telegram id, no contact. The console opens a profile through the app, like
+anybody else, and lists only the services the catalog lists.
 
 There is no shared-helpers module here. What two domains both need is a rule,
 and a rule belongs in `services/` — that is what stops this package growing a

@@ -1,10 +1,10 @@
 import re
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, computed_field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 def _find_env_file() -> Path | None:
@@ -82,6 +82,10 @@ class Settings(BaseSettings):
     # Telegram id and not a handle: the bot needs a chat it can open, and it
     # can only open one with somebody who has started the moderator bot.
     owner_tg_id: int | None = None
+    # Who reads the catalog in the moderator console: the same Telegram ids as
+    # supervisor's ADMIN_SUPER_ADMINS. See docs/architecture.md. NoDecode: the
+    # deploy writes "1,2", which is not the JSON list pydantic would expect.
+    admin_tg_ids: Annotated[list[int], NoDecode] = Field(default_factory=list)
     # Who a business writes to about advertising: a Telegram username. Unset
     # means the ads page offers no contact. See docs/architecture.md.
     ads_contact: str | None = None
@@ -102,6 +106,14 @@ class Settings(BaseSettings):
         if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{3,31}", username):
             raise ValueError("ADS_CONTACT must be a Telegram username, without a link")
         return username
+
+    @field_validator("admin_tg_ids", mode="before")
+    @classmethod
+    def _comma_separated(cls, value: object) -> object:
+        """ "1, 22" as the deploy writes it; empty is nobody; a typo refuses to start."""
+        if isinstance(value, str):
+            return [part.strip() for part in value.split(",") if part.strip()]
+        return value
 
     @field_validator("owner_tg_id", mode="before")
     @classmethod

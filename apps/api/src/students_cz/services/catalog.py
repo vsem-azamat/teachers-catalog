@@ -395,7 +395,7 @@ def _to_card(
 
     return HelperCardOut(
         user_id=user.id,
-        name=_display_name(user),
+        name=display_name(user),
         avatar=avatar_for(user),
         affiliation=helper.headline,
         price=Price(
@@ -416,7 +416,7 @@ def _to_card(
     )
 
 
-def _display_name(user: User) -> str:
+def display_name(user: User) -> str:
     """First name plus an initial — the convention in the mockups.
 
     Full surnames are neither needed to choose someone nor ours to publish.
@@ -534,7 +534,7 @@ async def helper_detail(
 
     return HelperDetailOut(
         user_id=user.id,
-        name=_display_name(user),
+        name=display_name(user),
         avatar=avatar_for(user),
         affiliation=helper.headline,
         about=helper.about,

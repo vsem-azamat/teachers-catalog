@@ -7,7 +7,13 @@ who owns them.
 from fastapi import APIRouter, BackgroundTasks
 from sqlalchemy import select
 
-from students_cz.api.deps import LangDep, NotifierDep, SessionDep, UserDep
+from students_cz.api.deps import (
+    LangDep,
+    NotifierDep,
+    SessionDep,
+    SettingsDep,
+    UserDep,
+)
 from students_cz.api.v1.me import read_me
 from students_cz.bot.texts import OWNER_NEW_HELPER, OWNER_NO_SERVICES
 from students_cz.db.models import (
@@ -112,6 +118,7 @@ async def upsert_helper(
     session: SessionDep,
     lang: LangDep,
     user: UserDep,
+    settings: SettingsDep,
 ) -> MeOut:
     """Create or replace the caller's helper profile and its offers."""
     saved = await helpers.save_profile(session, user=user, spec=payload, lang=lang)
@@ -125,4 +132,4 @@ async def upsert_helper(
                 services=quote(", ".join(saved.services) or OWNER_NO_SERVICES, 200),
             ),
         )
-    return await read_me(user, session, lang)
+    return await read_me(user, session, lang, settings)

@@ -13,7 +13,7 @@ that each step owes somebody.
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 
-from sqlalchemy import false, func, or_, select, true
+from sqlalchemy import ColumnElement, and_, false, func, or_, select, true
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -62,6 +62,18 @@ class FeedRow:
     on_subject: bool
     on_institution: bool
     on_service: bool
+
+
+def live(now: datetime) -> ColumnElement[bool]:
+    """A request somebody can still answer: open, and not past its deadline.
+
+    Expiry is a deadline and not a job that has to have run, so `status`
+    alone still reads `open` on a request that already refuses answers.
+    """
+    return and_(
+        HelpRequest.status == RequestStatus.OPEN,
+        or_(HelpRequest.expires_at.is_(None), HelpRequest.expires_at > now),
+    )
 
 
 async def feed_for(session: AsyncSession, *, user: User, limit: int) -> list[FeedRow]:
@@ -117,10 +129,9 @@ async def feed_for(session: AsyncSession, *, user: User, limit: int) -> list[Fee
             )
             .join(User, User.id == HelpRequest.author_id)
             .where(
-                HelpRequest.status == RequestStatus.OPEN,
+                live(now),
                 # Answering your own request is not a thing.
                 HelpRequest.author_id != user.id,
-                or_(HelpRequest.expires_at.is_(None), HelpRequest.expires_at > now),
                 ~answered,
             )
             .order_by(
@@ -255,12 +266,9 @@ async def create(
     duplicate = await session.scalar(
         select(HelpRequest.id).where(
             HelpRequest.author_id == user.id,
-            HelpRequest.status == RequestStatus.OPEN,
-            # Expiry is a deadline and not a job that has to have run, so
-            # `status` alone still reads `open` on a request the feed stopped
-            # showing thirty days ago and that already refuses answers. Without
-            # this the person is refused a second ask by a corpse.
-            or_(HelpRequest.expires_at.is_(None), HelpRequest.expires_at > now),
+            # Not just `open`: without the deadline the person is refused a
+            # second ask by a request that already refuses answers.
+            live(now),
             HelpRequest.subject_id.is_not_distinct_from(subject_id),
             HelpRequest.service_type_id.is_not_distinct_from(service_type_id),
             # The school belongs in the key for the same reason the sheet lets
