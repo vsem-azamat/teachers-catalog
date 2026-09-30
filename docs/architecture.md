@@ -117,7 +117,7 @@ one place», govern that `web/` directory. They stay here because the product
 they describe is this one.
 
 The catalog API never calls `/api/public/*`, and the app reads only what those
-endpoints publish: a chat's title, link, group and activity, and reach summed
+endpoints publish: a chat's title, link, group, university code and activity, and reach summed
 per group. Member counts per chat are not public, and no screen may need them.
 The fields are supervisor's contract. `group` is the parent chat's title
 and changes whenever supervisor changes how it groups chats. No group name is
@@ -132,8 +132,15 @@ a Cloudflare rate rule in front of this host, would throttle every Mini App
 user as one client.
 
 **The chat directory reads the order it is given.** `/chats` is one of three
-tabs: Помощь, Чаты and Заявки. The directory keeps supervisor's order and
-builds its entries in `lib/chats.ts`:
+tabs: Помощь, Чаты and Заявки. The directory keeps supervisor's order, save
+one thing, and builds its entries in `lib/chats.ts`:
+
+- the reader's own university comes first. Supervisor names each chat's
+  university by the code in `/taxonomy/institutions` (`cvut`), set in the
+  console on the chat at the top and carried by the chats under it; the
+  reader's is the institution in `/me`, or its university when it is a
+  faculty. Everything else keeps supervisor's order, and a reader with no
+  institution, or outside Telegram, sees that order unchanged;
 
 - chats that share a `group` form a section, which opens its own screen;
 - a group with one chat is not a section, and its chat stands as a row of its
