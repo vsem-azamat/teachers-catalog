@@ -24,7 +24,7 @@ from aiogram.types import (
     WebAppInfo,
 )
 
-from students_cz.bot.texts import OPEN_APP, pick
+from students_cz.bot.texts import OPEN_APP, OWNER_OPEN_CONSOLE, pick
 from students_cz.db.models import User
 from students_cz.db.models.enums import UiLang
 from students_cz.db.session import get_sessionmaker
@@ -37,24 +37,28 @@ log = logging.getLogger("students_cz.notify")
 SEND_TIMEOUT = 10.0
 
 
-def _keyboard(lang: UiLang, app_url: str | None) -> InlineKeyboardMarkup | None:
-    """A button that opens the mini app, when we know our own address.
+def _web_app_button(text: str, url: str | None) -> InlineKeyboardMarkup | None:
+    """One button that opens the Mini App at `url`, when that is https.
 
     A web_app button requires an https URL; during local development there is
     none, and a notification without a button is better than a failed send.
     """
-    if not app_url or not app_url.startswith("https://"):
+    if not url or not url.startswith("https://"):
         return None
     return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=pick(OPEN_APP, lang),
-                    web_app=WebAppInfo(url=app_url),
-                )
-            ]
-        ]
+        inline_keyboard=[[InlineKeyboardButton(text=text, web_app=WebAppInfo(url=url))]]
     )
+
+
+def _keyboard(lang: UiLang, app_url: str | None) -> InlineKeyboardMarkup | None:
+    """The app, in the recipient's language."""
+    return _web_app_button(pick(OPEN_APP, lang), app_url)
+
+
+def _console_keyboard(app_url: str | None) -> InlineKeyboardMarkup | None:
+    """The console's catalog screen, in Russian like the ping itself."""
+    url = f"{app_url.rstrip('/')}/console/catalog" if app_url else None
+    return _web_app_button(OWNER_OPEN_CONSOLE, url)
 
 
 @dataclass(frozen=True)
@@ -147,8 +151,8 @@ class Notifier:
         A different kind of message from the two above and kept apart from
         them: those answer something the recipient set in motion, this one
         reports on the catalog to one address that no screen chose. There is
-        nobody to consult about language, nothing to opt out of, and no button
-        — see docs/architecture.md.
+        nobody to consult about language and nothing to opt out of; its one
+        button opens the console — see docs/architecture.md.
 
         Off unless `OWNER_TG_ID` names somebody, which is how it runs
         everywhere but production. Like every notification here it cannot fail
@@ -162,7 +166,7 @@ class Notifier:
             tg_id=self._owner_tg_id,
             text=text,
             lang=UiLang.RU,
-            app_url=None,
+            keyboard=_console_keyboard(self._app_url),
         )
 
 
@@ -173,8 +177,12 @@ async def tell(
     text: str,
     lang: UiLang,
     app_url: str | None = None,
+    keyboard: InlineKeyboardMarkup | None = None,
 ) -> bool:
     """Send one message. Returns whether it arrived.
+
+    The button is `keyboard` when one is given, else the one that opens the app
+    at `app_url`, else none.
 
     `bot` is None when the API runs without a token, which is how it runs
     locally — so every caller works unchanged with notifications simply not
@@ -189,7 +197,8 @@ async def tell(
             bot.send_message(
                 chat_id=tg_id,
                 text=text,
-                reply_markup=_keyboard(lang, app_url),
+                # The caller's own keyboard, else the one that opens the app.
+                reply_markup=keyboard or _keyboard(lang, app_url),
                 # These are short and self-contained; a link preview would be
                 # the only thing in the message with a picture. The options
                 # object rather than disable_web_page_preview, which aiogram

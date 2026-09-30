@@ -309,9 +309,13 @@ it: one message to one address, `OWNER_TG_ID`, about a profile or a request
 appearing. It is not product copy — nobody reading it chose a language, and it
 is addressed to whoever runs this — so it lives in `bot/texts.py` as a plain
 string rather than a table per language, and it is off unless that setting
-names somebody. A ping that cannot be sent, like a notification that cannot,
-costs the action nothing: both are queued after the response and neither may
-raise.
+names somebody. It carries one button, «Открыть в консоли», which opens the
+console's catalog screen (`APP_URL/console/catalog`), where recent profiles
+and unanswered requests are listed: the ping is the reason to look, the
+console is where to look. The owner should be one of `ADMIN_TG_IDS`, or the
+button opens a refusal. No button when the app's address is not https, as for the others. A
+ping that cannot be sent, like a notification that cannot, costs the action
+nothing: both are queued after the response and neither may raise.
 
 **State the process keeps is a service, not an attribute.** `Notifier` is one:
 a bot and an address, decided once. `telegram.BotHandle` is the other, and it
