@@ -145,7 +145,7 @@ ssh-keyscan -t ed25519 <host>          # for DEPLOY_KNOWN_HOSTS
 | `LOG_LEVEL` | Optional; defaults to `INFO`. One of DEBUG, INFO, WARNING, ERROR, CRITICAL. |
 | `BACKUP_HOUR_UTC`, `BACKUP_RETENTION_DAYS` | Optional; default 3 and 14. |
 | `ADS_CONTACT` | Optional. The Telegram username, without `@`, that the ads page tells a business to write to. Unset means the page has no contact button. |
-| `ADMIN_TG_IDS` | Optional. Comma-separated Telegram ids of the console's operators, the same as `ADMIN_SUPER_ADMINS` in `supervisor-telegram`. Unset means nobody reads the catalog in the console. See docs/architecture.md, «The operator reads, and only reads». |
+| `ADMIN_TG_IDS` | Optional. Comma-separated Telegram ids of the console's operators, the same as `ADMIN_SUPER_ADMINS` in `supervisor-telegram`. Unset means nobody reads the catalog or runs partner cards in the console. See docs/architecture.md, «The operator reads the catalog and runs the partner cards». |
 | `OWNER_TG_ID` | Optional. Telegram id of whoever runs this, to be told when a profile or a request appears. Unset means no ping. Should be one of `ADMIN_TG_IDS`: the ping's button opens the console. A numeric id, not a handle — the bot needs a chat it can open, and it can only open one with somebody who has started the moderator bot. |
 
 ### 5. In @BotFather

@@ -1,9 +1,17 @@
-"""What the operator reads in the console. See services/admin.py."""
+"""What the operator reads in the console, and the partner cards they run.
 
-from fastapi import APIRouter
+See services/admin.py.
+"""
+
+from fastapi import APIRouter, HTTPException, status
 
 from students_cz.api.deps import AdminDep, LangDep, SessionDep
-from students_cz.schemas import AdminCatalog, AdminPlacement
+from students_cz.schemas import (
+    AdminCatalog,
+    AdminPlacement,
+    AdminPlacementIn,
+    AdminPlacementSwitch,
+)
 from students_cz.services import admin
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -19,3 +27,26 @@ async def read_partners(
     _: AdminDep, session: SessionDep, lang: LangDep
 ) -> list[AdminPlacement]:
     return await admin.partners(session, lang)
+
+
+@router.post(
+    "/placements", response_model=AdminPlacement, status_code=status.HTTP_201_CREATED
+)
+async def create_placement(
+    card: AdminPlacementIn, _: AdminDep, session: SessionDep, lang: LangDep
+) -> AdminPlacement:
+    return await admin.create_placement(session, lang, card)
+
+
+@router.patch("/placements/{placement_id}", response_model=AdminPlacement)
+async def switch_placement(
+    placement_id: int,
+    change: AdminPlacementSwitch,
+    _: AdminDep,
+    session: SessionDep,
+    lang: LangDep,
+) -> AdminPlacement:
+    row = await admin.set_placement_active(session, lang, placement_id, change.is_active)
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such placement")
+    return row

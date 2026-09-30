@@ -1,8 +1,9 @@
-"""What the operator reads in the console, and who may read it.
+"""What the operator reads and changes in the console, and who may.
 
 The console lives in supervisor-telegram's app; the catalog's part of it is
-two read-only lists behind `ADMIN_TG_IDS`. See docs/architecture.md, «The
-operator reads, and only reads».
+two read-only lists and the partner cards, behind `ADMIN_TG_IDS`. See
+docs/architecture.md, «The operator reads the catalog and runs the partner
+cards».
 """
 
 from datetime import UTC, datetime, timedelta
@@ -10,7 +11,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from httpx import ASGITransport, AsyncClient
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from students_cz.core.config import Settings, get_settings
@@ -62,10 +63,22 @@ async def test_me_says_who_is_an_operator(session: AsyncSession) -> None:
     assert stranger.json()["is_admin"] is False
 
 
-@pytest.mark.parametrize("path", ["/api/v1/admin/catalog", "/api/v1/admin/partners"])
-async def test_everybody_else_is_refused(session: AsyncSession, path: str) -> None:
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("GET", "/api/v1/admin/catalog"),
+        ("GET", "/api/v1/admin/partners"),
+        ("POST", "/api/v1/admin/placements"),
+        ("PATCH", "/api/v1/admin/placements/1"),
+    ],
+)
+async def test_everybody_else_is_refused(
+    session: AsyncSession, method: str, path: str
+) -> None:
     async with _client(session) as http:
-        response = await http.get(path, headers=auth_header(STRANGER))
+        response = await http.request(
+            method, path, headers=auth_header(STRANGER), json={"is_active": False}
+        )
 
     assert response.status_code == 403
 
@@ -322,3 +335,161 @@ async def test_counts_are_the_full_lengths_when_the_lists_are_cut(
     assert (len(body["profiles"]), body["counts"]["profiles_week"]) == (1, 2)
     assert (len(body["unanswered"]), body["counts"]["unanswered"]) == (1, 2)
     assert (len(body["failed_searches"]), body["counts"]["failed_searches"]) == (1, 2)
+
+
+# ── partner cards ───────────────────────────────────────────────────────
+
+
+CARD = {
+    "partner": "Pojišťovna VZP",
+    "url": "https://example.test/vzp",
+    "title": "Страховка для студентов",
+    "subtitle": "Комплексная, для визы",
+    "price_text": "от 8 900 Kč",
+    "context_note": "Без неё не продлят визу.",
+    "logo_text": "VZP",
+}
+
+
+async def test_a_new_card_goes_on_the_life_screen(session: AsyncSession) -> None:
+    async with _client(session) as http:
+        response = await http.post(
+            "/api/v1/admin/placements", headers=auth_header(OPERATOR), json=CARD
+        )
+        listed = (
+            await http.get("/api/v1/admin/partners", headers=auth_header(OPERATOR))
+        ).json()
+
+    assert response.status_code == 201, response.text
+    card = response.json()
+    assert card["partner"] == "Pojišťovna VZP"
+    assert card["title"] == "Страховка для студентов"
+    assert card["slot"] == "screen_life"
+    assert card["is_active"] is True
+    assert card["impressions"] == 0
+    assert any(row["placement_id"] == card["placement_id"] for row in listed)
+
+    placement = await session.get(Placement, card["placement_id"])
+    assert placement is not None
+    offer = await session.get(PartnerOffer, placement.offer_id)
+    assert offer is not None
+    assert offer.url == "https://example.test/vzp"
+    assert offer.logo_text == "VZP"
+    text = (
+        await session.scalars(
+            select(PartnerOfferI18n).where(PartnerOfferI18n.offer_id == offer.id)
+        )
+    ).one()
+    assert (text.lang, text.price_text, text.context_note) == (
+        UiLang.RU,
+        "от 8 900 Kč",
+        "Без неё не продлят визу.",
+    )
+
+
+async def test_the_card_is_what_the_life_screen_then_shows(session: AsyncSession) -> None:
+    reader = await _person(session, STRANGER, "Jana")
+    reader.ui_lang = UiLang.CS
+    # The slot shows three cards; the seeded ones would crowd this one out.
+    for other in (await session.scalars(select(Placement))).all():
+        other.is_active = False
+    await session.flush()
+    async with _client(session) as http:
+        await http.post(
+            "/api/v1/admin/placements", headers=auth_header(OPERATOR), json=CARD
+        )
+        shown = (
+            await http.get(
+                "/api/v1/placements",
+                params={"slot": "screen_life"},
+                headers=auth_header(STRANGER),
+            )
+        ).json()
+
+    # In Czech too: a card shows the first text it has when none is in yours.
+    assert any(row["title"] == "Страховка для студентов" for row in shown)
+
+
+async def test_a_partner_of_the_same_name_is_reused(session: AsyncSession) -> None:
+    async with _client(session) as http:
+        for name in ("Pojišťovna VZP", "  pojišťovna vzp "):
+            response = await http.post(
+                "/api/v1/admin/placements",
+                headers=auth_header(OPERATOR),
+                json={**CARD, "partner": name},
+            )
+            assert response.status_code == 201, response.text
+
+    partners = (
+        await session.scalars(
+            select(Partner).where(func.lower(Partner.name) == "pojišťovna vzp")
+        )
+    ).all()
+    assert len(partners) == 1
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"url": "http://example.test/vzp"},
+        {"url": "javascript:alert(1)"},
+        {"title": "   "},
+        {"partner": ""},
+        {"logo_text": "TOOLONG"},
+    ],
+)
+async def test_a_card_that_would_mislead_is_refused(
+    session: AsyncSession, change: dict[str, str]
+) -> None:
+    async with _client(session) as http:
+        response = await http.post(
+            "/api/v1/admin/placements",
+            headers=auth_header(OPERATOR),
+            json={**CARD, **change},
+        )
+
+    assert response.status_code == 422
+
+
+async def test_a_card_is_switched_off_and_on(session: AsyncSession) -> None:
+    async with _client(session) as http:
+        card = (
+            await http.post(
+                "/api/v1/admin/placements", headers=auth_header(OPERATOR), json=CARD
+            )
+        ).json()
+        off = await http.patch(
+            f"/api/v1/admin/placements/{card['placement_id']}",
+            headers=auth_header(OPERATOR),
+            json={"is_active": False},
+        )
+        shown = (
+            await http.get(
+                "/api/v1/placements",
+                params={"slot": "screen_life"},
+                headers=auth_header(STRANGER),
+            )
+        ).json()
+        on = await http.patch(
+            f"/api/v1/admin/placements/{card['placement_id']}",
+            headers=auth_header(OPERATOR),
+            json={"is_active": True},
+        )
+
+    assert off.status_code == 200, off.text
+    assert off.json()["is_active"] is False
+    assert all(row["title"] != CARD["title"] for row in shown)
+    assert on.json()["is_active"] is True
+
+
+async def test_switching_a_card_that_does_not_exist_is_a_404(
+    session: AsyncSession,
+) -> None:
+    async with _client(session) as http:
+        response = await http.patch(
+            "/api/v1/admin/placements/999999",
+            headers=auth_header(OPERATOR),
+            json={"is_active": False},
+        )
+
+    assert response.status_code == 404
