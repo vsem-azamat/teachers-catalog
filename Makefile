@@ -110,7 +110,9 @@ format:  ## Reformat both apps
 
 # Named per user: /tmp is shared, and a file owned by somebody else fails in a
 # way that reads as a broken check rather than a full disk.
-OPENAPI_DUMP := $(or $(TMPDIR),/tmp)/students-cz-openapi-$(shell id -u).json
+# Committed: the contract for clients outside this repository. See
+# docs/architecture.md.
+OPENAPI_DUMP := $(CURDIR)/$(API)/openapi.json
 
 .PHONY: contract
 contract:  ## Check the committed client still matches the API's OpenAPI document
@@ -127,14 +129,14 @@ contract:  ## Check the committed client still matches the API's OpenAPI documen
 	@# and `git diff` cannot see those at all. Kept in a variable so a git that
 	@# failed — no repository, a dubious-ownership refusal, no git at all — is
 	@# not read as an empty answer, which is the same string a clean tree gives.
-	@changed=$$(git status --porcelain -- $(WEB)/src/lib/generated) || { \
+	@changed=$$(git status --porcelain -- $(WEB)/src/lib/generated $(OPENAPI_DUMP)) || { \
 	  echo "git status failed; the contract check compared nothing."; \
 	  exit 1; \
 	}; \
 	test -z "$$changed" || { \
 	  echo; \
-	  echo "The generated client is out of date. Commit what api:generate just wrote."; \
-	  git --no-pager status --short -- $(WEB)/src/lib/generated; \
+	  echo "The contract is out of date. Commit apps/api/openapi.json and what api:generate just wrote."; \
+	  git --no-pager status --short -- $(WEB)/src/lib/generated $(OPENAPI_DUMP); \
 	  exit 1; \
 	}
 
