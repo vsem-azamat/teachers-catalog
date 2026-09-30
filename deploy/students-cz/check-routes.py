@@ -62,10 +62,16 @@ def handlers(route: dict) -> list[dict]:
 
 
 def outcome(route: dict) -> str:
-    """`proxy <dial>`, `<status> <Location>`, or what else the route does."""
+    """`proxy <dial>`, `<status> <Location>`, or what else the route does.
+
+    The first terminal handler found, whatever matcher a nested route has: a
+    `handle` block here holds one unconditional handler, and one that grows a
+    matcher inside is a shape this check would have to learn first.
+    """
     for handler in handlers(route):
         if handler.get("handler") == "reverse_proxy":
-            return "proxy " + ",".join(u.get("dial") for u in handler.get("upstreams", []))
+            dials = [u.get("dial", "?") for u in handler.get("upstreams", [])]
+            return "proxy " + ",".join(dials)
         if handler.get("handler") == "static_response":
             location = handler.get("headers", {}).get("Location", ["?"])[0]
             return f"{handler.get('status_code')} {location}"

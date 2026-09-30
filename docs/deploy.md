@@ -23,7 +23,7 @@ Nothing is built on the server.
 
 1. Push to `main` runs **CI**. Deployment is a separate workflow triggered by
    CI *succeeding* — so only a commit that passed tests can ship.
-2. **Deploy** builds the API image and pushes them to GHCR under
+2. **Deploy** builds the API image and pushes it to GHCR under
    `prod-<short-sha>` and `prod-latest`. The immutable tag is what gets
    deployed; `prod-latest` exists only for humans reading the registry.
 3. It copies the compose file, the Caddyfile, the route script and a freshly
@@ -38,8 +38,10 @@ Nothing is built on the server.
    rolled back on failure.
 8. Public smoke tests.
 
-If anything fails before step 6, the previous `.env` is restored and the
-previous stack is brought back up. After step 6 the release is committed;
+If anything fails before step 6, the previous `.env`, compose file and
+Caddyfile are restored together and the previous stack is brought back up.
+The new compose file and Caddyfile arrive staged beside the live ones, so
+until then the previous release is untouched. After step 6 the release is committed;
 recovering from a bad release is `Rollback production`.
 
 ### Reference data does not ship with the code
@@ -170,9 +172,9 @@ to the catalog yet.
 3. Replace the `BOT_TOKEN` secret with the moderator bot's token, the same
    value as `MODERATOR_BOT_TOKEN` in `supervisor-telegram`, and re-run the
    deploy.
-4. Set `WEBAPI_HELP_URL` to `PUBLIC_HOST` in `supervisor-telegram` (its #124
-   added the setting) and re-run its deploy. Its `/start` then offers
-   «🎓 Помощь с учёбой».
+4. `supervisor-telegram`'s `/start` offers «🎓 Помощь с учёбой», which opens
+   the app at `APP_URL`. Set `APP_URL` here before deploying a release that
+   requires it: the deploy refuses to start without it.
 5. In @BotFather, remove `@student_cz_bot`'s Main Mini App URL. The Bot API
    cannot do this one.
 6. Check that Telegram sends `allows_write_to_pm` on this launch. Set your

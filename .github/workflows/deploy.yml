@@ -209,10 +209,14 @@ jobs:
           set -euo pipefail
           ssh "$DEPLOY_USER@$DEPLOY_HOST" \
             "install -d -m 700 '$DEPLOY_DIR' '$DEPLOY_DIR/data' '$DEPLOY_DIR/data/backups'"
+          scp deploy/students-cz/apply-edge-route.sh "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/"
+          # Staged beside the live copies, not over them: they belong to the
+          # release they came with, and restoring the previous release's .env
+          # onto this release's compose file would start neither of them.
           scp deploy/students-cz/docker-compose.yml \
-              deploy/students-cz/Caddyfile \
-              deploy/students-cz/apply-edge-route.sh \
-              "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/"
+              "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/docker-compose.yml.$RUN_ID.tmp"
+          scp deploy/students-cz/Caddyfile \
+              "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/Caddyfile.$RUN_ID.tmp"
           scp "${{ steps.prep.outputs.env_file }}" \
               "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/.env.$RUN_ID.tmp"
           scp "${{ steps.prep.outputs.token_file }}" \
@@ -248,8 +252,16 @@ jobs:
           cd "$DEPLOY_DIR"
 
           committed=0
-          previous_env=""
-          [ -f .env ] && previous_env="$(mktemp)" && cp .env "$previous_env"
+          # The previous release is its .env, compose file and Caddyfile
+          # together: each names what the others provide.
+          previous=""
+          if [ -f .env ]; then
+            previous="$(mktemp -d)"
+            cp .env "$previous/"
+            for f in docker-compose.yml Caddyfile; do
+              if [ -f "$f" ]; then cp "$f" "$previous/"; fi
+            done
+          fi
 
           # A GHCR login written into ~/.docker/config.json would outlive the
           # deployment. This one lives in a directory that goes away with it.
@@ -257,18 +269,23 @@ jobs:
 
           cleanup() {
             local code=$?
-            if [ "$code" -ne 0 ] && [ "$committed" -eq 0 ] && [ -n "$previous_env" ]; then
+            if [ "$code" -ne 0 ] && [ "$committed" -eq 0 ] && [ -n "$previous" ]; then
               echo "deployment failed before commit; restoring the previous release" >&2
-              cp "$previous_env" .env
+              for f in .env docker-compose.yml Caddyfile; do
+                if [ -f "$previous/$f" ]; then cp "$previous/$f" .; fi
+              done
               docker compose up -d --remove-orphans >/dev/null 2>&1 || true
             fi
-            rm -rf "$DOCKER_CONFIG"
-            rm -f "$previous_env" ".env.$RUN_ID.tmp" ".ghcr.$RUN_ID.tmp"
+            rm -rf "$DOCKER_CONFIG" "$previous"
+            rm -f ".env.$RUN_ID.tmp" ".ghcr.$RUN_ID.tmp" \
+                  "docker-compose.yml.$RUN_ID.tmp" "Caddyfile.$RUN_ID.tmp"
             exit "$code"
           }
           trap cleanup EXIT
 
           install -m 600 ".env.$RUN_ID.tmp" .env
+          install -m 644 "docker-compose.yml.$RUN_ID.tmp" docker-compose.yml
+          install -m 644 "Caddyfile.$RUN_ID.tmp" Caddyfile
           chmod +x apply-edge-route.sh
 
           docker login ghcr.io -u "$GHCR_ACTOR" --password-stdin < ".ghcr.$RUN_ID.tmp"
@@ -362,5 +379,6 @@ jobs:
                 "${{ steps.prep.outputs.token_file }}" \
                 "${{ steps.prep.outputs.route_file }}" || true
           ssh "$DEPLOY_USER@$DEPLOY_HOST" \
-            "rm -f '$DEPLOY_DIR/.env.$RUN_ID.tmp' '$DEPLOY_DIR/.ghcr.$RUN_ID.tmp'" || true
+            "rm -f '$DEPLOY_DIR/.env.$RUN_ID.tmp' '$DEPLOY_DIR/.ghcr.$RUN_ID.tmp' \
+                   '$DEPLOY_DIR/docker-compose.yml.$RUN_ID.tmp' '$DEPLOY_DIR/Caddyfile.$RUN_ID.tmp'" || true
           rm -f ~/.ssh/id_ed25519 || true
