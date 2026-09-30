@@ -133,7 +133,7 @@ ssh-keyscan -t ed25519 <host>          # for DEPLOY_KNOWN_HOSTS
 | --- | --- |
 | `PUBLIC_HOST` | `https://<subdomain>` — scheme and host, no path, no trailing slash. |
 | `PUBLIC_PORT` | A loopback port not used by another project on the host. |
-| `APP_URL` | `https://<host>` of the Mini App (supervisor-telegram). Every path here other than `/api/v1/*` and `/healthz` answers 301 to it, and the bot's buttons open it. Required, and checked like `PUBLIC_HOST`. |
+| `APP_URL` | `https://<host>` of the Mini App (supervisor-telegram). Every path here other than `/api/v1/*` and `/healthz` answers 301 to it, and the bot's buttons open it. Required, checked like `PUBLIC_HOST`, and never equal to it. Set it before any deploy of a release that reads it: without it the deploy refuses. |
 | `EDGE_CADDY_SERVICE` | Service name of the edge Caddy in its compose file. |
 | `EDGE_CADDY_CONFIG_PATH` | Path to the Caddyfile *inside* that container. |
 | `POSTGRES_DB`, `POSTGRES_USER` | Required, and checked before anything ships. No default on purpose: they name a role and a database that already exist inside a volume, and a wrong guess does not create them — the entrypoint skips `initdb` on a cluster that is not empty. The password is a secret, above. |
@@ -166,8 +166,7 @@ to the catalog yet.
    value as `MODERATOR_BOT_TOKEN` in `supervisor-telegram`, and re-run the
    deploy.
 4. `supervisor-telegram`'s `/start` offers «🎓 Помощь с учёбой», which opens
-   the app at `APP_URL`. Set `APP_URL` here before deploying a release that
-   requires it: the deploy refuses to start without it.
+   the app at `APP_URL`.
 5. In @BotFather, remove `@student_cz_bot`'s Main Mini App URL. The Bot API
    cannot do this one.
 6. Check that Telegram sends `allows_write_to_pm` on this launch. Set your

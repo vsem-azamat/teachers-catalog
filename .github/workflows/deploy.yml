@@ -257,13 +257,16 @@ jobs:
           cd "$DEPLOY_DIR"
 
           committed=0
-          # The previous release is its .env, compose file and Caddyfile
-          # together: each names what the others provide.
+          # A release is its .env and these files together: each names what the
+          # others provide. Staged, backed up and restored as one set, so the
+          # list is written once. The "Remove transient files" step repeats the
+          # staged names, because it runs outside this script.
+          release_files="docker-compose.yml Caddyfile"
           previous=""
           if [ -f .env ]; then
             previous="$(mktemp -d)"
             cp .env "$previous/"
-            for f in docker-compose.yml Caddyfile; do
+            for f in $release_files; do
               if [ -f "$f" ]; then cp "$f" "$previous/"; fi
             done
           fi
@@ -280,24 +283,31 @@ jobs:
             set +e
             if [ "$code" -ne 0 ] && [ "$committed" -eq 0 ] && [ -n "$previous" ]; then
               echo "deployment failed before commit; restoring the previous release" >&2
-              for f in .env docker-compose.yml Caddyfile; do
+              restored=1
+              for f in .env $release_files; do
                 if [ -f "$previous/$f" ]; then
-                  cp "$previous/$f" . || echo "could not restore $f" >&2
+                  cp "$previous/$f" . || { echo "could not restore $f" >&2; restored=0; }
                 fi
               done
-              docker compose up -d --remove-orphans >/dev/null 2>&1 \
-                || echo "the previous release did not come back up" >&2
+              # Half of each release would start neither, and could replace
+              # working containers with a broken one. Leave them running.
+              if [ "$restored" -eq 1 ]; then
+                docker compose up -d --remove-orphans 2>&1 | tail -n 20 >&2
+                [ "${PIPESTATUS[0]}" -eq 0 ] \
+                  || echo "the previous release did not come back up" >&2
+              else
+                echo "not restarting anything: the previous release is incomplete" >&2
+              fi
             fi
             rm -rf "$DOCKER_CONFIG" "$previous"
-            rm -f ".env.$RUN_ID.tmp" ".ghcr.$RUN_ID.tmp" \
-                  "docker-compose.yml.$RUN_ID.tmp" "Caddyfile.$RUN_ID.tmp"
+            rm -f ".env.$RUN_ID.tmp" ".ghcr.$RUN_ID.tmp"
+            for f in $release_files; do rm -f "$f.$RUN_ID.tmp"; done
             exit "$code"
           }
           trap cleanup EXIT
 
           install -m 600 ".env.$RUN_ID.tmp" .env
-          install -m 644 "docker-compose.yml.$RUN_ID.tmp" docker-compose.yml
-          install -m 644 "Caddyfile.$RUN_ID.tmp" Caddyfile
+          for f in $release_files; do install -m 644 "$f.$RUN_ID.tmp" "$f"; done
           chmod +x apply-edge-route.sh
 
           docker login ghcr.io -u "$GHCR_ACTOR" --password-stdin < ".ghcr.$RUN_ID.tmp"
