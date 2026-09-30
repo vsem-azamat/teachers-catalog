@@ -8,7 +8,7 @@ from typing import Any
 
 from sqlalchemy import ColumnElement, and_, case, exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import QueryableAttribute, selectinload
 
 from students_cz.db.models import HelperProfile, Offer, ServiceType, User
 from students_cz.db.models.enums import (
@@ -75,7 +75,9 @@ async def catalog(session: AsyncSession, lang: UiLang) -> AdminCatalog:
 
 
 async def _count(
-    session: AsyncSession, what: ColumnElement[Any], where: ColumnElement[bool]
+    session: AsyncSession,
+    what: ColumnElement[Any] | QueryableAttribute[Any],
+    where: ColumnElement[bool],
 ) -> int:
     return await session.scalar(select(func.count(what)).where(where)) or 0
 
