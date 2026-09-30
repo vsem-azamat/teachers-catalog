@@ -24,7 +24,7 @@ from aiogram.types import (
     WebAppInfo,
 )
 
-from students_cz.bot.texts import OPEN_APP, pick
+from students_cz.bot.texts import OPEN_APP, OWNER_OPEN_CONSOLE, pick
 from students_cz.db.models import User
 from students_cz.db.models.enums import UiLang
 from students_cz.db.session import get_sessionmaker
@@ -51,6 +51,23 @@ def _keyboard(lang: UiLang, app_url: str | None) -> InlineKeyboardMarkup | None:
                 InlineKeyboardButton(
                     text=pick(OPEN_APP, lang),
                     web_app=WebAppInfo(url=app_url),
+                )
+            ]
+        ]
+    )
+
+
+def _console_keyboard(app_url: str | None) -> InlineKeyboardMarkup | None:
+    """«Открыть в консоли», to the console's catalog screen. Russian only, like
+    the ping itself; https only, like every web_app button."""
+    if not app_url or not app_url.startswith("https://"):
+        return None
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=OWNER_OPEN_CONSOLE,
+                    web_app=WebAppInfo(url=f"{app_url.rstrip('/')}/console/catalog"),
                 )
             ]
         ]
@@ -147,8 +164,8 @@ class Notifier:
         A different kind of message from the two above and kept apart from
         them: those answer something the recipient set in motion, this one
         reports on the catalog to one address that no screen chose. There is
-        nobody to consult about language, nothing to opt out of, and no button
-        — see docs/architecture.md.
+        nobody to consult about language and nothing to opt out of; its one
+        button opens the console — see docs/architecture.md.
 
         Off unless `OWNER_TG_ID` names somebody, which is how it runs
         everywhere but production. Like every notification here it cannot fail
@@ -162,7 +179,7 @@ class Notifier:
             tg_id=self._owner_tg_id,
             text=text,
             lang=UiLang.RU,
-            app_url=None,
+            keyboard=_console_keyboard(self._app_url),
         )
 
 
@@ -173,6 +190,7 @@ async def tell(
     text: str,
     lang: UiLang,
     app_url: str | None = None,
+    keyboard: InlineKeyboardMarkup | None = None,
 ) -> bool:
     """Send one message. Returns whether it arrived.
 
@@ -189,7 +207,8 @@ async def tell(
             bot.send_message(
                 chat_id=tg_id,
                 text=text,
-                reply_markup=_keyboard(lang, app_url),
+                # The caller's own keyboard, else the one that opens the app.
+                reply_markup=keyboard or _keyboard(lang, app_url),
                 # These are short and self-contained; a link preview would be
                 # the only thing in the message with a picture. The options
                 # object rather than disable_web_page_preview, which aiogram

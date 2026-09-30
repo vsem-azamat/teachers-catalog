@@ -208,10 +208,24 @@ async def test_no_owner_means_no_ping_rather_than_an_error() -> None:
 
 
 @pytest.mark.asyncio
-async def test_the_owner_ping_carries_no_button() -> None:
-    """It is a line in a log, not an invitation to open a screen."""
+async def test_the_owner_ping_opens_the_console() -> None:
+    """The ping is the reason to look; the console's catalog is where to look."""
     bot = _Bot()
     notifier = Notifier(cast(Bot, bot), "https://tests.example", owner_tg_id=777)
+
+    await notifier.tell_owner("новая заявка")
+
+    (row,) = bot.sent[0]["reply_markup"].inline_keyboard
+    (button,) = row
+    assert button.text == "Открыть в консоли"
+    assert button.web_app.url == "https://tests.example/console/catalog"
+
+
+@pytest.mark.asyncio
+async def test_without_https_the_owner_ping_has_no_button() -> None:
+    """A web_app button needs https; a ping without one beats a failed send."""
+    bot = _Bot()
+    notifier = Notifier(cast(Bot, bot), "http://localhost:5173", owner_tg_id=777)
 
     await notifier.tell_owner("новая заявка")
 

@@ -99,6 +99,7 @@ WAIT_FOR_MESSAGE: dict[UiLang, str] = {
 # behind them. Nobody reading these chose a language: they go to one address,
 # `OWNER_TG_ID`, and they report on the catalog rather than saying anything to
 # a person who is using it. See docs/architecture.md.
+OWNER_OPEN_CONSOLE = "Открыть в консоли"
 OWNER_NEW_HELPER = "<b>Новая анкета</b>\n{name}\n{services}"
 OWNER_NEW_REQUEST = "<b>Новая заявка</b>\n{topic}\n«{text}»"
 OWNER_NO_SERVICES = "без услуг"
