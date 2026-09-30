@@ -259,8 +259,9 @@ jobs:
           committed=0
           # A release is its .env and these files together: each names what the
           # others provide. Staged, backed up and restored as one set, so the
-          # list is written once. The "Remove transient files" step repeats the
-          # staged names, because it runs outside this script.
+          # list is written once here. Two steps outside this script repeat the
+          # names and change with it: "Copy configuration to the server", which
+          # stages them, and "Remove transient files".
           release_files="docker-compose.yml Caddyfile"
           previous=""
           if [ -f .env ]; then
@@ -283,20 +284,26 @@ jobs:
             set +e
             if [ "$code" -ne 0 ] && [ "$committed" -eq 0 ] && [ -n "$previous" ]; then
               echo "deployment failed before commit; restoring the previous release" >&2
-              restored=1
+              unrestored=""
               for f in .env $release_files; do
                 if [ -f "$previous/$f" ]; then
-                  cp "$previous/$f" . || { echo "could not restore $f" >&2; restored=0; }
+                  cp "$previous/$f" . || unrestored="$unrestored $f"
                 fi
               done
               # Half of each release would start neither, and could replace
               # working containers with a broken one. Leave them running.
-              if [ "$restored" -eq 1 ]; then
+              if [ -z "$unrestored" ]; then
                 docker compose up -d --remove-orphans 2>&1 | tail -n 20 >&2
                 [ "${PIPESTATUS[0]}" -eq 0 ] \
                   || echo "the previous release did not come back up" >&2
               else
-                echo "not restarting anything: the previous release is incomplete" >&2
+                # The running containers are untouched, but the directory now
+                # holds files of both releases, and a restart (a reboot too)
+                # would start that mix.
+                echo "could not restore:$unrestored" >&2
+                echo "not restarting anything. $PWD now mixes two releases:" \
+                     "put those files back by hand or deploy forward before" \
+                     "anything restarts." >&2
               fi
             fi
             rm -rf "$DOCKER_CONFIG" "$previous"

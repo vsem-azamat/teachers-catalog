@@ -40,6 +40,9 @@ Nothing is built on the server.
 
 If anything fails before step 6, the previous `.env`, compose file and
 Caddyfile are restored together and the previous stack is brought back up.
+If any of them cannot be copied back, nothing is restarted: the running
+containers stay as they are, the log names the files, and the directory needs
+them put back by hand, or a forward deploy, before anything restarts.
 The new compose file and Caddyfile arrive staged beside the live ones, so
 until then the previous release is untouched. After step 6 the release is committed;
 recovering from a bad release is `Rollback production`.
