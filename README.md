@@ -1,5 +1,12 @@
 # Students CZ
 
+> **Moved.** Since 30 September 2026 the catalog lives in
+> [supervisor-telegram](https://github.com/vsem-azamat/supervisor-telegram)
+> as `catalog/`, and deploys from there. This repository keeps its history and
+> no longer deploys: its deploy and rollback workflows are gone, because the
+> production database volume is now mounted by the new stack, and a second
+> Postgres on it would corrupt it. Change the catalog there, not here.
+
 A Telegram Mini App for students in the Czech Republic — mostly foreigners —
 looking for people who can help: tutors, entrance-exam preparation, help during
 an exam, nostrification, written work, gear to rent, textbooks, notes.
