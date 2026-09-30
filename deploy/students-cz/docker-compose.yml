@@ -103,6 +103,9 @@ services:
     environment:
       # Where every path but the API is redirected: the app. See the Caddyfile.
       APP_URL: ${APP_URL}
+      # Not read by Caddy. A changed value is what makes compose recreate
+      # this container, and so load a changed Caddyfile.
+      CADDYFILE_SHA: ${CADDYFILE_SHA:-}
     ports:
       # Loopback only. Publishing on a wildcard would put the app on the
       # internet without TLS, bypassing the edge entirely; the deploy script

@@ -73,13 +73,6 @@ file asks for the current names, so a tag from before it will pull nothing.
 Anything from the first deployment after the rename onwards rolls back
 normally.
 
-The same applies to the deployment's own restore-on-failure, and it applies on
-the one deployment most likely to need it. If the first post-rename deploy
-fails, that step puts back the previous `.env` — carrying an `IMAGE_TAG` that
-only ever existed under the old image names — and brings the stack up against
-a compose file asking for the new ones. It pulls nothing and the site stays
-down. Recovering means deploying forward, not back.
-
 ## The names that stay
 
 The compose project is `students-cz`; the volumes it uses are not. They are
@@ -190,7 +183,7 @@ refuses it, and nothing can repair a message that was already sent.
 **`rollback.yml` cannot return to a release before this one, on purpose.** Releases before
 this one register a webhook and refuse to start without `WEBHOOK_SECRET`.
 Compose still passes `WEBHOOK_SECRET` for one release, so a failed step-1
-deploy can restore the previous `.env` and come back up. `rollback.yml`
+deploy can restore the previous release and come back up. `rollback.yml`
 keeps the new `.env`, which has no `WEBHOOK_SECRET`, so an old image crashes
 at start. Keep it that way once `BOT_TOKEN` is the moderator's: an old image
 on that token would set a webhook every minute and break the moderator bot's
@@ -240,6 +233,10 @@ curl -sI https://<host>/                         # 301 to APP_URL
 docker compose -f <DEPLOY_DIR>/docker-compose.yml ps
 docker compose -f <DEPLOY_DIR>/docker-compose.yml logs -f api
 ```
+
+Caddy is recreated whenever the Caddyfile changes: the deploy puts the file's
+hash in `CADDYFILE_SHA`, which the caddy service carries, so a release that
+changes only the Caddyfile still takes effect, and so does its restore.
 
 `/healthz` answers `status`, `database` and `uptime_seconds`. It says nothing
 about Telegram: this process holds no webhook, so there is nothing of its own
