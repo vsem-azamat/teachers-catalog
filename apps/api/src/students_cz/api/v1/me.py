@@ -4,7 +4,13 @@ from fastapi import APIRouter
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from students_cz.api.deps import LangDep, SessionDep, SettingsDep, UserDep
+from students_cz.api.deps import (
+    LangDep,
+    SessionDep,
+    SettingsDep,
+    UserDep,
+    is_operator,
+)
 from students_cz.api.v1.taxonomy import institution_out
 from students_cz.db.models import (
     HelperProfile,
@@ -47,7 +53,7 @@ async def read_me(
         institution=institution,
         is_helper=helper is not None,
         helper_status=helper.status.value if helper else None,
-        is_admin=user.tg_id in settings.admin_tg_ids,
+        is_admin=is_operator(user, settings),
     )
 
 

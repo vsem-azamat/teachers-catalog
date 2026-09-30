@@ -291,3 +291,34 @@ async def test_placements_carry_their_last_months_impressions_and_clicks(
     assert rows[live.id]["is_active"] is True
     assert rows[off.id]["is_active"] is False
     assert rows[off.id]["impressions"] == 0
+
+
+async def test_counts_are_the_full_lengths_when_the_lists_are_cut(
+    session: AsyncSession, helper_factory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from students_cz.services import admin
+
+    monkeypatch.setattr(admin, "LIST_CAP", 1)
+    monkeypatch.setattr(admin, "SEARCH_CAP", 1)
+    now = datetime.now(UTC)
+    author = await _person(session, 97401, "Vera")
+    for tg_id in (97402, 97403):
+        user = await helper_factory(tg_id=tg_id)
+        profile = await session.get(HelperProfile, user.id)
+        assert profile is not None
+        profile.published_at = now - timedelta(days=1)
+    for text in ("one", "two"):
+        session.add(
+            HelpRequest(author_id=author.id, raw_text=text, status=RequestStatus.OPEN)
+        )
+        session.add(SearchQuery(raw_text=text, results_count=0))
+    await session.flush()
+
+    async with _client(session) as http:
+        body = (
+            await http.get("/api/v1/admin/catalog", headers=auth_header(OPERATOR))
+        ).json()
+
+    assert (len(body["profiles"]), body["counts"]["profiles_week"]) == (1, 2)
+    assert (len(body["unanswered"]), body["counts"]["unanswered"]) == (1, 2)
+    assert (len(body["failed_searches"]), body["counts"]["failed_searches"]) == (1, 2)

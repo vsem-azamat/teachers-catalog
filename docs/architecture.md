@@ -246,11 +246,11 @@ moderating profiles is not a feature yet, so the console has nothing to change.
 - `/admin/catalog`: profiles published in the last 7 days, newest first;
   requests nobody has answered that can still be answered (open and before
   their deadline), oldest first; and searches that found nothing in the last
-  30 days, grouped by their text ignoring case and stray spaces, most frequent
+  30 days, grouped by their text ignoring case and leading or trailing spaces, most frequent
   first. Each list is capped; the counts give each list's full length, and the
   number of requests posted this week.
 - `/admin/partners`: every placement, active or not, with its impressions and
-  clicks over the last 30 days, which is the report a partner is sent.
+  clicks over the last 30 days.
 
 It names people as the catalog does, a first name and an initial: no handle,
 no Telegram id, no contact. The console opens a profile through the app, like

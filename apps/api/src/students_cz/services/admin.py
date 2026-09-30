@@ -4,8 +4,9 @@ See docs/architecture.md, «The operator reads, and only reads».
 """
 
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
-from sqlalchemy import and_, case, exists, func, select
+from sqlalchemy import ColumnElement, and_, case, exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -73,11 +74,15 @@ async def catalog(session: AsyncSession, lang: UiLang) -> AdminCatalog:
     )
 
 
-async def _count(session: AsyncSession, what, where) -> int:
+async def _count(
+    session: AsyncSession, what: ColumnElement[Any], where: ColumnElement[bool]
+) -> int:
     return await session.scalar(select(func.count(what)).where(where)) or 0
 
 
-async def _new_profiles(session: AsyncSession, lang: UiLang, where) -> list[AdminProfile]:
+async def _new_profiles(
+    session: AsyncSession, lang: UiLang, where: ColumnElement[bool]
+) -> list[AdminProfile]:
     rows = (
         await session.execute(
             select(HelperProfile.published_at, User)
@@ -117,7 +122,9 @@ async def _new_profiles(session: AsyncSession, lang: UiLang, where) -> list[Admi
     ]
 
 
-async def _unanswered(session: AsyncSession, where) -> list[AdminRequest]:
+async def _unanswered(
+    session: AsyncSession, where: ColumnElement[bool]
+) -> list[AdminRequest]:
     rows = await session.scalars(
         select(HelpRequest).where(where).order_by(HelpRequest.created_at).limit(LIST_CAP)
     )
@@ -127,13 +134,15 @@ async def _unanswered(session: AsyncSession, where) -> list[AdminRequest]:
     ]
 
 
-def _search_key():
+def _search_key() -> ColumnElement[Any]:
     # The same search typed twice differs in case and stray spaces; the
     # operator wants to know what people looked for, not how they typed it.
     return func.lower(func.btrim(SearchQuery.raw_text))
 
 
-async def _failed_searches(session: AsyncSession, where) -> list[AdminSearch]:
+async def _failed_searches(
+    session: AsyncSession, where: ColumnElement[bool]
+) -> list[AdminSearch]:
     times = func.count(SearchQuery.id)
     last = func.max(SearchQuery.created_at)
     rows = (

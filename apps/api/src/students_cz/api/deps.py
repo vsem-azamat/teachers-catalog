@@ -90,12 +90,17 @@ async def current_lang(user: UserDep) -> UiLang:
 LangDep = Annotated[UiLang, Depends(current_lang)]
 
 
+def is_operator(user: User, settings: Settings) -> bool:
+    """One of the console's operators. The one place that says so."""
+    return user.tg_id in settings.admin_tg_ids
+
+
 async def current_admin(user: UserDep, settings: SettingsDep) -> User:
     """The caller, if they are one of the console's operators; 403 otherwise.
 
     See docs/architecture.md, «The operator reads, and only reads».
     """
-    if user.tg_id not in settings.admin_tg_ids:
+    if not is_operator(user, settings):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "not an operator")
     return user
 
