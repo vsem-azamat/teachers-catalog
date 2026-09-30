@@ -67,7 +67,7 @@ that would have needed a third pair of tables in the legacy schema.
 This is a deliberate exception to the rule below, not an oversight. The i18n
 tables exist for rows we author and keep adding to — subjects, institutions,
 service types. A closed enum of three has the same shape as `work_format` and
-`price_unit`, which `apps/web/src/components/Phrase.tsx` already translates
+`price_unit`, which the app's `src/components/Phrase.tsx` (supervisor-telegram `web/`) already translates
 client-side. Adding a `service_group_i18n` table would mean a migration every
 time a word changes.
 

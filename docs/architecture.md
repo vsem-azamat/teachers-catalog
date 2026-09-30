@@ -81,7 +81,7 @@ database; layering it further would cost more than it returns.
 
 The product is **Students CZ**, and so is everything that can be renamed
 without moving data: the Python package `students_cz`, the images
-`students-cz-api` and `students-cz-web`, the compose project, the containers,
+`students-cz-api`, the compose project, the containers,
 `deploy/students-cz`. `konnekt` was the working title and it is gone from
 everywhere a person reads.
 
@@ -90,22 +90,31 @@ Three places keep it, each for a reason and each said out loud where it sits:
 | Where | Why |
 | --- | --- |
 | The docker volumes | The data is in them. A compose volume is `<project>_<name>`, so a rename is a move, not an edit — see `docs/deploy.md`. |
-| `LEGACY_STORAGE_KEY` / `LEGACY_OVERRIDE_KEY` in the web app | Somebody's saved theme and language. Read once and moved across, so the rename does not reset everyone to their phone's defaults. |
+| `LEGACY_STORAGE_KEY` / `LEGACY_OVERRIDE_KEY` in the web app (now supervisor-telegram `web/`) | Somebody's saved theme and language. Read once and moved across, so the rename does not reset everyone to their phone's defaults. |
 | The Postgres role and database | Invisible, and renaming them costs a dump and a restore. |
 
-The repository is still `teachers-catalog` and the domain is still
-`tutors.azamat.io`. Neither is in the code, and neither is free to change —
-one breaks every clone and remote, the other breaks the Mini App's registered
-URL and every link anybody has shared.
+The repository is still `teachers-catalog`: renaming it breaks every clone and
+remote. The API's host is `tutors.azamat.io`, and the app is at another one:
+see «The app lives elsewhere».
 
-## Two backends, one origin
+## The app lives elsewhere
 
-The app reads from two APIs. `/api/v1/*` is this repository's. `/api/public/*`
-belongs to `supervisor-telegram`: the chat directory (`catalog`), the
-advertising reach (`reach`) and the join check (`join-check`). Telegram lets a
-Mini App call only its own origin, so the router in front of the app proxies
-`/api/public/*` to `SUPERVISOR_ORIGIN`. For the browser it is one host. Vite
-does the same in development.
+The Mini App is `web/` in `supervisor-telegram`, served at `APP_URL`
+(konnekt.azamat.io) beside the moderator console. It reads from two APIs.
+`/api/v1/*` is this repository's; `/api/public/*` is supervisor's: the chat
+directory (`catalog`), the advertising reach (`reach`) and the join check
+(`join-check`). Telegram lets a Mini App call only its own origin, so the
+router in front of the app proxies `/api/v1/*` and `/healthz` here. For the
+browser it is one host.
+
+This host serves the API and nothing else. Every other path answers 301 to
+the same path under `APP_URL`, so a link shared before the move, or a client
+that cached the old menu URL, lands on the app. The bot's buttons open
+`APP_URL` too.
+
+The rules below about the app's screens, and «The web shell scrolls in exactly
+one place», govern that `web/` directory. They stay here because the product
+they describe is this one.
 
 The catalog API never calls `/api/public/*`, and the app reads only what those
 endpoints publish: a chat's title, link, group and activity, and reach summed
@@ -117,10 +126,10 @@ longer exists shows as gone. The app checks what arrives: an item without a
 title or a `t.me` link is dropped, and an activity it does not know counts as
 `unknown`.
 
-Every `/api/public/*` request reaches supervisor from this host's address, not
-the user's. Nothing there limits per client today. A per-IP rate limit, or a
-Cloudflare rate rule in front of supervisor, would throttle every Mini App user
-as one client.
+Every `/api/v1/*` request reaches this API from the app's host, not from the
+user's address. Nothing here limits per client today. A per-IP rate limit, or
+a Cloudflare rate rule in front of this host, would throttle every Mini App
+user as one client.
 
 **The chat directory reads the order it is given.** `/chats` is one of three
 tabs: Помощь, Чаты and Заявки. The directory keeps supervisor's order and
@@ -304,30 +313,19 @@ Screens are assembled server-side — the client renders what it is given rather
 than joining data itself — so a schema often mirrors a screen, and that is
 intended.
 
-**What the client has generated from that contract is committed**, into
-`apps/web/src/lib/generated`, and CI regenerates it from the API's own OpenAPI
-document to check that the committed copy still matches. Generating at build
-time was the alternative and it is worse: it needs the API process up, so the
-web build fails when a backend is not running. Committing it means the two can
-disagree, which is what the check is for — a schema changed without running
-`make contract` types the client against an endpoint the API does not serve, and
-nothing else in this repository notices. That target dumps the document to a
-file rather than fetching it: given a URL, the generator writes that URL into
-the client as a literal type, so a client generated against somebody's laptop
-carries their address.
+**The document is committed**, as `apps/api/openapi.json`, and `make contract`
+fails when it is out of date: a schema changed without it leaves the app's
+client typed against an endpoint the API does not serve. It is the contract for
+the Mini App, which lives in `supervisor-telegram`: that repository generates
+its client from a copy of this file, checks the client against the copy on
+every change, and compares the copy with this file every day. The API does
+serve `/openapi.json`, but the router sends only `/api/v1/*` and `/healthz` to
+it, and a live endpoint cannot be pinned to a revision anyway. A checked-in
+file can.
 
-**The document itself is committed too**, as `apps/api/openapi.json`, and the
-same check fails when it is out of date. It is the contract for clients that do
-not live here: the Mini App is moving to `supervisor-telegram`, which is to
-generate its client from this file. The API does serve `/openapi.json`, but
-the router sends only `/api/*` and `/healthz` to it, and a live endpoint cannot
-be pinned to a revision anyway. A checked-in file can.
-
-The check covers what has moved across, and that is not yet the whole client.
-`apps/web/src/lib/types.ts` still declares most of the wire types by hand and
-says so; each moves to the generated module as the screen using it is touched,
-and until one has, nothing compares it to the API. So a green contract check
-means the generated types are current, not that every type the app uses is.
+The app's client covers what has moved across, and that is not yet the whole
+wire: its `src/lib/types.ts` still declares most types by hand, and nothing
+compares those to the API.
 
 ## One engine, one pool
 
@@ -439,7 +437,7 @@ Four rules follow, and they are what to check before changing layout:
   `viewport.expand()` at startup rather than leaving someone in a half sheet
   with no way out of it. It is dismissed with Telegram's close button.
 
-`pnpm check:scroll` in `apps/web` is the first rule, executable. At three phone
+`pnpm check:scroll` in supervisor-telegram's `web/` is the first rule, executable. At three phone
 sizes it measures the gap between the lowest thing that paints and the bottom
 of the screen's content box — the screen's own `padding-bottom` is subtracted,
 which is also what keeps the number right on a phone with a home indicator. A
@@ -465,7 +463,7 @@ pixels: a bar that is opaque behind its controls cannot be changed by what
 passes beneath it, and one that is not changes wherever it is see-through.
 Measured on the three screens that have a list long enough to move (`/`,
 `/results`, `/chats`), at the same three phone sizes. `/chats` needs
-`SUPERVISOR_ORIGIN` set for the dev server; without it the screen shows its
+supervisor's webapi behind the dev server; without it the screen shows its
 error row and the check reports it unmeasured. It says nothing about how the bar looks — only that what is
 under it stays under it.
 

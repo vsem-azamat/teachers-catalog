@@ -114,9 +114,10 @@ class Settings(BaseSettings):
         """
         return None if value == "" else value
 
-    # Public HTTPS origin. Since 20 July 2026 Telegram only allows Mini App API
-    # calls from the app's own origin, so a preview deployment on a different
-    # domain will not work.
+    # The Mini App's HTTPS origin (APP_URL in production), which the bot's
+    # buttons open. It is another host: the app's router proxies /api/v1/*
+    # here, because Telegram only allows Mini App API calls from the app's
+    # own origin.
     public_base_url: str = ""
 
     # How long an initData payload stays usable. Telegram mandates nothing here

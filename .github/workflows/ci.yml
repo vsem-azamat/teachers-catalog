@@ -106,7 +106,7 @@ jobs:
                  -e 's|^BOT_TOKEN=.*|BOT_TOKEN=placeholder|' \
                  -e 's|^PUBLIC_HOST=.*|PUBLIC_HOST=https://example.invalid|' \
                  -e 's|^PUBLIC_PORT=.*|PUBLIC_PORT=18086|' \
-                 -e 's|^SUPERVISOR_ORIGIN=.*|SUPERVISOR_ORIGIN=https://supervisor.invalid|' .env
+                 -e 's|^APP_URL=.*|APP_URL=https://app.invalid|' .env
           docker compose config > resolved.yml
 
       - name: Nothing may be published except the router, on loopback
@@ -114,27 +114,23 @@ jobs:
 
       - name: The internal Caddyfile must be valid
         run: |
-          docker run --rm -e SUPERVISOR_ORIGIN=https://supervisor.invalid \
+          docker run --rm -e APP_URL=https://app.invalid \
             -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" \
             caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
 
       - name: Each path goes to the backend that owns it
         run: |
           set -euo pipefail
-          docker run --rm -e SUPERVISOR_ORIGIN=https://supervisor.invalid \
+          docker run --rm -e APP_URL=https://app.invalid \
             -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" \
             caddy:2-alpine caddy adapt --config /etc/caddy/Caddyfile \
-            | python3 check-routes.py supervisor.invalid
+            | python3 check-routes.py https://app.invalid
 
   contract:
-    # The client in apps/web/src/lib/generated is generated from the API's own
-    # OpenAPI document and committed, so the two can disagree. They did not
-    # disagree yet only because nothing looked: a schema changed without running
-    # `make contract` types the client against an endpoint that is no longer
-    # there, and every other check in this repository passes.
-    #
-    # Its own job rather than a step inside `web`, because it needs both
-    # toolchains and because the name is the error message.
+    # apps/api/openapi.json is the contract the Mini App (supervisor-telegram)
+    # generates its client from, so a schema changed without `make contract`
+    # types that client against an endpoint the API does not serve. Its own
+    # job because the name is the error message.
     runs-on: ubuntu-latest
 
     steps:
@@ -144,71 +140,10 @@ jobs:
         with:
           enable-cache: true
 
-      - uses: pnpm/action-setup@v4
-        with:
-          package_json_file: apps/web/package.json
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: apps/web/pnpm-lock.yaml
-
       - name: Install
-        run: |
-          cd apps/api && uv sync --locked
-          cd ../web && pnpm install --frozen-lockfile
+        run: cd apps/api && uv sync --locked
 
-      - name: The committed OpenAPI document and client must match the API
+      - name: The committed OpenAPI document must match the API
         # No database and no server: the document is declared at import time,
         # and the lifespan that needs one never runs.
         run: make contract
-
-  web:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/web
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          # The action reads the version from packageManager, and it looks in
-          # the repository root by default — defaults.run.working-directory
-          # does not reach an action's inputs.
-          package_json_file: apps/web/package.json
-
-      - uses: actions/setup-node@v4
-        with:
-          # 24, because `pnpm test` runs TypeScript through node's own test
-          # runner and its type stripping is only unflagged from 22.18.
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: apps/web/pnpm-lock.yaml
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Lint and format
-        run: pnpm lint
-
-      - name: Type-check
-        run: pnpm typecheck
-
-      - name: Test
-        run: pnpm test
-
-      - name: Check every message is translated
-        # An untranslated string falls back to the Russian source *and* to
-        # whatever plural rules are active, which is how "38 занятия" reaches a
-        # Czech reader. `compile --strict` is the check: extract has no such
-        # flag, and compiling is what would silently substitute the default.
-        run: pnpm exec lingui compile --strict
-
-      - name: Build
-        # mkcert wants a system trust store that CI does not have; the build
-        # itself does not need HTTPS.
-        env:
-          VITE_NO_HTTPS: '1'
-        run: pnpm build

@@ -9,13 +9,13 @@ client
   → shared Edge Caddy on the host, ports 80/443
   → 127.0.0.1:<project port>
   → this project's Caddy
-  → the mini app (static), FastAPI (/api, /healthz),
-    or supervisor-telegram (/api/public)
+  → FastAPI (/api/v1, /healthz), or 301 to APP_URL for anything else
 ```
 
-The API and the page share one origin. That is not tidiness:
+The Mini App is not here: it is supervisor-telegram's `web/`, at `APP_URL`,
+and that host's router proxies `/api/v1/*` and `/healthz` to this one, because
 since 20 July 2026 Telegram only allows Mini App API calls from the app's own
-origin.
+origin. See docs/architecture.md, «The app lives elsewhere».
 
 ## How a deployment happens
 
@@ -23,7 +23,7 @@ Nothing is built on the server.
 
 1. Push to `main` runs **CI**. Deployment is a separate workflow triggered by
    CI *succeeding* — so only a commit that passed tests can ship.
-2. **Deploy** builds two images and pushes them to GHCR under
+2. **Deploy** builds the API image and pushes it to GHCR under
    `prod-<short-sha>` and `prod-latest`. The immutable tag is what gets
    deployed; `prod-latest` exists only for humans reading the registry.
 3. It copies the compose file, the Caddyfile, the route script and a freshly
@@ -38,8 +38,14 @@ Nothing is built on the server.
    rolled back on failure.
 8. Public smoke tests.
 
-If anything fails before step 6, the previous `.env` is restored and the
-previous stack is brought back up. After step 6 the release is committed;
+If anything fails before step 6, the previous `.env`, compose file and
+Caddyfile are restored together and the previous stack is brought back up.
+If any of them cannot be copied back, nothing is restarted and the containers
+are left in whatever state the failure put them. The log names the files and
+the private directory on the server where the previous release's copies are
+kept; copy them back, or deploy forward, before anything restarts.
+The new compose file and Caddyfile arrive staged beside the live ones, so
+until then the previous release is untouched. After step 6 the release is committed;
 recovering from a bad release is `Rollback production`.
 
 ### Reference data does not ship with the code
@@ -70,13 +76,6 @@ It cannot reach past the rename. Images built before the project became
 file asks for the current names, so a tag from before it will pull nothing.
 Anything from the first deployment after the rename onwards rolls back
 normally.
-
-The same applies to the deployment's own restore-on-failure, and it applies on
-the one deployment most likely to need it. If the first post-rename deploy
-fails, that step puts back the previous `.env` — carrying an `IMAGE_TAG` that
-only ever existed under the old image names — and brings the stack up against
-a compose file asking for the new ones. It pulls nothing and the site stays
-down. Recovering means deploying forward, not back.
 
 ## The names that stay
 
@@ -138,7 +137,7 @@ ssh-keyscan -t ed25519 <host>          # for DEPLOY_KNOWN_HOSTS
 | --- | --- |
 | `PUBLIC_HOST` | `https://<subdomain>` — scheme and host, no path, no trailing slash. |
 | `PUBLIC_PORT` | A loopback port not used by another project on the host. |
-| `SUPERVISOR_ORIGIN` | `https://<host>` of `supervisor-telegram`. The router proxies `/api/public/*` there, see docs/architecture.md, «Two backends, one origin». The deploy refuses a missing one. Caddy itself accepts an empty value and answers 502 on those paths, and the deploy's outside smoke test catches that. |
+| `APP_URL` | `https://<host>` of the Mini App (supervisor-telegram). Every path here other than `/api/v1/*` and `/healthz` answers 301 to it, and the bot's buttons open it. Required, checked like `PUBLIC_HOST`, and never equal to it. Set it before any deploy of a release that reads it: without it the deploy refuses. |
 | `EDGE_CADDY_SERVICE` | Service name of the edge Caddy in its compose file. |
 | `EDGE_CADDY_CONFIG_PATH` | Path to the Caddyfile *inside* that container. |
 | `POSTGRES_DB`, `POSTGRES_USER` | Required, and checked before anything ships. No default on purpose: they name a role and a database that already exist inside a volume, and a wrong guess does not create them — the entrypoint skips `initdb` on a cluster that is not empty. The password is a secret, above. |
@@ -170,9 +169,8 @@ to the catalog yet.
 3. Replace the `BOT_TOKEN` secret with the moderator bot's token, the same
    value as `MODERATOR_BOT_TOKEN` in `supervisor-telegram`, and re-run the
    deploy.
-4. Set `WEBAPI_HELP_URL` to `PUBLIC_HOST` in `supervisor-telegram` (its #124
-   added the setting) and re-run its deploy. Its `/start` then offers
-   «🎓 Помощь с учёбой».
+4. `supervisor-telegram`'s `/start` offers «🎓 Помощь с учёбой», which opens
+   the app at `APP_URL`.
 5. In @BotFather, remove `@student_cz_bot`'s Main Mini App URL. The Bot API
    cannot do this one.
 6. Check that Telegram sends `allows_write_to_pm` on this launch. Set your
@@ -188,7 +186,7 @@ refuses it, and nothing can repair a message that was already sent.
 **`rollback.yml` cannot return to a release before this one, on purpose.** Releases before
 this one register a webhook and refuse to start without `WEBHOOK_SECRET`.
 Compose still passes `WEBHOOK_SECRET` for one release, so a failed step-1
-deploy can restore the previous `.env` and come back up. `rollback.yml`
+deploy can restore the previous release and come back up. `rollback.yml`
 keeps the new `.env`, which has no `WEBHOOK_SECRET`, so an old image crashes
 at start. Keep it that way once `BOT_TOKEN` is the moderator's: an old image
 on that token would set a webhook every minute and break the moderator bot's
@@ -234,10 +232,14 @@ Test that on a copy before you need it in anger.
 
 ```sh
 curl https://<host>/healthz                      # API and database
-curl -sI https://<host>/                         # the mini app
+curl -sI https://<host>/                         # 301 to APP_URL
 docker compose -f <DEPLOY_DIR>/docker-compose.yml ps
 docker compose -f <DEPLOY_DIR>/docker-compose.yml logs -f api
 ```
+
+Caddy is recreated whenever the Caddyfile changes: the deploy puts the file's
+hash in `CADDYFILE_SHA`, which the caddy service carries, so a release that
+changes only the Caddyfile still takes effect, and so does its restore.
 
 `/healthz` answers `status`, `database` and `uptime_seconds`. It says nothing
 about Telegram: this process holds no webhook, so there is nothing of its own

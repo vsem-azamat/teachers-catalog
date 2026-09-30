@@ -17,7 +17,6 @@ concurrency:
 
 env:
   API_IMAGE: students-cz-api
-  WEB_IMAGE: students-cz-web
 
 jobs:
   build:
@@ -64,17 +63,6 @@ jobs:
           cache-from: type=gha,scope=students-cz-api
           cache-to: type=gha,scope=students-cz-api,mode=max
 
-      - name: Build and push the mini app
-        uses: docker/build-push-action@v6
-        with:
-          context: apps/web
-          push: true
-          tags: |
-            ghcr.io/${{ steps.meta.outputs.owner }}/${{ env.WEB_IMAGE }}:${{ steps.meta.outputs.image_tag }}
-            ghcr.io/${{ steps.meta.outputs.owner }}/${{ env.WEB_IMAGE }}:prod-latest
-          cache-from: type=gha,scope=students-cz-web
-          cache-to: type=gha,scope=students-cz-web,mode=max
-
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -103,7 +91,7 @@ jobs:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
           PUBLIC_PORT: ${{ vars.PUBLIC_PORT }}
-          SUPERVISOR_ORIGIN: ${{ vars.SUPERVISOR_ORIGIN }}
+          APP_URL: ${{ vars.APP_URL }}
           EDGE_CADDY_SERVICE: ${{ vars.EDGE_CADDY_SERVICE }}
           EDGE_CADDY_CONFIG_PATH: ${{ vars.EDGE_CADDY_CONFIG_PATH }}
           POSTGRES_DB: ${{ vars.POSTGRES_DB }}
@@ -115,7 +103,7 @@ jobs:
                    EDGE_CADDY_DIR EDGE_CADDY_COMPOSE_FILE EDGE_CADDYFILE \
                    BOT_TOKEN POSTGRES_PASSWORD \
                    POSTGRES_DB POSTGRES_USER \
-                   PUBLIC_HOST PUBLIC_PORT SUPERVISOR_ORIGIN EDGE_CADDY_SERVICE EDGE_CADDY_CONFIG_PATH; do
+                   PUBLIC_HOST PUBLIC_PORT APP_URL EDGE_CADDY_SERVICE EDGE_CADDY_CONFIG_PATH; do
             [ -n "${!v:-}" ] || missing+=("$v")
           done
           if [ ${#missing[@]} -gt 0 ]; then
@@ -128,8 +116,13 @@ jobs:
           # stray slash breaks at least one of them.
           [[ "$PUBLIC_HOST" =~ ^https://[a-z0-9.-]+$ ]] \
             || { echo "PUBLIC_HOST must look like https://host" >&2; exit 1; }
-          [[ "$SUPERVISOR_ORIGIN" =~ ^https://[a-z0-9.-]+$ ]] \
-            || { echo "SUPERVISOR_ORIGIN must look like https://host" >&2; exit 1; }
+          # The redirect's target: Caddy appends the path, so a trailing slash
+          # would double it.
+          [[ "$APP_URL" =~ ^https://[a-z0-9.-]+$ ]] \
+            || { echo "APP_URL must look like https://host" >&2; exit 1; }
+          # The same host would redirect every page to itself.
+          [ "$APP_URL" != "$PUBLIC_HOST" ] \
+            || { echo "APP_URL must be another host than PUBLIC_HOST" >&2; exit 1; }
           # Above the privileged range and below the ephemeral one.
           [[ "$PUBLIC_PORT" =~ ^[0-9]{4,5}$ ]] && [ "$PUBLIC_PORT" -ge 1024 ] && [ "$PUBLIC_PORT" -le 32767 ] \
             || { echo "PUBLIC_PORT must be a port between 1024 and 32767" >&2; exit 1; }
@@ -164,7 +157,7 @@ jobs:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
           PUBLIC_PORT: ${{ vars.PUBLIC_PORT }}
-          SUPERVISOR_ORIGIN: ${{ vars.SUPERVISOR_ORIGIN }}
+          APP_URL: ${{ vars.APP_URL }}
           INIT_DATA_MAX_AGE_SECONDS: ${{ vars.INIT_DATA_MAX_AGE_SECONDS || '86400' }}
           LOG_LEVEL: ${{ vars.LOG_LEVEL || 'INFO' }}
           # Optional, and empty is a working value: no ping.
@@ -186,7 +179,9 @@ jobs:
             echo "BOT_TOKEN=$BOT_TOKEN"
             echo "PUBLIC_HOST=$PUBLIC_HOST"
             echo "PUBLIC_PORT=$PUBLIC_PORT"
-            echo "SUPERVISOR_ORIGIN=$SUPERVISOR_ORIGIN"
+            echo "APP_URL=$APP_URL"
+            # Recreates caddy when the Caddyfile changes; see docs/deploy.md.
+            echo "CADDYFILE_SHA=$(sha256sum deploy/students-cz/Caddyfile | cut -c1-16)"
             echo "INIT_DATA_MAX_AGE_SECONDS=$INIT_DATA_MAX_AGE_SECONDS"
             echo "LOG_LEVEL=$LOG_LEVEL"
             echo "OWNER_TG_ID=$OWNER_TG_ID"
@@ -219,10 +214,14 @@ jobs:
           set -euo pipefail
           ssh "$DEPLOY_USER@$DEPLOY_HOST" \
             "install -d -m 700 '$DEPLOY_DIR' '$DEPLOY_DIR/data' '$DEPLOY_DIR/data/backups'"
+          scp deploy/students-cz/apply-edge-route.sh "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/"
+          # Staged beside the live copies, not over them: they belong to the
+          # release they came with, and restoring the previous release's .env
+          # onto this release's compose file would start neither of them.
           scp deploy/students-cz/docker-compose.yml \
-              deploy/students-cz/Caddyfile \
-              deploy/students-cz/apply-edge-route.sh \
-              "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/"
+              "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/docker-compose.yml.$RUN_ID.tmp"
+          scp deploy/students-cz/Caddyfile \
+              "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/Caddyfile.$RUN_ID.tmp"
           scp "${{ steps.prep.outputs.env_file }}" \
               "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/.env.$RUN_ID.tmp"
           scp "${{ steps.prep.outputs.token_file }}" \
@@ -258,8 +257,20 @@ jobs:
           cd "$DEPLOY_DIR"
 
           committed=0
-          previous_env=""
-          [ -f .env ] && previous_env="$(mktemp)" && cp .env "$previous_env"
+          # A release is its .env and these files together: each names what the
+          # others provide. Staged, backed up and restored as one set, so the
+          # list is written once here. Two steps outside this script repeat the
+          # names and change with it: "Copy configuration to the server", which
+          # stages them, and "Remove transient files".
+          release_files="docker-compose.yml Caddyfile"
+          previous=""
+          if [ -f .env ]; then
+            previous="$(mktemp -d)"
+            cp .env "$previous/"
+            for f in $release_files; do
+              if [ -f "$f" ]; then cp "$f" "$previous/"; fi
+            done
+          fi
 
           # A GHCR login written into ~/.docker/config.json would outlive the
           # deployment. This one lives in a directory that goes away with it.
@@ -267,18 +278,47 @@ jobs:
 
           cleanup() {
             local code=$?
-            if [ "$code" -ne 0 ] && [ "$committed" -eq 0 ] && [ -n "$previous_env" ]; then
+            # Every step below runs whatever the one before it did: a restore
+            # that fails halfway must still remove the login and the copy of
+            # .env, and must still exit with the failure that started it.
+            set +e
+            if [ "$code" -ne 0 ] && [ "$committed" -eq 0 ] && [ -n "$previous" ]; then
               echo "deployment failed before commit; restoring the previous release" >&2
-              cp "$previous_env" .env
-              docker compose up -d --remove-orphans >/dev/null 2>&1 || true
+              unrestored=""
+              for f in .env $release_files; do
+                if [ -f "$previous/$f" ]; then
+                  cp "$previous/$f" . || unrestored="$unrestored $f"
+                fi
+              done
+              # Half of each release would start neither, and could replace
+              # working containers with a broken one. Leave them running.
+              if [ -z "$unrestored" ]; then
+                docker compose up -d --remove-orphans 2>&1 | tail -n 20 >&2
+                [ "${PIPESTATUS[0]}" -eq 0 ] \
+                  || echo "the previous release did not come back up" >&2
+              else
+                # The restore does not touch the containers, whatever state the
+                # failure left them in, but the directory now holds files of both
+                # releases, and a restart (a reboot too) would start that mix.
+                # The copies stay, mode 0700, for whoever puts them back.
+                echo "could not restore:$unrestored" >&2
+                echo "not restarting anything. $PWD now mixes two releases." \
+                     "The previous release's files are kept in $previous:" \
+                     "copy them back, or deploy forward, before anything" \
+                     "restarts." >&2
+                previous=""
+              fi
             fi
             rm -rf "$DOCKER_CONFIG"
-            rm -f "$previous_env" ".env.$RUN_ID.tmp" ".ghcr.$RUN_ID.tmp"
+            if [ -n "$previous" ]; then rm -rf "$previous"; fi
+            rm -f ".env.$RUN_ID.tmp" ".ghcr.$RUN_ID.tmp"
+            for f in $release_files; do rm -f "$f.$RUN_ID.tmp"; done
             exit "$code"
           }
           trap cleanup EXIT
 
           install -m 600 ".env.$RUN_ID.tmp" .env
+          for f in $release_files; do install -m 644 "$f.$RUN_ID.tmp" "$f"; done
           chmod +x apply-edge-route.sh
 
           docker login ghcr.io -u "$GHCR_ACTOR" --password-stdin < ".ghcr.$RUN_ID.tmp"
@@ -346,16 +386,19 @@ jobs:
       - name: Smoke test from outside
         env:
           PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
+          APP_URL: ${{ vars.APP_URL }}
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 8 --retry-delay 3 \
                --retry-all-errors --max-time 20 "$PUBLIC_HOST/healthz" | tee /dev/stderr
-          # The path the router hands to supervisor-telegram. A deploy that serves
-          # the app but not the chat directory is not a working deploy.
-          curl --fail --silent --show-error --retry 8 --retry-delay 3 \
-               --retry-all-errors --max-time 20 -o /dev/null "$PUBLIC_HOST/api/public/reach"
-          curl --fail --silent --show-error --retry 4 --retry-delay 3 \
-               --retry-all-errors --max-time 20 -o /dev/null "$PUBLIC_HOST/"
+          # Every other path belongs to the app, and an old link must land on
+          # the same screen there.
+          location="$(curl --silent --show-error --retry 4 --retry-delay 3 \
+               --retry-all-errors --max-time 20 -o /dev/null -w '%{http_code} %{redirect_url}' \
+               "$PUBLIC_HOST/chats?x=1")"
+          echo "$location"
+          [ "$location" = "301 $APP_URL/chats?x=1" ] \
+            || { echo "expected 301 to $APP_URL/chats?x=1" >&2; exit 1; }
 
       - name: Remove transient files
         if: always()
@@ -369,5 +412,6 @@ jobs:
                 "${{ steps.prep.outputs.token_file }}" \
                 "${{ steps.prep.outputs.route_file }}" || true
           ssh "$DEPLOY_USER@$DEPLOY_HOST" \
-            "rm -f '$DEPLOY_DIR/.env.$RUN_ID.tmp' '$DEPLOY_DIR/.ghcr.$RUN_ID.tmp'" || true
+            "rm -f '$DEPLOY_DIR/.env.$RUN_ID.tmp' '$DEPLOY_DIR/.ghcr.$RUN_ID.tmp' \
+                   '$DEPLOY_DIR/docker-compose.yml.$RUN_ID.tmp' '$DEPLOY_DIR/Caddyfile.$RUN_ID.tmp'" || true
           rm -f ~/.ssh/id_ed25519 || true

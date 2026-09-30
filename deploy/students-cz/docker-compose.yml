@@ -73,7 +73,8 @@ services:
       # release, and never restore it once BOT_TOKEN is the moderator's: see
       # docs/deploy.md.
       WEBHOOK_SECRET: ${WEBHOOK_SECRET:-}
-      PUBLIC_BASE_URL: ${PUBLIC_HOST}
+      # Where the bot's buttons open the app: its host, not this one.
+      PUBLIC_BASE_URL: ${APP_URL}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       INIT_DATA_MAX_AGE_SECONDS: ${INIT_DATA_MAX_AGE_SECONDS:-86400}
       # Empty means nobody is told when a profile or a request appears, which
@@ -82,7 +83,7 @@ services:
       ADS_CONTACT: ${ADS_CONTACT:-}
       # Never true here. It would let anyone claim to be anyone.
       ALLOW_UNSIGNED_INIT_DATA: "false"
-      CORS_ORIGINS: '["${PUBLIC_HOST}"]'
+      CORS_ORIGINS: '["${APP_URL}"]'
     depends_on:
       postgres: {condition: service_healthy}
     healthcheck:
@@ -96,26 +97,15 @@ services:
       driver: json-file
       options: {max-size: "10m", max-file: "3"}
 
-  frontend:
-    image: ghcr.io/${GHCR_OWNER}/students-cz-web:${IMAGE_TAG}
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/health || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    security_opt: [no-new-privileges:true]
-    logging:
-      driver: json-file
-      options: {max-size: "10m", max-file: "3"}
-
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
     environment:
-      # Where /api/public/* goes: supervisor-telegram. See the Caddyfile.
-      SUPERVISOR_ORIGIN: ${SUPERVISOR_ORIGIN}
+      # Where every path but the API is redirected: the app. See the Caddyfile.
+      APP_URL: ${APP_URL}
+      # Not read by Caddy. A changed value is what makes compose recreate
+      # this container, and so load a changed Caddyfile.
+      CADDYFILE_SHA: ${CADDYFILE_SHA:-}
     ports:
       # Loopback only. Publishing on a wildcard would put the app on the
       # internet without TLS, bypassing the edge entirely; the deploy script
@@ -127,7 +117,6 @@ services:
       - caddy-config:/config
     depends_on:
       api: {condition: service_healthy}
-      frontend: {condition: service_healthy}
     security_opt: [no-new-privileges:true]
     logging:
       driver: json-file

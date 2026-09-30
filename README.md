@@ -9,8 +9,8 @@ anyway: insurance, a language course that carries a visa, a bank statement, a
 sworn translation. Those are partner placements — always labelled, and shown on
 the screen for the task the person is already doing rather than as a banner.
 
-The Python package is `students_cz`, the images are `students-cz-api` and
-`students-cz-web`, and the compose project is `students-cz` — the product's
+The Python package is `students_cz`, the image is `students-cz-api`, and the
+compose project is `students-cz` — the product's
 name, spelled the way each of those places allows. What is still called
 something else, and why, is in `docs/architecture.md`.
 
@@ -18,14 +18,16 @@ something else, and why, is in `docs/architecture.md`.
 
 ```
 apps/api     FastAPI + aiogram in one process, Postgres 18
-apps/web     React 19 + Vite, the mini app itself
 docs         architecture.md — the layers; data-model.md — the schema
 infra        database bootstrap
 ```
 
-The bot and the API share a process on purpose. Since 20 July 2026 Telegram
-only allows Mini App API calls from the app's own origin, so the page and the
-API it talks to have to be the same host regardless.
+The Mini App itself is `web/` in
+[supervisor-telegram](https://github.com/vsem-azamat/supervisor-telegram),
+served at konnekt.azamat.io beside the chat directory it shares a bot with.
+Its router proxies `/api/v1/*` here, because since 20 July 2026 Telegram only
+allows Mini App API calls from the app's own origin. This repository keeps the
+API, its contract (`apps/api/openapi.json`) and the product rules in `docs/`.
 
 Three ideas run through the whole thing.
 
@@ -43,14 +45,16 @@ That is what makes the other rows believable.
 
 ## Running it
 
-Needs Docker, [uv](https://docs.astral.sh/uv/) and [pnpm](https://pnpm.io/).
+Needs Docker and [uv](https://docs.astral.sh/uv/).
 
 ```sh
 cp .env.example .env      # fill in BOT_TOKEN if you have one
 make setup                # database, dependencies, migrations, seed, demo data
 make api                  # http://127.0.0.1:8010
-make web                  # https://localhost:5173
 ```
+
+The app's dev server (supervisor-telegram `web/`, `pnpm dev`) proxies
+`/api/v1/*` to that port.
 
 `make help` lists the rest.
 
@@ -62,24 +66,19 @@ development only: it lets anyone claim to be anyone.
 
 ### Reaching it from Telegram
 
-Telegram will not open a mini app over plain HTTP, and will not accept an
-origin other than the registered one. A quick tunnel:
-
-```sh
-make tunnel               # prints an https://….trycloudflare.com URL
-```
-
-Put that URL in `PUBLIC_BASE_URL` and restart the API. The app has to be
-opened from a bot whose token the API holds, because that token is what
-checks `initData`. Use a development bot for this, never the production one:
-the production token belongs to the moderator bot, which polls.
+Telegram will not open a mini app over plain HTTP. How to run the app
+against this API from inside Telegram is in supervisor-telegram's
+`web/README.md`. The app has to be opened from a bot whose token the API
+holds, because that token is what checks `initData`. Use a development bot
+for this, never the production one: the production token belongs to the
+moderator bot, which polls.
 
 ## Outside Telegram
 
 The catalog only works inside Telegram — that is where the accounts, the
-conversations and the notifications are — so opening the domain in a browser
-gets a landing page instead of a broken app. It is one screen, does not
-scroll, and has one button.
+conversations and the notifications are — so opening the app in a browser
+gets a landing page instead of a broken app (in supervisor-telegram `web/`).
+It is one screen, does not scroll, and has one button.
 
 That button points at `/api/v1/open`, the only unauthenticated route in the
 API, which redirects to the bot. The handle therefore lives in one place, the
@@ -103,7 +102,7 @@ two ways to break production are in [docs/deploy.md](docs/deploy.md).
 
 ```sh
 make check                # everything CI runs
-make test                 # both test suites
+make test                 # the API's tests
 ```
 
 The API's tests run against a real Postgres, each inside a transaction that is
@@ -111,14 +110,9 @@ rolled back. The interesting logic there is SQL — trigram matching,
 word-boundary matching of synonyms, exclusion constraints — and none of it
 survives being mocked.
 
-The mini app's tests run on node's own runner, on the modules that hold a rule
-rather than a layout: `pnpm test` in `apps/web`, no test framework installed.
-
 The tooling is [uv](https://docs.astral.sh/uv/) and
-[ruff](https://docs.astral.sh/ruff/) plus [ty](https://docs.astral.sh/ty/) on
-the API, [Biome](https://biomejs.dev/), TypeScript and
-[Vite](https://vite.dev/) on the mini app, and `lingui compile --strict` so an
-untranslated string fails the build rather than falling back to Russian.
+[ruff](https://docs.astral.sh/ruff/) plus [ty](https://docs.astral.sh/ty/).
+`make contract` fails when `apps/api/openapi.json` differs from what the API declares.
 
 `ty` is in preview, so its version is pinned in the lockfile like everything
 else: a checker that changes its mind on an unrelated push is a checker people
