@@ -243,15 +243,18 @@ They sign in with the same init data as anybody else; `/me` says `is_admin`,
 and `/admin/*` answers 403 to everybody not on the list. Nothing there writes:
 moderating profiles is not a feature yet, so the console has nothing to change.
 
-- `/admin/catalog`: profiles published in the last 7 days, newest first; open
-  requests nobody has answered, oldest first; and searches that found nothing
-  in the last 30 days, grouped by their text, most frequent first. Each list is
-  capped, and three counts say how long the full lists are.
+- `/admin/catalog`: profiles published in the last 7 days, newest first;
+  requests nobody has answered that can still be answered (open and before
+  their deadline), oldest first; and searches that found nothing in the last
+  30 days, grouped by their text ignoring case and stray spaces, most frequent
+  first. Each list is capped; the counts give each list's full length, and the
+  number of requests posted this week.
 - `/admin/partners`: every placement, active or not, with its impressions and
   clicks over the last 30 days, which is the report a partner is sent.
 
-It names people by their display name only: no handle, no Telegram id, no
-contact. The console opens a profile through the app, like anybody else.
+It names people as the catalog does, a first name and an initial: no handle,
+no Telegram id, no contact. The console opens a profile through the app, like
+anybody else, and lists only the services the catalog lists.
 
 There is no shared-helpers module here. What two domains both need is a rule,
 and a rule belongs in `services/` — that is what stops this package growing a

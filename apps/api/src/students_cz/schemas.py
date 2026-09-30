@@ -334,7 +334,7 @@ class MeOut(BaseModel):
     is_helper: bool
     helper_status: str | None = None
     # One of the console's operators. See docs/architecture.md.
-    is_admin: bool = False
+    is_admin: bool
 
 
 class MeUpdate(BaseModel):
@@ -538,6 +538,7 @@ class AdminCounts(BaseModel):
     profiles_week: int
     requests_week: int
     unanswered: int
+    failed_searches: int
 
 
 class AdminCatalog(BaseModel):

@@ -74,7 +74,7 @@ async def for_slot(
         if not matches(placement.conditions, context):
             continue
 
-        text = _pick_text(offer, lang)
+        text = offer_text(offer, lang)
         if text is None:
             # An offer with no copy in any language is a data error, not
             # something to render as an empty card.
@@ -110,7 +110,8 @@ async def for_slot(
     return out
 
 
-def _pick_text(offer: PartnerOffer, lang: UiLang):
+def offer_text(offer: PartnerOffer, lang: UiLang):
+    """The offer's text in the reader's language, else the first it has."""
     for text in offer.texts:
         if text.lang == lang:
             return text

@@ -1721,13 +1721,18 @@
           "unanswered": {
             "type": "integer",
             "title": "Unanswered"
+          },
+          "failed_searches": {
+            "type": "integer",
+            "title": "Failed Searches"
           }
         },
         "type": "object",
         "required": [
           "profiles_week",
           "requests_week",
-          "unanswered"
+          "unanswered",
+          "failed_searches"
         ],
         "title": "AdminCounts"
       },
@@ -2700,8 +2705,7 @@
           },
           "is_admin": {
             "type": "boolean",
-            "title": "Is Admin",
-            "default": false
+            "title": "Is Admin"
           }
         },
         "type": "object",
@@ -2712,7 +2716,8 @@
           "avatar",
           "ui_lang",
           "spoken_langs",
-          "is_helper"
+          "is_helper",
+          "is_admin"
         ],
         "title": "MeOut"
       },

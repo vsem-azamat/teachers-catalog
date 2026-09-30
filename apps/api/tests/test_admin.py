@@ -10,13 +10,15 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from httpx import ASGITransport, AsyncClient
 from pydantic import ValidationError
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from students_cz.core.config import Settings, get_settings
-from students_cz.db.models import HelperProfile, User
+from students_cz.db.models import HelperProfile, Offer, User
 from students_cz.db.models.enums import (
     PlacementEventKind,
     PlacementSlot,
+    PublishStatus,
     RequestStatus,
     UiLang,
 )
@@ -75,12 +77,26 @@ async def test_nobody_is_an_operator_unless_named(session: AsyncSession) -> None
     assert response.status_code == 403
 
 
-def test_the_list_is_read_as_the_deploy_writes_it() -> None:
-    """Comma-separated, like supervisor's ADMIN_SUPER_ADMINS; a typo refuses to start."""
-    assert Settings(_env_file=None, admin_tg_ids="1, 22").admin_tg_ids == [1, 22]
-    assert Settings(_env_file=None, admin_tg_ids="").admin_tg_ids == []
+async def test_the_list_is_read_as_the_deploy_writes_it(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """Comma-separated, like supervisor's ADMIN_SUPER_ADMINS; a typo refuses to start.
+
+    Through the environment and a .env file, which is how the deploy and a
+    developer set it, and where a list would otherwise be parsed as JSON.
+    """
+    monkeypatch.setenv("ADMIN_TG_IDS", "1, 22")
+    assert Settings(_env_file=None).admin_tg_ids == [1, 22]
+    monkeypatch.setenv("ADMIN_TG_IDS", "")
+    assert Settings(_env_file=None).admin_tg_ids == []
+    monkeypatch.setenv("ADMIN_TG_IDS", "1,@me")
     with pytest.raises(ValidationError):
-        Settings(_env_file=None, admin_tg_ids="1,@me")
+        Settings(_env_file=None)
+
+    monkeypatch.delenv("ADMIN_TG_IDS")
+    env_file = tmp_path / ".env"
+    env_file.write_text("ADMIN_TG_IDS=5, 6\n")
+    assert Settings(_env_file=env_file).admin_tg_ids == [5, 6]
 
 
 # ── the catalog ─────────────────────────────────────────────────────────
@@ -97,13 +113,20 @@ async def test_new_profiles_are_the_last_weeks_newest_first(
     session: AsyncSession, helper_factory
 ) -> None:
     now = datetime.now(UTC)
-    fresh = await helper_factory(tg_id=97101, first_name="Marina", last_name=None)
+    fresh = await helper_factory(tg_id=97101, first_name="Marina", last_name="Kovalenko")
     older = await helper_factory(tg_id=97102, first_name="Olga", last_name=None)
     stale = await helper_factory(tg_id=97103, first_name="Petr", last_name=None)
-    for user, age in ((fresh, 1), (older, 3), (stale, 10)):
+    hidden = await helper_factory(tg_id=97104, first_name="Irina", last_name=None)
+    for user, age in ((fresh, 1), (older, 3), (stale, 10), (hidden, 1)):
         profile = await session.get(HelperProfile, user.id)
         assert profile is not None
         profile.published_at = now - timedelta(days=age)
+    hidden_profile = await session.get(HelperProfile, hidden.id)
+    assert hidden_profile is not None
+    hidden_profile.status = PublishStatus.HIDDEN
+    # Olga switched her only service off: the catalog does not list it.
+    for offer in await session.scalars(select(Offer).where(Offer.helper_id == older.id)):
+        offer.is_active = False
     await session.flush()
 
     async with _client(session) as http:
@@ -112,11 +135,13 @@ async def test_new_profiles_are_the_last_weeks_newest_first(
         ).json()
 
     names = [row["name"] for row in body["profiles"]]
-    assert names[:2] == ["Marina", "Olga"]
+    assert names[:2] == ["Marina K.", "Olga"], "first name and an initial"
     assert "Petr" not in names
+    assert "Irina" not in names, "hidden since"
     assert body["profiles"][0]["services"], "what they offer, by service name"
+    assert body["profiles"][1]["services"] == [], "a service switched off is not offered"
     assert body["counts"]["profiles_week"] >= 2
-    # A display name and nothing to reach them by.
+    # A display name, as the catalog shows it, and nothing to reach them by.
     assert set(body["profiles"][0]) == {"user_id", "name", "services", "published_at"}
 
 
@@ -135,7 +160,10 @@ async def test_unanswered_requests_are_open_ones_nobody_answered_oldest_first(
     answered = ask("матан к экзамену")
     closed = ask("уже не надо", RequestStatus.CLOSED)
     draft = ask("ещё пишу", RequestStatus.DRAFT)
-    for request in (waiting_long, waiting, answered, closed, draft):
+    # Still says open, but its deadline passed: nobody can answer it any more.
+    expired = ask("прошлогодняя сессия")
+    expired.expires_at = now - timedelta(days=40)
+    for request in (waiting_long, waiting, answered, closed, draft, expired):
         session.add(request)
     await session.flush()
     waiting_long.created_at = now - timedelta(days=5)
@@ -157,7 +185,31 @@ async def test_unanswered_requests_are_open_ones_nobody_answered_oldest_first(
     assert "матан к экзамену" not in texts
     assert "уже не надо" not in texts
     assert "ещё пишу" not in texts, "a draft is not a request yet"
+    assert "прошлогодняя сессия" not in texts, "expired: it refuses answers"
     assert body["counts"]["unanswered"] == len(texts)
+
+
+async def test_requests_this_week_count_what_was_posted(session: AsyncSession) -> None:
+    now = datetime.now(UTC)
+    author = await _person(session, 97301, "Oleg")
+    rows = [
+        ("posted", RequestStatus.OPEN, 1),
+        ("closed since", RequestStatus.CLOSED, 2),
+        ("a draft", RequestStatus.DRAFT, 1),
+        ("last month", RequestStatus.OPEN, 20),
+    ]
+    for text, status, age in rows:
+        request = HelpRequest(author_id=author.id, raw_text=text, status=status)
+        session.add(request)
+        await session.flush()
+        request.created_at = now - timedelta(days=age)
+    await session.flush()
+
+    async with _client(session) as http:
+        body = (
+            await http.get("/api/v1/admin/catalog", headers=auth_header(OPERATOR))
+        ).json()
+    assert body["counts"]["requests_week"] == 2
 
 
 async def test_failed_searches_are_grouped_by_text_most_frequent_first(
@@ -167,9 +219,9 @@ async def test_failed_searches_are_grouped_by_text_most_frequent_first(
     rows = [
         ("AutoCAD", 0, 2),
         ("autocad ", 0, 3),
-        ("микроэкономика", 0, 1),
-        ("микроэкономика", 0, 2),
-        ("микроэкономика", 0, 4),
+        ("микроэкономика", 0, 5),
+        ("микроэкономика", 0, 6),
+        ("микроэкономика", 0, 7),
         ("матан", 5, 1),
         ("латынь", 0, 40),
     ]
@@ -191,6 +243,7 @@ async def test_failed_searches_are_grouped_by_text_most_frequent_first(
     assert failed["autocad"] == 2, "case and trailing spaces are the same search"
     assert "матан" not in failed, "it found something"
     assert "латынь" not in failed, "older than 30 days"
+    assert body["counts"]["failed_searches"] == 2
 
 
 # ── the partners ────────────────────────────────────────────────────────
