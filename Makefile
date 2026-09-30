@@ -116,7 +116,8 @@ OPENAPI_DUMP := $(CURDIR)/$(API)/openapi.json
 contract:  ## Check the committed OpenAPI document and the client generated from it are current
 	@# Written beside and moved into place: a dump that fails halfway must not
 	@# leave the committed document truncated.
-	cd $(API) && PYTHONIOENCODING=utf-8 uv run python -m students_cz.openapi > $(OPENAPI_DUMP).tmp
+	cd $(API) && PYTHONIOENCODING=utf-8 uv run python -m students_cz.openapi > $(OPENAPI_DUMP).tmp \
+	  || { rm -f $(OPENAPI_DUMP).tmp; exit 1; }
 	mv $(OPENAPI_DUMP).tmp $(OPENAPI_DUMP)
 	@# openapi-ts exits 0 without writing anything when its input is missing or
 	@# empty, and a generator that quietly did nothing leaves a stale client
