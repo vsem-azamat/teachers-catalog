@@ -9,13 +9,13 @@ client
   → shared Edge Caddy on the host, ports 80/443
   → 127.0.0.1:<project port>
   → this project's Caddy
-  → the mini app (static), FastAPI (/api, /healthz),
-    or supervisor-telegram (/api/public)
+  → FastAPI (/api/v1, /healthz), or 301 to APP_URL for anything else
 ```
 
-The API and the page share one origin. That is not tidiness:
+The Mini App is not here: it is supervisor-telegram's `web/`, at `APP_URL`,
+and that host's router proxies `/api/v1/*` and `/healthz` to this one, because
 since 20 July 2026 Telegram only allows Mini App API calls from the app's own
-origin.
+origin. See docs/architecture.md, «The app lives elsewhere».
 
 ## How a deployment happens
 
@@ -23,7 +23,7 @@ Nothing is built on the server.
 
 1. Push to `main` runs **CI**. Deployment is a separate workflow triggered by
    CI *succeeding* — so only a commit that passed tests can ship.
-2. **Deploy** builds two images and pushes them to GHCR under
+2. **Deploy** builds the API image and pushes them to GHCR under
    `prod-<short-sha>` and `prod-latest`. The immutable tag is what gets
    deployed; `prod-latest` exists only for humans reading the registry.
 3. It copies the compose file, the Caddyfile, the route script and a freshly
@@ -138,7 +138,7 @@ ssh-keyscan -t ed25519 <host>          # for DEPLOY_KNOWN_HOSTS
 | --- | --- |
 | `PUBLIC_HOST` | `https://<subdomain>` — scheme and host, no path, no trailing slash. |
 | `PUBLIC_PORT` | A loopback port not used by another project on the host. |
-| `SUPERVISOR_ORIGIN` | `https://<host>` of `supervisor-telegram`. The router proxies `/api/public/*` there, see docs/architecture.md, «Two backends, one origin». The deploy refuses a missing one. Caddy itself accepts an empty value and answers 502 on those paths, and the deploy's outside smoke test catches that. |
+| `APP_URL` | `https://<host>` of the Mini App (supervisor-telegram). Every path here other than `/api/v1/*` and `/healthz` answers 301 to it, and the bot's buttons open it. Required, and checked like `PUBLIC_HOST`. |
 | `EDGE_CADDY_SERVICE` | Service name of the edge Caddy in its compose file. |
 | `EDGE_CADDY_CONFIG_PATH` | Path to the Caddyfile *inside* that container. |
 | `POSTGRES_DB`, `POSTGRES_USER` | Required, and checked before anything ships. No default on purpose: they name a role and a database that already exist inside a volume, and a wrong guess does not create them — the entrypoint skips `initdb` on a cluster that is not empty. The password is a secret, above. |
@@ -234,7 +234,7 @@ Test that on a copy before you need it in anger.
 
 ```sh
 curl https://<host>/healthz                      # API and database
-curl -sI https://<host>/                         # the mini app
+curl -sI https://<host>/                         # 301 to APP_URL
 docker compose -f <DEPLOY_DIR>/docker-compose.yml ps
 docker compose -f <DEPLOY_DIR>/docker-compose.yml logs -f api
 ```
