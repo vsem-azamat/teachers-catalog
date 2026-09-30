@@ -1,5 +1,9 @@
 # Deployment
 
+> **This repository does not deploy.** The catalog is
+> supervisor-telegram's `catalog/` since 30 September 2026; see
+> `catalog/docs/deploy.md` there. What follows describes the stack as it was.
+
 Production runs on a shared VPS alongside other projects. The shape follows the
 one already in use there, so the two behave the same way when something breaks.
 
