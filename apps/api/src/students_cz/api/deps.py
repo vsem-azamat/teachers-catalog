@@ -90,6 +90,19 @@ async def current_lang(user: UserDep) -> UiLang:
 LangDep = Annotated[UiLang, Depends(current_lang)]
 
 
+async def current_admin(user: UserDep, settings: SettingsDep) -> User:
+    """The caller, if they are one of the console's operators; 403 otherwise.
+
+    See docs/architecture.md, «The operator reads, and only reads».
+    """
+    if user.tg_id not in settings.admin_tg_ids:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "not an operator")
+    return user
+
+
+AdminDep = Annotated[User, Depends(current_admin)]
+
+
 async def current_notifier(http: Request, settings: SettingsDep) -> Notifier:
     """Assemble a notifier from what the process was started with.
 

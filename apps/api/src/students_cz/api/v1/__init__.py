@@ -12,6 +12,7 @@ the versioned API and must not move when the version does.
 from fastapi import APIRouter
 
 from students_cz.api.v1 import (
+    admin,
     browse,
     cabinet,
     me,
@@ -24,5 +25,15 @@ from students_cz.api.v1 import (
 
 router = APIRouter(prefix="/api/v1")
 
-for _module in (public, me, taxonomy, search, browse, cabinet, requests, placements):
+for _module in (
+    public,
+    me,
+    taxonomy,
+    search,
+    browse,
+    cabinet,
+    requests,
+    placements,
+    admin,
+):
     router.include_router(_module.router)

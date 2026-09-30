@@ -80,6 +80,8 @@ services:
       # Empty means nobody is told when a profile or a request appears, which
       # is a working configuration and the default everywhere else.
       OWNER_TG_ID: ${OWNER_TG_ID:-}
+      # The console's operators; empty means nobody reads the catalog there.
+      ADMIN_TG_IDS: ${ADMIN_TG_IDS:-}
       ADS_CONTACT: ${ADS_CONTACT:-}
       # Never true here. It would let anyone claim to be anyone.
       ALLOW_UNSIGNED_INIT_DATA: "false"

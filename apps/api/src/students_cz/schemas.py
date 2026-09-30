@@ -333,6 +333,8 @@ class MeOut(BaseModel):
     institution: InstitutionOut | None = None
     is_helper: bool
     helper_status: str | None = None
+    # One of the console's operators. See docs/architecture.md.
+    is_admin: bool = False
 
 
 class MeUpdate(BaseModel):
@@ -508,3 +510,50 @@ class AdsInfo(BaseModel):
     """What the ads page needs from us: who a business writes to, if anyone."""
 
     contact_url: str | None
+
+
+# ── the console ─────────────────────────────────────────────────────────
+
+
+class AdminProfile(BaseModel):
+    user_id: int
+    name: str
+    services: list[str]
+    published_at: datetime
+
+
+class AdminRequest(BaseModel):
+    id: int
+    text: str
+    created_at: datetime
+
+
+class AdminSearch(BaseModel):
+    text: str
+    times: int
+    last_at: datetime
+
+
+class AdminCounts(BaseModel):
+    profiles_week: int
+    requests_week: int
+    unanswered: int
+
+
+class AdminCatalog(BaseModel):
+    """The catalog as the operator reads it. See docs/architecture.md."""
+
+    profiles: list[AdminProfile]
+    unanswered: list[AdminRequest]
+    failed_searches: list[AdminSearch]
+    counts: AdminCounts
+
+
+class AdminPlacement(BaseModel):
+    placement_id: int
+    partner: str
+    title: str
+    slot: str
+    is_active: bool
+    impressions: int
+    clicks: int

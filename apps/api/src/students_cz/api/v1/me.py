@@ -4,7 +4,7 @@ from fastapi import APIRouter
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from students_cz.api.deps import LangDep, SessionDep, UserDep
+from students_cz.api.deps import LangDep, SessionDep, SettingsDep, UserDep
 from students_cz.api.v1.taxonomy import institution_out
 from students_cz.db.models import (
     HelperProfile,
@@ -21,7 +21,9 @@ router = APIRouter()
 
 
 @router.get("/me", response_model=MeOut, tags=["me"])
-async def read_me(user: UserDep, session: SessionDep, lang: LangDep) -> MeOut:
+async def read_me(
+    user: UserDep, session: SessionDep, lang: LangDep, settings: SettingsDep
+) -> MeOut:
     helper = await session.get(HelperProfile, user.id)
     institution = None
     if user.institution_id:
@@ -45,15 +47,20 @@ async def read_me(user: UserDep, session: SessionDep, lang: LangDep) -> MeOut:
         institution=institution,
         is_helper=helper is not None,
         helper_status=helper.status.value if helper else None,
+        is_admin=user.tg_id in settings.admin_tg_ids,
     )
 
 
 @router.patch("/me", response_model=MeOut, tags=["me"])
 async def update_me(
-    payload: MeUpdate, user: UserDep, session: SessionDep, lang: LangDep
+    payload: MeUpdate,
+    user: UserDep,
+    session: SessionDep,
+    lang: LangDep,
+    settings: SettingsDep,
 ) -> MeOut:
     await update_profile(session, user, payload)
     # The language the payload just set, not the one the request arrived with:
     # `LangDep` was resolved before the change, so reading it back through the
     # old one would answer the screen in the language it just left.
-    return await read_me(user, session, payload.ui_lang or lang)
+    return await read_me(user, session, payload.ui_lang or lang, settings)

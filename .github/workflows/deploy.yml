@@ -162,6 +162,9 @@ jobs:
           LOG_LEVEL: ${{ vars.LOG_LEVEL || 'INFO' }}
           # Optional, and empty is a working value: no ping.
           OWNER_TG_ID: ${{ vars.OWNER_TG_ID }}
+          # Optional, and empty is a working value: nobody reads the catalog
+          # in the console.
+          ADMIN_TG_IDS: ${{ vars.ADMIN_TG_IDS }}
           # Optional, and empty is a working value: no contact button.
           ADS_CONTACT: ${{ vars.ADS_CONTACT }}
           BACKUP_HOUR_UTC: ${{ vars.BACKUP_HOUR_UTC || '3' }}
@@ -185,6 +188,7 @@ jobs:
             echo "INIT_DATA_MAX_AGE_SECONDS=$INIT_DATA_MAX_AGE_SECONDS"
             echo "LOG_LEVEL=$LOG_LEVEL"
             echo "OWNER_TG_ID=$OWNER_TG_ID"
+            echo "ADMIN_TG_IDS=$ADMIN_TG_IDS"
             echo "ADS_CONTACT=$ADS_CONTACT"
             echo "BACKUP_HOUR_UTC=$BACKUP_HOUR_UTC"
             echo "BACKUP_RETENTION_DAYS=$BACKUP_RETENTION_DAYS"
